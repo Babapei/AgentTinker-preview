@@ -2,7 +2,7 @@
 
 import json
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from importlib.metadata import version
 from time import perf_counter
@@ -47,6 +47,14 @@ class ProbeRun:
     source_checkpoint_id: str | None = None
 
 
+class ProbeFailed(RuntimeError):
+    """An unsuccessful probe with preserved observations, not a success report."""
+
+    def __init__(self, report: dict[str, Any]):
+        super().__init__("m0_probe_failed")
+        self.report = report
+
+
 class CheckpointProbe:
     """Run IDs map to explicit checkpoints; the thread's latest head is never A's identity."""
 
@@ -57,6 +65,9 @@ class CheckpointProbe:
         self.pricing = pricing
         self.inject_timeout = inject_timeout
         self.spans: dict[str, list[ProbeSpan]] = {}
+        self.runs: dict[str, ProbeRun] = {}
+        self.failures: dict[str, str] = {}
+        self.stages: dict[str, str] = {}
         builder = StateGraph(ProbeState)
         builder.add_node("model", self._model)
         builder.add_node("tool", self._tool)
@@ -73,6 +84,7 @@ class CheckpointProbe:
         return span
 
     def _model(self, state: ProbeState) -> dict[str, Any]:
+        self.stages[state["run_id"]] = "model_call"
         started_at = datetime.now(UTC).isoformat()
         start = perf_counter()
         messages = deepcopy(state["messages"])
@@ -99,12 +111,17 @@ class CheckpointProbe:
             output=reply.model_dump(exclude={"request"}),
             usage=reply.usage,
         )
+        self.stages[state["run_id"]] = "model_protocol"
         message = reply.message
+        if reply.finish_reason not in {None, "stop", "tool_calls"}:
+            raise ValueError("model_response_incomplete")
         calls = message.get("tool_calls") or []
         if calls:
             if state["documents"] is not None or len(calls) != 1:
                 raise ValueError("M0 requires exactly one tool call before the final answer")
             call = calls[0]
+            if not isinstance(call.get("id"), str) or not call["id"].strip():
+                raise ValueError("missing_tool_call_id")
             if call.get("type") != "function" or call["function"]["name"] != "search_documents":
                 raise ValueError("M0 supports only search_documents")
             args = json.loads(call["function"]["arguments"])
@@ -119,7 +136,11 @@ class CheckpointProbe:
                 "tool_call": call,
                 "model_span_id": span.span_id,
             }
-        if state["documents"] is None or not isinstance(message.get("content"), str):
+        if (
+            state["documents"] is None
+            or not isinstance(message.get("content"), str)
+            or not message["content"].strip()
+        ):
             raise ValueError("Model did not call the required tool or return a final answer")
         return {
             "messages": [*state["messages"], message],
@@ -129,6 +150,7 @@ class CheckpointProbe:
         }
 
     def _tool(self, state: ProbeState) -> dict[str, Any]:
+        self.stages[state["run_id"]] = "tool"
         policy = ToolPolicy.model_validate(state["policy"])
         call = state["tool_call"]
         if call is None:
@@ -174,7 +196,8 @@ class CheckpointProbe:
         run_id = f"run_{uuid4().hex}"
         thread_id = f"thread_{uuid4().hex}"
         config = {"configurable": {"thread_id": thread_id}}
-        self.graph.invoke(
+        return self._execute(
+            ProbeRun(run_id, thread_id, config, None),
             {
                 "run_id": run_id,
                 "messages": [
@@ -188,13 +211,30 @@ class CheckpointProbe:
                 "answer": None,
                 "status": "running",
             },
-            config,
         )
-        terminal = self.graph.get_state(config)
-        boundary = next(
-            (s.config for s in self.graph.get_state_history(config) if s.next == ("tool",)), None
-        )
-        return ProbeRun(run_id, thread_id, deepcopy(terminal.config), deepcopy(boundary))
+
+    def _execute(self, run: ProbeRun, inputs: dict[str, Any] | None) -> ProbeRun:
+        self.runs[run.run_id] = run
+        try:
+            self.graph.invoke(inputs, run.terminal_config)
+        except Exception as error:
+            self.failures[run.run_id] = type(error).__name__
+            raise
+        finally:
+            config = {"configurable": {"thread_id": run.thread_id}}
+            snapshot = self.graph.get_state(config)
+            boundary = run.tool_checkpoint or next(
+                (
+                    s.config
+                    for s in self.graph.get_state_history(config)
+                    if s.next == ("tool",) and s.values.get("run_id") == run.run_id
+                ),
+                None,
+            )
+            self.runs[run.run_id] = replace(
+                run, terminal_config=deepcopy(snapshot.config), tool_checkpoint=deepcopy(boundary)
+            )
+        return self.runs[run.run_id]
 
     def fork(self, source: ProbeRun, patch: dict[str, Any]) -> ProbeRun:
         if source.tool_checkpoint is None:
@@ -211,15 +251,16 @@ class CheckpointProbe:
             {"run_id": run_id, "policy": policy.model_dump()},
             as_node="model",
         )
-        self.graph.invoke(None, fork_config)
-        terminal = self.graph.get_state({"configurable": {"thread_id": source.thread_id}})
-        return ProbeRun(
-            run_id,
-            source.thread_id,
-            deepcopy(terminal.config),
-            deepcopy(fork_config),
-            source.run_id,
-            source.tool_checkpoint["configurable"]["checkpoint_id"],
+        return self._execute(
+            ProbeRun(
+                run_id,
+                source.thread_id,
+                deepcopy(fork_config),
+                deepcopy(fork_config),
+                source.run_id,
+                source.tool_checkpoint["configurable"]["checkpoint_id"],
+            ),
+            None,
         )
 
     def state(self, run: ProbeRun) -> dict[str, Any]:
@@ -265,8 +306,50 @@ class CheckpointProbe:
         }
 
 
+def _failure_report(probe: CheckpointProbe, error: Exception) -> dict[str, Any]:
+    runs = []
+    for run in probe.runs.values():
+        evidence = probe.evidence(run)
+        evidence["observed_status"] = (
+            "failed" if run.run_id in probe.failures else evidence["state"].get("status", "unknown")
+        )
+        evidence["execution_error"] = probe.failures.get(run.run_id)
+        runs.append(evidence)
+    status = getattr(error, "status_code", None)
+    failed_runs = [r for r in probe.runs if r in probe.failures]
+    stage = probe.stages.get(failed_runs[-1], "execution") if failed_runs else "comparison"
+    return {
+        "schema_version": "m0-failure-1",
+        "mode": probe.model.mode,
+        "provider": probe.model.provider,
+        "status": "failed",
+        "fixture_version": FIXTURE_VERSION,
+        "fixture_hash": fixture_hash(),
+        "error": {
+            "code": type(error).__name__,
+            "stage": stage,
+            "http_status": status if type(status) is int else None,
+        },
+        "runs": runs,
+        "pricing": probe.pricing.model_dump(mode="json") if probe.pricing else None,
+        "m0_real_call_verified": False,
+        "limitations": [
+            "Snapshots may say running; observed_status records the failure.",
+            "Unknown usage stays unknown; this diagnostic is not a successful comparison.",
+        ],
+    }
+
+
 def run_comparison(model: ModelAdapter, pricing: PriceBook | None = None) -> dict[str, Any]:
     probe = CheckpointProbe(model, pricing=pricing)
+    try:
+        return _compare(probe)
+    except Exception as error:
+        raise ProbeFailed(_failure_report(probe, error)) from error
+
+
+def _compare(probe: CheckpointProbe) -> dict[str, Any]:
+    model, pricing = probe.model, probe.pricing
     baseline = probe.run()
     original_history = probe.history(baseline)
     original_evidence = probe.evidence(baseline)
