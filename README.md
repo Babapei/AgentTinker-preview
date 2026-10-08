@@ -1,6 +1,6 @@
-# AgentLab · 产品研究与设计
+# AgentTinker · 产品研究与设计
 
-2026-10-08 · 第一轮研究 · AgentLab 为工作名称
+2026-10-08 · 第一轮研究 · 产品名称：AgentTinker
 
 **建议以“可交互的 Agent 实验室”为主线：让用户观察一次执行、定位失败、修改一个因素，再用新的运行验证自己的判断。** 学习和开发共享同一个实验及其运行记录。
 
@@ -18,6 +18,6 @@
 - 用一个带故障注入和前后对比的真实实验打通核心，再按证据扩展六个模块。
 - 统一实验与记录协议，先接一个执行框架；外部 trace 的可观察性不代表有能力恢复执行。
 
-名称尚未定稿：[ServiceNow/AgentLab](https://github.com/ServiceNow/AgentLab) 已用于 Web Agent 开发和评测。公开发布前需要另做命名检索；这不影响以工作名推进设计。
+**命名约定：**产品、文档和界面统一使用 **AgentTinker**。当前仓库为 [AgentTinker-preview](https://github.com/Babapei/AgentTinker-preview)，`-preview` 标记开发预览阶段；完成后仓库更名为 `AgentTinker`。
 
 下一项具体工作是架构文档中的 **M0：验证检查点分支与记录协议**。完成后再实现第一个端到端实验工作台。

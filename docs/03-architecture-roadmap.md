@@ -1,4 +1,4 @@
-# AgentLab 架构与开发路线
+# AgentTinker 架构与开发路线
 
 2026-10-08 · 提案 · 接口和数据模型均为待验证设计
 
@@ -15,7 +15,7 @@
 | 修改后分支 | 上述条件，加状态/配置补丁校验 | 原生串行流程的允许字段 |
 | 恢复任意外部 trace | 一份 trace 通常不足以提供可恢复状态 | 不承诺；由适配器逐项声明能力 |
 
-[LangGraph 时间旅行文档](https://docs.langchain.com/oss/python/langgraph/use-time-travel)明确区分 checkpoint 恢复与状态分支，且后续节点重新调用外部服务。AgentLab 的用户文案和适配器契约应保留这个区别。
+[LangGraph 时间旅行文档](https://docs.langchain.com/oss/python/langgraph/use-time-travel)明确区分 checkpoint 恢复与状态分支，且后续节点重新调用外部服务。AgentTinker 的用户文案和适配器契约应保留这个区别。
 
 ## 2. 建议技术选择与取舍
 
