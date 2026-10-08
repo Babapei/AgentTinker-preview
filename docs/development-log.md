@@ -2,6 +2,14 @@
 
 按日期倒序记录可检查的工作节点；记录格式和提交流程见 [开发约定](../CONTRIBUTING.md)。同一天的新条目放在前面。
 
+## 2026-10-08 · M0-01：建立可复现的 Python 工程
+
+- **阶段/任务与状态：**M0 已开始；Python 工程初始化完成，检查点验证待实现。
+- **改动与原因：**新增 pyproject.toml、uv.lock、源码包和忽略规则；使用 uv 管理依赖，并增加 M0 本地运行说明。实际锁定 LangGraph 1.2.14、langgraph-checkpoint 4.2.0、Pydantic 2.13.5，供后续分支验证复用。
+- **验证：**`uv sync --locked`、`uv run ruff check .`、`uv run ruff format --check .` 和 `git diff --check` 通过；已导入源码包、StateGraph 和 InMemorySaver，并核对依赖版本。此节点没有运行模型或应用测试。
+- **限制/阻塞：**环境未配置模型提供商凭据，也未允许 api.openai.com；真实调用待提供商、模型及可访问端点确定。M0 的真实调用验收保持未完成。
+- **下一步：**实现最小模型/工具图，验证从工具前 checkpoint 创建分支及原历史不变。
+
 ## 2026-10-08 · 建立开发约定和日志
 
 - **阶段/任务与状态：**开发协作规范已建立；应用开发尚未开始，M0 仍待验证。

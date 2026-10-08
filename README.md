@@ -4,7 +4,7 @@
 
 **建议以“可交互的 Agent 实验室”为主线：让用户观察一次执行、定位失败、修改一个因素，再用新的运行验证自己的判断。** 学习和开发共享同一个实验及其运行记录。
 
-这份方案延续原对话中兼顾 Learn、Playground、Builder、Debugger、Evaluation、Explore 的愿景。本轮完成官方资料调研和产品、技术设计；仓库目前仅包含文档，没有已经实现的应用或实测结果。
+这份方案延续原对话中兼顾 Learn、Playground、Builder、Debugger、Evaluation、Explore 的愿景。仓库已完成第一轮调研与设计，并开始 M0 的 Python 工程建设；实验工作台尚未实现，M0 的真实模型调用验收尚未完成。
 
 | 文档 | 内容 |
 | --- | --- |
@@ -13,6 +13,7 @@
 | [架构与开发路线](docs/03-architecture-roadmap.md) | 回放与重新执行的边界、运行记录、适配器、开发任务和退出条件 |
 | [开发约定](CONTRIBUTING.md) | 工作节点、验证、Git 提交与推送、文档同步和日志要求 |
 | [开发日志](docs/development-log.md) | 已完成工作、验证结果、限制和下一步 |
+| [M0 验证说明](docs/m0-validation.md) | 本地环境、检查点分支验证和真实调用验收进度 |
 
 当前最重要的三个判断：
 
