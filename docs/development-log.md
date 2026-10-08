@@ -2,6 +2,14 @@
 
 按日期倒序记录可检查的工作节点；记录格式和提交流程见 [开发约定](../CONTRIBUTING.md)。同一天的新条目放在前面。
 
+## 2026-10-08 · M0-02：验证检查点分支与原历史不变
+
+- **阶段/任务与状态：**M0 / RUNTIME-01、RUNTIME-02 的内存验证完成；真实模型验收待完成。
+- **改动与原因：**实现模型/工具最小串行图、本地只读发布说明检索、首次超时注入、工具策略补丁和分支来源记录；新增 CLI、针对性测试及明确标为 synthetic 的 A/B 验证产物。以 Run 的显式 checkpoint 配置查询旧状态；沿 parent_config 核对完整祖先，避免线程新 head 或单点历史查询造成误判。
+- **验证：**`uv run pytest -q` 的 11 项测试通过；`uv run ruff check .`、格式化及 `git diff --check` 通过；`uv run agenttinker-m0 --mode synthetic --output examples/m0/synthetic-retry.json` 的 7 项检查全部为真。A/B 各新增 1 次模型调用、1 次逻辑工具调用，工具尝试分别为 1 和 2；A 的 4 个 checkpoint 及原 span 保持不变。
+- **限制/阻塞：**模型是确定性模拟器；Token 与费用为 null；checkpoint 和 span 仅在内存中，尚未实现 M1 持久化、完整 ReAct 或 UI。真实模型凭据和端点尚未配置。
+- **下一步：**加入官方模型 SDK 的真实调用入口和配置检查，保持模拟与真实验收分开。
+
 ## 2026-10-08 · M0-01：建立可复现的 Python 工程
 
 - **阶段/任务与状态：**M0 已开始；Python 工程初始化完成，检查点验证待实现。

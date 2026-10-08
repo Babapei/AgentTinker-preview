@@ -23,4 +23,4 @@
 
 **命名约定：**产品、文档和界面统一使用 **AgentTinker**。当前仓库为 [AgentTinker-preview](https://github.com/Babapei/AgentTinker-preview)，`-preview` 标记开发预览阶段；完成后仓库更名为 `AgentTinker`。
 
-下一项具体工作是架构文档中的 **M0：验证检查点分支与记录协议**。完成后再实现第一个端到端实验工作台。
+当前正在执行 **M0：验证检查点分支与记录协议**，已完成模拟模型下的检查点分支和历史不变性验证；真实模型调用验收尚未完成。详见 [M0 验证说明](docs/m0-validation.md)。M0 完成后再实现第一个端到端实验工作台。

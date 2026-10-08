@@ -13,6 +13,9 @@ dependencies = [
     "pydantic>=2,<3",
 ]
 
+[project.scripts]
+agenttinker-m0 = "agenttinker.m0.cli:main"
+
 [dependency-groups]
 dev = [
     "pytest>=8,<10",
