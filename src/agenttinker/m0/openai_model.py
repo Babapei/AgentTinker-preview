@@ -31,6 +31,9 @@ class ProviderNotConfigured(ValueError):
 
 class OpenAIModel:
     mode: Literal["live"] = "live"
+    provider = "openai"
+    env_prefix = "OPENAI"
+    default_base_url: str | None = None
 
     def __init__(self, model: str, client: OpenAI):
         self.model = model
@@ -38,13 +41,14 @@ class OpenAIModel:
 
     @classmethod
     def from_environment(cls, model: str | None = None) -> "OpenAIModel":
-        api_key = os.environ.get("OPENAI_API_KEY", "").strip()
-        model = (model or os.environ.get("OPENAI_MODEL", "")).strip()
+        api_key = os.environ.get(f"{cls.env_prefix}_API_KEY", "").strip()
+        model = (model or os.environ.get(f"{cls.env_prefix}_MODEL", "")).strip()
         if not api_key or not model:
             raise ProviderNotConfigured(
-                "provider_not_configured: set OPENAI_API_KEY and --model or OPENAI_MODEL"
+                f"provider_not_configured: set {cls.env_prefix}_API_KEY "
+                f"and --model or {cls.env_prefix}_MODEL"
             )
-        base_url = os.environ.get("OPENAI_BASE_URL") or None
+        base_url = os.environ.get(f"{cls.env_prefix}_BASE_URL") or cls.default_base_url
         if base_url:
             url = urlsplit(base_url)
             if (
@@ -54,16 +58,16 @@ class OpenAIModel:
                 or url.password
             ):
                 raise ProviderNotConfigured(
-                    "provider_not_configured: OPENAI_BASE_URL must be "
+                    f"provider_not_configured: {cls.env_prefix}_BASE_URL must be "
                     "an HTTP(S) URL without credentials"
                 )
         # Disable invisible SDK retries; preserve inherited proxy and TLS settings.
         client = OpenAI(api_key=api_key, base_url=base_url, timeout=30, max_retries=0)
         return cls(model, client)
 
-    def complete(self, messages: list[dict[str, Any]]) -> ModelOutput:
+    def _request(self, messages: list[dict[str, Any]]) -> dict[str, Any]:
         answering = messages[-1]["role"] == "tool"
-        request = {
+        return {
             "model": self.model,
             "messages": deepcopy(messages),
             "tools": [deepcopy(SEARCH_TOOL)],
@@ -75,6 +79,9 @@ class OpenAIModel:
             "parallel_tool_calls": False,
             "max_completion_tokens": 1024,
         }
+
+    def complete(self, messages: list[dict[str, Any]]) -> ModelOutput:
+        request = self._request(messages)
         response = self.client.chat.completions.create(**request)
         if len(response.choices) != 1:
             raise ValueError("M0 requires one model response choice")
@@ -85,6 +92,7 @@ class OpenAIModel:
                 c.model_dump(exclude_none=True) for c in choice.message.tool_calls
             ]
         return ModelOutput(
+            provider=self.provider,
             model=response.model,
             message=message,
             usage=response.usage.model_dump() if response.usage is not None else None,

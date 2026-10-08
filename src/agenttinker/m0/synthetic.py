@@ -8,6 +8,7 @@ from agenttinker.m0.models import ModelOutput
 
 class SyntheticModel:
     mode: Literal["synthetic"] = "synthetic"
+    provider = "synthetic"
 
     def complete(self, messages: list[dict[str, Any]]) -> ModelOutput:
         if messages[-1]["role"] == "tool":
@@ -29,4 +30,6 @@ class SyntheticModel:
                     }
                 ],
             }
-        return ModelOutput(model="synthetic-deterministic-v1", message=message)
+        return ModelOutput(
+            provider=self.provider, model="synthetic-deterministic-v1", message=message
+        )

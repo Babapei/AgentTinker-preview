@@ -21,6 +21,7 @@ uv run agenttinker-m0 --mode synthetic
 - 已建立 Python 工程、LangGraph/Pydantic 依赖与代码检查工具。
 - 已用真实 LangGraph 引擎和模拟模型验证检查点分支、A/B 新增调用计数和历史不变性；模型来源明确标为 `synthetic`。
 - 已加入官方 OpenAI SDK 的 Chat Completions 调用入口及配置校验；SDK 请求使用模拟 HTTP 响应进行测试。
+- 已加入 DeepSeek 非思考模式的请求配置，复用同一个 SDK 和检查点流程；真实请求仍待密钥及网络访问就绪。
 - 真实模型调用待配置提供商、模型和凭据；M0 的真实调用验收尚未完成，SDK 模拟响应不作为真实调用证据。
 
 ## 超时与重试验证
@@ -59,7 +60,7 @@ B 通过 `inherited_model_span_ids` 引用复用的模型前缀，其模型调�
 
 ## 真实模型验证入口
 
-当前适配器使用官方 OpenAI SDK（锁定版本 2.54.0）和 Chat Completions 的 function calling 协议。模型需支持严格工具 schema、`tool_choice`、`parallel_tool_calls` 和 `max_completion_tokens`；自定义端点需实际验证协议兼容性。
+适配器使用官方 OpenAI SDK（锁定版本 2.54.0）和 Chat Completions 的 function calling 协议。OpenAI 请求配置要求模型支持严格工具 schema、`tool_choice`、`parallel_tool_calls` 和 `max_completion_tokens`；自定义端点需实际验证协议兼容性。DeepSeek 使用下述独立请求配置。
 
 运行前通过 shell 或执行环境配置以下变量，参照 [.env.example](../.env.example)。CLI 不自动加载 `.env`，也不将密钥写入验证报告。
 
@@ -80,3 +81,17 @@ M0 通过明确的 `tool_choice` 要求首次调用检索，得到工具结果�
 当前环境没有就绪的模型凭据，受限网络也尚未允许 `api.openai.com`。需先确定提供商、模型及可访问端点，并通过环境配置提供凭据与网络访问，才能执行真实验收。
 
 即使真实模型流程通过，费用仍需结合可核对的价格版本判断；当前程序保存原始用量，金额保留未知。`m0_real_call_verified` 仅标识真实模式的调用/分支检查通过，不代表 M0 的全部费用验收或后续应用已完成。
+
+## DeepSeek 验证配置
+
+截至 2026-10-08，官方推荐的 Flash 模型 ID 为 `deepseek-flash`。[模型与价格](https://api-docs.deepseek.com/quick_start/pricing/) 推荐先用它进行本实验；具体模型由 `DEEPSEEK_MODEL` 或 `--model` 明确指定。
+
+通过环境配置 `DEEPSEEK_API_KEY`、`DEEPSEEK_MODEL=deepseek-flash`，可选 `DEEPSEEK_BASE_URL`，默认地址为 `https://api.deepseek.com`。DeepSeek 配置不回退到 OpenAI 的密钥或模型。
+
+```bash
+uv run agenttinker-m0 --mode live --provider deepseek
+```
+
+DeepSeek 请求显式关闭思考模式，使用 `max_tokens`，不发送 OpenAI 的 `parallel_tool_calls` 和 `max_completion_tokens`。标准端点不启用 Beta 的 strict 属性，工具参数仍由本地校验。named tool_choice 与非思考模式的配合依据 [Chat Completions API](https://api-docs.deepseek.com/api/create-chat-completion/)；strict 的 Beta 条件依据 [Tool Calls](https://api-docs.deepseek.com/guides/tool_calls/)。
+
+SDK 保留原始缓存命中/未命中用量，供费用核对使用。官方价格区分缓存和高峰/低峰，不应仅用一个固定输入单价推断实际扣费。真实运行仍需环境允许访问 `api.deepseek.com`；目前尚未配置。

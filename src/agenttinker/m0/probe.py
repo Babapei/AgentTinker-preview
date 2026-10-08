@@ -244,6 +244,7 @@ class CheckpointProbe:
         return {
             "run_id": run.run_id,
             "mode": self.model.mode,
+            "provider": self.model.provider,
             "parent_run_id": run.parent_run_id,
             "source_checkpoint_id": run.source_checkpoint_id,
             "terminal_checkpoint": deepcopy(run.terminal_config),
@@ -286,6 +287,7 @@ def run_comparison(model: ModelAdapter) -> dict[str, Any]:
     return {
         "schema_version": "m0-probe-1",
         "mode": model.mode,
+        "provider": model.provider,
         "runtime_versions": {name: version(name) for name in ("langgraph", "langgraph-checkpoint")},
         "fixture_version": FIXTURE_VERSION,
         "fixture_hash": fixture_hash(),

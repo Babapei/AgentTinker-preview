@@ -6,6 +6,7 @@ from pathlib import Path
 
 from openai import OpenAIError
 
+from agenttinker.m0.deepseek_model import DeepSeekModel
 from agenttinker.m0.openai_model import OpenAIModel, ProviderNotConfigured
 from agenttinker.m0.probe import run_comparison
 from agenttinker.m0.synthetic import SyntheticModel
@@ -14,16 +15,16 @@ from agenttinker.m0.synthetic import SyntheticModel
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--mode", choices=["synthetic", "live"], required=True)
+    parser.add_argument("--provider", choices=["openai", "deepseek"], help="Live provider profile")
     parser.add_argument("--model", help="Explicit model ID; alternatively set OPENAI_MODEL")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
-    if args.mode == "synthetic" and args.model:
-        parser.error("--model is only supported with --mode live")
+    if args.mode == "synthetic" and (args.model or args.provider):
+        parser.error("--model and --provider are only supported with --mode live")
+    profile = DeepSeekModel if args.provider == "deepseek" else OpenAIModel
     try:
         model = (
-            SyntheticModel()
-            if args.mode == "synthetic"
-            else OpenAIModel.from_environment(args.model)
+            SyntheticModel() if args.mode == "synthetic" else profile.from_environment(args.model)
         )
     except ProviderNotConfigured as error:
         parser.error(str(error))

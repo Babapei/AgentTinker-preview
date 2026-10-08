@@ -16,6 +16,7 @@ class ModelOutput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     model: str
+    provider: str | None = None
     message: dict[str, Any]
     usage: dict[str, Any] | None = None
     request: dict[str, Any] | None = None
@@ -26,6 +27,7 @@ class ModelOutput(BaseModel):
 
 class ModelAdapter(Protocol):
     mode: Literal["synthetic", "live"]
+    provider: str
 
     def complete(self, messages: list[dict[str, Any]]) -> ModelOutput: ...
 
