@@ -56,7 +56,7 @@ B 通过 `inherited_model_span_ids` 引用复用的模型前缀，其模型调�
 - checkpoint 仅保存在当前进程内；尚不支持进程重启恢复。span 记录是 M0 验证格式，不是 M1 的事件持久化和 SSE 协议。
 - `tool_retry_limit` 和 `top_k` 是允许的工具策略补丁；查询、运行标识和任意状态不能通过该补丁入口修改。
 - 此验证只处理一次串行工具调用，没有实现完整 ReAct 模板、取消、UI、评测或实验导入导出。
-- 模拟模型不产生真实 Token 或费用；缺失值保留为 `null`。真实调用与新增费用验收仍需实际提供商及可核对的价格信息。
+- 模拟模型不产生真实 Token 或费用；缺失值保留为 `null`。真实调用与新增费用验收仍需实际提供商及可核对的价格信息。可选价格文件只产生明确标注的估算，不代表账户实际扣费。
 
 ## 真实模型验证入口
 
@@ -80,7 +80,7 @@ M0 通过明确的 `tool_choice` 要求首次调用检索，得到工具结果�
 
 当前环境没有就绪的模型凭据，受限网络也尚未允许 `api.openai.com`。需先确定提供商、模型及可访问端点，并通过环境配置提供凭据与网络访问，才能执行真实验收。
 
-即使真实模型流程通过，费用仍需结合可核对的价格版本判断；当前程序保存原始用量，金额保留未知。`m0_real_call_verified` 仅标识真实模式的调用/分支检查通过，不代表 M0 的全部费用验收或后续应用已完成。
+即使真实模型流程通过，费用仍需结合可核对的价格版本判断；未指定价格或必要用量缺失时，金额保留未知。`m0_real_call_verified` 仅标识真实模式的调用/分支检查通过，不代表 M0 的全部费用验收或后续应用已完成。
 
 ## DeepSeek 验证配置
 
@@ -95,3 +95,22 @@ uv run agenttinker-m0 --mode live --provider deepseek
 DeepSeek 请求显式关闭思考模式，使用 `max_tokens`，不发送 OpenAI 的 `parallel_tool_calls` 和 `max_completion_tokens`。标准端点不启用 Beta 的 strict 属性，工具参数仍由本地校验。named tool_choice 与非思考模式的配合依据 [Chat Completions API](https://api-docs.deepseek.com/api/create-chat-completion/)；strict 的 Beta 条件依据 [Tool Calls](https://api-docs.deepseek.com/guides/tool_calls/)。
 
 SDK 保留原始缓存命中/未命中用量，供费用核对使用。官方价格区分缓存和高峰/低峰，不应仅用一个固定输入单价推断实际扣费。真实运行仍需环境允许访问 `api.deepseek.com`；目前尚未配置。
+
+## 新增用量和价格核对
+
+每个 Run 的 `new_usage` 仅汇总该 Run 新产生的模型 span，报告用量覆盖的调用数。缺失或不一致的用量使完整总数保持 `null`，同时保留原始 span；B 继承的模型前缀不会重复计入。
+
+DeepSeek 的缓存命中/未命中字段和 SDK 的 `prompt_tokens_details.cached_tokens` 会交叉核对。总 Token 必须等于输入加输出，缓存命中加未命中必须等于输入；字段冲突时不估算费用。缺失缓存分解而命中/未命中价格不同，也不能推断缓存为零。
+
+价格快照包含提供商、精确模型 ID、来源 URL、采集日期、版本、美元币种与时段。仓库保存 [Flash 高峰快照](../examples/m0/pricing-deepseek-flash-peak.json)和 [Flash 低峰快照](../examples/m0/pricing-deepseek-flash-off-peak.json)，取自 2026-10-08 的官方页面；使用前核对是否仍适用于账户和调用时段。
+
+明确选择适用的快照后，例如：
+
+```bash
+uv run agenttinker-m0 --mode live --provider deepseek \
+  --pricing examples/m0/pricing-deepseek-flash-peak.json
+```
+
+金额用 Decimal 计算，以字符串保存；`new_cost_details.kind=estimate` 表明它是价格表估算。若部分调用缺少价格或用量，完整金额为 `null`，已知部分保存在明细和覆盖数中。价格按实际返回的模型及提供商匹配，不自动按请求别名套价。原始 span 不因新增估算而改写。
+
+程序不自动判断节假日、调用跨时段或账户折扣；选择的快照及条件由报告保留，实际账单需另行核对。价格 JSON 在调用模型前校验，无效文件不会触发模型请求。

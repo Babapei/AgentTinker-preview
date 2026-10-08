@@ -1,9 +1,11 @@
 import json
+from pathlib import Path
 
 import httpx
 import pytest
 from openai import OpenAI
 
+from agenttinker.m0.accounting import PriceBook
 from agenttinker.m0.deepseek_model import DeepSeekModel
 from agenttinker.m0.openai_model import SEARCH_TOOL, ProviderNotConfigured
 from agenttinker.m0.probe import run_comparison
@@ -63,7 +65,9 @@ def test_deepseek_wire_parameters_and_cache_usage():
         max_retries=0,
         http_client=httpx.Client(transport=httpx.MockTransport(respond)),
     ) as client:
-        report = run_comparison(DeepSeekModel("deepseek-flash", client))
+        path = Path(__file__).parents[1] / "examples/m0/pricing-deepseek-flash-peak.json"
+        pricing = PriceBook.model_validate_json(path.read_text())
+        report = run_comparison(DeepSeekModel("deepseek-flash", client), pricing=pricing)
     assert len(requests) == 2
     for body in requests:
         assert body["thinking"] == {"type": "disabled"}
@@ -78,6 +82,9 @@ def test_deepseek_wire_parameters_and_cache_usage():
     model_span = next(s for s in report["branch"]["spans"] if s["kind"] == "model")
     assert model_span["usage"]["prompt_cache_hit_tokens"] == 4
     assert model_span["usage"]["prompt_cache_miss_tokens"] == 6
+    assert report["branch"]["new_usage"]["total_tokens"] == 12
+    assert report["branch"]["new_cost"] == "0.000004224"
+    assert report["branch"]["new_cost_details"]["coverage"]["expected_calls"] == 1
     assert SEARCH_TOOL["function"]["strict"] is True  # Other provider profile is unchanged.
 
 

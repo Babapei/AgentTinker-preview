@@ -12,6 +12,7 @@ from uuid import uuid4
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 
+from agenttinker.m0.accounting import PriceBook, cost_estimate, usage_summary
 from agenttinker.m0.fixtures import FIXTURE_VERSION, fixture_hash, search_documents
 from agenttinker.m0.models import ModelAdapter, ProbeSpan, ToolPolicy
 
@@ -49,8 +50,11 @@ class ProbeRun:
 class CheckpointProbe:
     """Run IDs map to explicit checkpoints; the thread's latest head is never A's identity."""
 
-    def __init__(self, model: ModelAdapter, *, inject_timeout: bool = True):
+    def __init__(
+        self, model: ModelAdapter, *, inject_timeout: bool = True, pricing: PriceBook | None = None
+    ):
         self.model = model
+        self.pricing = pricing
         self.inject_timeout = inject_timeout
         self.spans: dict[str, list[ProbeSpan]] = {}
         builder = StateGraph(ProbeState)
@@ -241,6 +245,7 @@ class CheckpointProbe:
     def evidence(self, run: ProbeRun) -> dict[str, Any]:
         spans = self.spans.get(run.run_id, [])
         tools = [s for s in spans if s.kind == "tool"]
+        estimate = cost_estimate(spans, self.pricing)
         return {
             "run_id": run.run_id,
             "mode": self.model.mode,
@@ -254,12 +259,14 @@ class CheckpointProbe:
             "new_model_calls": sum(s.kind == "model" for s in spans),
             "new_logical_tool_calls": len({s.logical_call_id for s in tools}),
             "new_tool_attempts": len(tools),
-            "new_cost": None,
+            "new_usage": usage_summary(spans),
+            "new_cost": estimate["amount"],
+            "new_cost_details": estimate,
         }
 
 
-def run_comparison(model: ModelAdapter) -> dict[str, Any]:
-    probe = CheckpointProbe(model)
+def run_comparison(model: ModelAdapter, pricing: PriceBook | None = None) -> dict[str, Any]:
+    probe = CheckpointProbe(model, pricing=pricing)
     baseline = probe.run()
     original_history = probe.history(baseline)
     original_evidence = probe.evidence(baseline)
@@ -288,6 +295,7 @@ def run_comparison(model: ModelAdapter) -> dict[str, Any]:
         "schema_version": "m0-probe-1",
         "mode": model.mode,
         "provider": model.provider,
+        "pricing": pricing.model_dump(mode="json") if pricing else None,
         "runtime_versions": {name: version(name) for name in ("langgraph", "langgraph-checkpoint")},
         "fixture_version": FIXTURE_VERSION,
         "fixture_hash": fixture_hash(),
@@ -303,6 +311,6 @@ def run_comparison(model: ModelAdapter) -> dict[str, Any]:
         "m0_real_call_verified": model.mode == "live",
         "limitations": [
             "In-memory checkpoints; no cross-process recovery or M1 event persistence.",
-            "Costs are unknown without a verified price table; reused spans are not new calls.",
+            "Costs are price-book estimates, not invoices; reused spans are not new calls.",
         ],
     }

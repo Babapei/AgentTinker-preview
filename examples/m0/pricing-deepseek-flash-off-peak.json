@@ -1,0 +1,15 @@
+{
+  "provider": "deepseek",
+  "version": "deepseek-flash-usd-off-peak-2026-10-08",
+  "captured_at": "2026-10-08",
+  "source": "https://api-docs.deepseek.com/quick_start/pricing/",
+  "currency": "USD",
+  "rate_period": "off_peak",
+  "models": {
+    "deepseek-flash": {
+      "input_per_million": "0.15",
+      "cached_input_per_million": "0.003",
+      "output_per_million": "0.6"
+    }
+  }
+}
