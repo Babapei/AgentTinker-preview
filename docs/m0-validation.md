@@ -20,7 +20,8 @@ uv run agenttinker-m0 --mode synthetic
 
 - 已建立 Python 工程、LangGraph/Pydantic 依赖与代码检查工具。
 - 已用真实 LangGraph 引擎和模拟模型验证检查点分支、A/B 新增调用计数和历史不变性；模型来源明确标为 `synthetic`。
-- 真实模型调用待配置提供商、模型和凭据；M0 的真实调用验收尚未完成。
+- 已加入官方 OpenAI SDK 的 Chat Completions 调用入口及配置校验；SDK 请求使用模拟 HTTP 响应进行测试。
+- 真实模型调用待配置提供商、模型和凭据；M0 的真实调用验收尚未完成，SDK 模拟响应不作为真实调用证据。
 
 ## 超时与重试验证
 
@@ -55,3 +56,27 @@ B 通过 `inherited_model_span_ids` 引用复用的模型前缀，其模型调�
 - `tool_retry_limit` 和 `top_k` 是允许的工具策略补丁；查询、运行标识和任意状态不能通过该补丁入口修改。
 - 此验证只处理一次串行工具调用，没有实现完整 ReAct 模板、取消、UI、评测或实验导入导出。
 - 模拟模型不产生真实 Token 或费用；缺失值保留为 `null`。真实调用与新增费用验收仍需实际提供商及可核对的价格信息。
+
+## 真实模型验证入口
+
+当前适配器使用官方 OpenAI SDK（锁定版本 2.54.0）和 Chat Completions 的 function calling 协议。模型需支持严格工具 schema、`tool_choice`、`parallel_tool_calls` 和 `max_completion_tokens`；自定义端点需实际验证协议兼容性。
+
+运行前通过 shell 或执行环境配置以下变量，参照 [.env.example](../.env.example)。CLI 不自动加载 `.env`，也不将密钥写入验证报告。
+
+- `OPENAI_API_KEY`：模型账户凭据。
+- `OPENAI_MODEL`：明确的模型 ID，也可通过 `--model` 指定。没有默认模型。
+- `OPENAI_BASE_URL`：可选的兼容端点；不设置时使用 SDK 默认的 OpenAI 端点。
+
+配置好后执行：
+
+```bash
+uv run agenttinker-m0 --mode live
+```
+
+成功后生成 `artifacts/m0-live.json`，包含实际返回的模型 ID、完整提供商响应、请求参数、用量、A/B 谱系与检查结果。未配置凭据或模型时退出码为 2，提示 `provider_not_configured`；不生成成功记录，也不降级为 synthetic。调用或协议验证失败时退出码为 1，并说明没有写入新报告。
+
+M0 通过明确的 `tool_choice` 要求首次调用检索，得到工具结果后要求模型回答；它验证执行边界，不评价模型自主选择工具的能力。SDK 自动重试关闭，单次请求超时为 30 秒，输出上限为 1024 个 completion tokens。B 复用真实产生的工具调用与对话前缀，仅新增工具后的模型请求。
+
+当前环境没有就绪的模型凭据，受限网络也尚未允许 `api.openai.com`。需先确定提供商、模型及可访问端点，并通过环境配置提供凭据与网络访问，才能执行真实验收。
+
+即使真实模型流程通过，费用仍需结合可核对的价格版本判断；当前程序保存原始用量，金额保留未知。`m0_real_call_verified` 仅标识真实模式的调用/分支检查通过，不代表 M0 的全部费用验收或后续应用已完成。

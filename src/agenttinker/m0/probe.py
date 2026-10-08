@@ -72,15 +72,27 @@ class CheckpointProbe:
         started_at = datetime.now(UTC).isoformat()
         start = perf_counter()
         messages = deepcopy(state["messages"])
-        reply = self.model.complete(messages)
+        try:
+            reply = self.model.complete(messages)
+        except Exception as error:
+            self._record(
+                state,
+                kind="model",
+                started_at=started_at,
+                duration_ms=(perf_counter() - start) * 1000,
+                status="failed",
+                input={"messages": deepcopy(state["messages"])},
+                output={"error_code": type(error).__name__},
+            )
+            raise
         span = self._record(
             state,
             kind="model",
             started_at=started_at,
             duration_ms=(perf_counter() - start) * 1000,
             status="succeeded",
-            input={"messages": deepcopy(state["messages"])},
-            output=reply.model_dump(),
+            input=deepcopy(reply.request or {"messages": state["messages"]}),
+            output=reply.model_dump(exclude={"request"}),
             usage=reply.usage,
         )
         message = reply.message

@@ -18,6 +18,10 @@ class ModelOutput(BaseModel):
     model: str
     message: dict[str, Any]
     usage: dict[str, Any] | None = None
+    request: dict[str, Any] | None = None
+    response_id: str | None = None
+    finish_reason: str | None = None
+    raw_response: dict[str, Any] | None = None
 
 
 class ModelAdapter(Protocol):
