@@ -14,6 +14,7 @@
 | [开发约定](CONTRIBUTING.md) | 工作节点、验证、Git 提交与推送、文档同步和日志要求 |
 | [开发日志](docs/development-log.md) | 已完成工作、验证结果、限制和下一步 |
 | [M0 验证说明](docs/m0-validation.md) | 本地环境、检查点分支验证和真实调用验收进度 |
+| [云端环境配置](docs/cloud-environment.md) | 设置页填写内容、固定安装入口及配置生效检查 |
 
 当前最重要的三个判断：
 
