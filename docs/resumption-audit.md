@@ -100,7 +100,7 @@ UV_CACHE_DIR=/tmp/agenttinker-uv-cache uv run agenttinker-m0 \
 ## 6. 发现的问题与优先级
 
 1. **M0 费用验收未闭合。** 真实调用、历史不变和新增用量已有证据；实际扣费尚无法逐笔对应。先获取可对应请求或明确时段的账户用量/费用记录，保留币种及价格依据。不能把余额可用或价格表估算当成账单。
-2. **异常响应可能丢失已返回用量，已离线复现。** `OpenAIModel.complete()` 在 `choices` 数量不为 1 时先抛异常，尚未构造带 usage/raw_response 的 ModelOutput。`probe._model()` 因此只记录调用失败；即使 HTTP 200 已携带 usage，报告仍为 null，并把阶段记为 model_call。用 MockTransport 返回空 choices 和 12 个 Token，复现保留调用计数但丢失响应与用量。后续应先保留响应观测，再判定协议是否可接受；新增针对失败费用的回归验证。本次仅记录发现，未修改运行代码。
+2. **异常响应可能丢失已返回用量，已离线复现，后续 M0-07 已修复。** 原 `OpenAIModel.complete()` 在 `choices` 数量不为 1 时先抛异常，尚未构造带 usage/raw_response 的 ModelOutput。`probe._model()` 因此只记录调用失败；即使 HTTP 200 已携带 usage，报告仍为 null，并把阶段记为 model_call。审视时仅记录发现；后续修复为先保存响应观测，再在 model_protocol 阶段拒绝执行，新增 16 项离线回归，当前共 63 项测试通过。详见 [M0 验证说明](m0-validation.md#异常响应验证m0-07)。
 3. **M0 能力不能直接扩写成产品承诺。** 内存 checkpoint 不能跨进程恢复；首次调用被强制选择工具；注入超时是固定逻辑事件；尚无 read_document、完整 ReAct、取消、真实流式事件、API 或 UI。这些属于既定后续任务，不能因本次 live 成功改记为已实现。
 4. **旧环境状态需要退出当前断点。** 文档中的“没有密钥、代理 403”只适用于旧环境历史。本次已同步当前说明；旧日志保留以解释迁移原因，不继续要求用户重复配置已经实测可用的密钥。
 
@@ -108,7 +108,7 @@ UV_CACHE_DIR=/tmp/agenttinker-uv-cache uv run agenttinker-m0 \
 
 | 阶段 | 状态与下一项工作 |
 | --- | --- |
-| M0 | 真实分支已验证；先补异常响应观测，再核对实际费用；完成证据前保持进行中 |
+| M0 | 真实分支已验证，异常响应观测随后在 M0-07 修复；实际费用仍待核对，保持进行中 |
 | M1 | 未开始；CORE-01 定义对象/事件 schema 和状态机，再做 STORE-01、SQLite、事件追加与 SSE 续传去重；涵盖失败、重试、取消及中断 |
 | M2 | 未开始；React/TypeScript/Vite、列表/图、详情与时间线；播放记录不调用模型 |
 | M3 | 未开始；完整超时实验、允许边界的 fork、A/B 证据对比与讲解，保留真实参考案例 |

@@ -2,7 +2,7 @@
 
 更新时间：2026-10-15（Asia/Shanghai）。面向新对话、新环境及中断后的接续开发。
 
-**当前停在 M0：47 项测试通过，模拟与首次真实 DeepSeek 分支的 7 项检查均通过；实际费用验收未完成，另有异常响应用量保留问题待修复，M1 尚未开始。** 本文件由实际代码、Git、测试与环境状态核对生成，不依赖读取旧聊天。最新完整审视见 [新环境接续审视](docs/resumption-audit.md)。
+**当前停在 M0：63 项测试通过，异常 choices 响应的用量保留已修复；模拟与首次真实 DeepSeek 分支的 7 项检查均通过，实际费用验收仍未完成，M1 尚未开始。** 本文件由实际代码、Git、测试与环境状态核对生成，不依赖读取旧聊天。完整审视见 [新环境接续审视](docs/resumption-audit.md)，最新节点见[开发日志](docs/development-log.md)。
 
 ## 1. 接手先确认这几件事
 
@@ -50,6 +50,7 @@
 | debcc72 / dcd84eb | 新增用量与价格估算、失败诊断 |
 | 9ef7fe0 | 固定云端安装入口与配置说明 |
 | 17c19c2 | 保存旧环境交接断点与读取入口 |
+| 0c1f3d3 | 新环境全仓审视及首次真实 DeepSeek 分支证据 |
 
 Git 保存了源码、锁文件、设计、日志和 examples 中的示例。本次新增的 [真实 DeepSeek 技术验证记录](examples/m0/deepseek-retry-live.json)也纳入版本管理。artifacts/、.venv/、缓存及 .env 文件不入库，不能将它们视为已备份。本环境 artifacts 含 synthetic、live 和不入库的账户查询产物；不可整目录提交。当前 checkpoint 只在单个进程内存中，JSON 报告不能恢复已退出进程的 checkpoint。
 
@@ -66,7 +67,7 @@ Git 保存了源码、锁文件、设计、日志和 examples 中的示例。本
 | [deepseek_model.py](src/agenttinker/m0/deepseek_model.py) | DeepSeek 非思考模式请求，保留工具调用与缓存用量 |
 | [accounting.py](src/agenttinker/m0/accounting.py) | 每个 Run 新增 Token 覆盖率、缓存字段核对、版本化价格与 Decimal 估算 |
 | [cli.py](src/agenttinker/m0/cli.py) | 显式 live/synthetic 模式、价格输入、原子写报告和单独失败诊断 |
-| [tests](tests) | 47 项测试：分支、策略校验、SDK 模拟 HTTP、用量费用及失败诊断 |
+| [tests](tests) | 63 项测试：分支、策略校验、SDK 模拟 HTTP、用量费用、失败诊断及异常 choices 响应保留 |
 
 本次实际安装版本：LangGraph 1.2.14、langgraph-checkpoint 4.2.0、OpenAI SDK 2.54.0、Pydantic 2.13.5。依赖安装以仓库锁文件为准。
 
@@ -87,13 +88,13 @@ M0 实验语义：
 - 模型返回成功与协议被接受分别处理；截断、过滤或无效工具参数会停止工具执行并保留返回记录。失败节点未生成新 checkpoint 时，快照可能仍为 running，诊断用 observed_status 标识失败，不改写旧历史。
 - 未知用量/费用为 null，报告覆盖率。费用仅对新增调用计算；缺少匹配价格或缓存分解时不冒充完整总额。价格估算不代表真实扣费。
 - examples/m0/ 中有 synthetic、首次真实技术验证记录及 DeepSeek 高峰/低峰价格快照。价格采集于 2026-10-08，2026-10-15 实跑前重新核对官方协议和适用价格，显式选择低峰快照；以后调用仍应重查，不自动按峰谷或节假日套价。
-- 已离线复现一个待修边界：openai_model.py 在 choices 数量不为 1 时先抛异常，probe 只能记录调用失败，已返回的 usage/raw_response 丢失。修复时先保留响应观测，再进行协议校验，补针对性回归；本次审视没有改动运行代码。
+- M0-07 已修复异常 choices 响应丢失用量的问题：SDK 适配器先保留请求、响应 ID、choice_count、usage/raw_response；probe 记录 span 后在 model_protocol 阶段拒绝空/多个 choices。16 项离线回归覆盖两个适配器、A/B 两个阶段和用量已知/缺失，验证保留实际返回值、不调用后续工具、不重复计算继承前缀。本节点未重复付费调用。
 
 ## 5. 尚未实现的阶段
 
 | 阶段 | 当前状态 / 下一阶段目标 |
 | --- | --- |
-| M0 | 进行中；真实分支记录、新增用量和价格估算已核对；实际费用仍待核对，异常响应观测待修复 |
+| M0 | 进行中；真实分支记录、新增用量、价格估算已核对，异常响应观测已修复；实际费用仍待核对 |
 | M1 | 未开始：正式对象/事件 schema、Run 状态机、SQLite、持久化、SSE 及续传去重 |
 | M2 | 未开始：步骤列表/图、详情、时间线、历史记录播放 |
 | M3 | 未开始：完整超时实验、单变量 fork、A/B 对比和内嵌讲解 |
@@ -109,10 +110,10 @@ M0 实验语义：
 | 操作 | 实际结果 |
 | --- | --- |
 | UV_CACHE_DIR=/tmp/agenttinker-uv-cache bash scripts/setup.sh | 成功，锁定依赖同步通过；默认缓存只读，未修改依赖或安装脚本 |
-| uv run pytest -q | 47 passed |
+| uv run pytest -q | M0-07：63 passed |
 | uv run ruff check . | 通过 |
 | uv run ruff format --check . | 通过 |
-| uv run agenttinker-m0 --mode synthetic --output artifacts/m0-resume-synthetic.json | 7 项 checks 全部 true，m0_real_call_verified=false |
+| uv run agenttinker-m0 --mode synthetic --output artifacts/m0-response-observation-synthetic.json | M0-07：7 项 checks 全部 true，m0_real_call_verified=false |
 | git ls-remote origin refs/heads/work | 与本次核对起点一致 |
 | curl HEAD https://api.deepseek.com（无密钥） | 到达服务端，HTTP 401；未被旧环境的代理 403 阻止 |
 | SDK 鉴权模型列表 | 成功，配置的 deepseek-flash 可用 |
@@ -120,15 +121,15 @@ M0 实验语义：
 | 真实用量与估算复算 | A 374 Token / 0.00007095 USD；B 新增 260 Token / 0.00007545 USD；合计 634 Token / 0.00014640 USD，仅为价格表估算 |
 | SDK 账户余额查询 | HTTP 200，账户可用，币种 CNY；没有两次请求的独立实际扣费凭证 |
 
-uv 命令在本环境使用 `UV_CACHE_DIR=/tmp/agenttinker-uv-cache`。网络命令需要命令工具的网络权限；继续保留继承的平台代理和 TLS，不通过修改策略文件或绕开代理解决访问。
+uv 命令在本环境使用 `UV_CACHE_DIR=/tmp/agenttinker-uv-cache`。继续保留继承的平台代理和 TLS，不通过修改策略文件或绕开代理解决访问；命令工具权限以当前会话为准。
 
-环境状态接口 observations_current=true、running，已声明 unrestricted 网络、DEEPSEEK_API_KEY 绑定和 DEEPSEEK_MODEL；三者状态仍为 unknown，不能称平台已报告 ready/enforced。进程变量存在，模型为 deepseek-flash，正常 SDK 的鉴权和推理实际成功。实测成功与状态接口的未知分别记录，不再要求用户重复配置已可用密钥。
+首次审视时状态接口为 unknown；M0-07 节点重新核对，当前 observations_current=true、running、修订 3，网络 unrestricted/enforced，DEEPSEEK_API_KEY 和 DEEPSEEK_MODEL 均 ready。正常 SDK 的鉴权和推理此前已实测成功，不再要求用户重复配置已可用密钥。
 
 旧环境曾为 restricted/enforced、无变量并被代理以 403 拒绝，设置保存/发布问题的具体原因仍未确认；详见旧日志。它不是本环境的现状。本次真实请求发生在北京时间 20:14（UTC 12:14），7 项检查和 A 的 4 个 checkpoint 不变性均通过，估算已核对，但未取得逐笔账单。未来换环境仍需重查。
 
 ## 7. 下一步：补齐 M0 剩余证据
 
-1. **先修复异常响应观测。** 让已返回响应的 usage/raw_response 在 choices 校验失败后仍保留，保持模型响应与协议接受分开；用离线 HTTP 回归测试验证，不需要再付费验证正常分支。
+1. **异常响应观测已经完成。** 让已返回响应的 usage/raw_response 在 choices 校验失败后仍保留，保持模型响应与协议接受分开；63 项测试通过，不重复已通过的付费实验。
 2. **核对实际费用。** 两次真实请求及价格估算已有 [记录](examples/m0/deepseek-retry-live.json)；取得可对应请求或明确调用时段的账户用量/费用证据，保留币种、价格版本和限制。余额接口不是逐笔账单，不将 CNY 余额当成 USD 估算，不让用户把密钥发入聊天。
 3. **不重复已完成的实验。** 除非代码修改影响调用协议、分支语义或有新失败，不重复付费请求。下述命令只保留为未来必要时的入口；先核对当时协议和适用价格：
 
@@ -146,4 +147,4 @@ UV_CACHE_DIR=/tmp/agenttinker-uv-cache uv run agenttinker-m0 --mode live --provi
 
 ## 8. 给新对话的最短接续提示
 
-> 请在 Babapei/AgentTinker-preview 的 work 分支接续开发。先阅读 HANDOFF.md、AGENTS.md 和 docs/resumption-audit.md，再核对源码、日志及当前环境。M0 首次真实 DeepSeek 分支已通过，先补异常响应的用量保留和实际费用证据，不重复已通过的付费实验。沿用现有产品设计、M0–M5 路线和每块工作验证后记日志、提交推送的约定；不要重做工程或把旧环境故障当作现状，关键范围变更先与我确定。
+> 请在 Babapei/AgentTinker-preview 的 work 分支接续开发。先阅读 HANDOFF.md、AGENTS.md 和 docs/resumption-audit.md，再核对源码、日志及当前环境。M0 首次真实 DeepSeek 分支已通过，异常响应的用量保留已修复，63 项测试通过；剩余实际费用证据待核对，不重复已通过的付费实验。沿用现有产品设计、M0–M5 路线和每块工作验证后记日志、提交推送的约定；不要重做工程或把旧环境故障当作现状，关键范围变更先与我确定。

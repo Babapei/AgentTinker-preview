@@ -27,4 +27,4 @@
 
 **命名约定：**产品、文档和界面统一使用 **AgentTinker**。当前仓库为 [AgentTinker-preview](https://github.com/Babapei/AgentTinker-preview)，`-preview` 标记开发预览阶段；完成后仓库更名为 `AgentTinker`。
 
-当前正在执行 **M0：验证检查点分支与记录协议**，模拟与真实 DeepSeek 分支的 7 项检查均通过；实际费用仍待核对，另有异常响应用量保留问题待修复。详见 [M0 验证说明](docs/m0-validation.md)和[接续审视](docs/resumption-audit.md)。M0 完成后再实现第一个端到端实验工作台。
+当前正在执行 **M0：验证检查点分支与记录协议**，模拟与真实 DeepSeek 分支的 7 项检查均通过；异常响应用量保留问题已修复，63 项测试通过，实际费用仍待核对。详见 [M0 验证说明](docs/m0-validation.md)和[接续审视](docs/resumption-audit.md)。M0 完成后再实现第一个端到端实验工作台。

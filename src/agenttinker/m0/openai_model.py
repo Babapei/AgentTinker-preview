@@ -83,24 +83,29 @@ class OpenAIModel:
     def complete(self, messages: list[dict[str, Any]]) -> ModelOutput:
         request = self._request(messages)
         response = self.client.chat.completions.create(**request)
-        if len(response.choices) != 1:
-            raise ValueError("M0 requires one model response choice")
+        # Keep the provider observation even when no single message can be selected.
+        # The graph records this reply before deciding whether execution may continue.
+        output = ModelOutput(
+            provider=self.provider,
+            model=response.model,
+            message={},
+            usage=response.usage.model_dump() if response.usage is not None else None,
+            request=request,
+            response_id=response.id,
+            choice_count=len(response.choices),
+            raw_response=response.model_dump(),
+        )
+        if output.choice_count != 1:
+            return output
         choice = response.choices[0]
         message = {"role": "assistant", "content": choice.message.content}
         if choice.message.tool_calls:
             message["tool_calls"] = [
                 c.model_dump(exclude_none=True) for c in choice.message.tool_calls
             ]
-        return ModelOutput(
-            provider=self.provider,
-            model=response.model,
-            message=message,
-            usage=response.usage.model_dump() if response.usage is not None else None,
-            request=request,
-            response_id=response.id,
-            finish_reason=choice.finish_reason,
-            raw_response=response.model_dump(),
-        )
+        output.message = message
+        output.finish_reason = choice.finish_reason
+        return output
 
     def close(self) -> None:
         self.client.close()

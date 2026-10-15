@@ -112,6 +112,8 @@ class CheckpointProbe:
             usage=reply.usage,
         )
         self.stages[state["run_id"]] = "model_protocol"
+        if reply.choice_count is not None and reply.choice_count != 1:
+            raise ValueError("M0 requires one model response choice")
         message = reply.message
         if reply.finish_reason not in {None, "stop", "tool_calls"}:
             raise ValueError("model_response_incomplete")

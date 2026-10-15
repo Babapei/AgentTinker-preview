@@ -41,7 +41,7 @@ bash scripts/setup.sh
 
 当前 checkout 为 `/workspace/AgentTinker-preview` 的 work 分支。Python 3.12.14、uv 0.12.23、Node 24.19.0 和 npm 11.9.0 可用。DeepSeek 密钥及 `DEEPSEEK_MODEL=deepseek-flash` 已注入；正常 SDK 的鉴权模型列表和首次真实分支调用成功。旧环境的代理 403 和缺失变量不能继续当作当前阻塞。
 
-环境状态接口仍将网络策略、秘密绑定和运行变量标为 unknown；不能写成平台已报告 ready/enforced。实际请求成功是另一项独立证据。网络命令需要命令工具的网络权限，继续保留继承的代理和 TLS 设置。
+首次审视时，环境状态接口将网络策略、秘密绑定和运行变量标为 unknown，实际请求成功另有证据。后续 M0-07 节点重新核对，当前 observations_current=true、修订 3，网络 unrestricted/enforced，DeepSeek 秘密绑定和模型变量均为 ready。继续保留继承的代理和 TLS 设置；工具权限以当前会话为准。
 
 本次 uv 默认缓存目录只读，使用可写临时缓存完成安装，无需修改固定脚本或环境配置：
 

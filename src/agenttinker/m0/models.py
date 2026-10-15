@@ -21,6 +21,7 @@ class ModelOutput(BaseModel):
     usage: dict[str, Any] | None = None
     request: dict[str, Any] | None = None
     response_id: str | None = None
+    choice_count: int | None = None
     finish_reason: str | None = None
     raw_response: dict[str, Any] | None = None
 
