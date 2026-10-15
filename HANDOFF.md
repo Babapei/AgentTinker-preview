@@ -2,7 +2,7 @@
 
 更新时间：2026-10-15（Asia/Shanghai）。面向新对话、新环境及中断后的接续开发。
 
-**M0 技术验收已完成，接续 M1 / CORE-01。** 用户已确认以真实用量和可追溯费用估算验收，实际账单独立保留为未知/待办，不阻挡 M1。当前 63 项测试通过，模拟与真实 DeepSeek 的 7 项分支检查均通过。完整证据见 [M0 验收结论](docs/m0-acceptance.md)，最新节点见[开发日志](docs/development-log.md)。
+**当前 M1 进行中：CORE-01 核心运行协议、状态机和事件重建已实现，95 项测试通过；下一步 STORE-01 / SQLite。** M0 技术验收已完成，用户确认以真实用量及可追溯估算验收，实际账单独立待办，不阻挡 M1。协议见 [运行记录](docs/runtime-records.md)，完整证据见 [M0 验收结论](docs/m0-acceptance.md)，最新节点见[开发日志](docs/development-log.md)。
 
 ## 1. 接手先确认这几件事
 
@@ -68,7 +68,8 @@ Git 保存了源码、锁文件、设计、日志和 examples 中的示例。本
 | [deepseek_model.py](src/agenttinker/m0/deepseek_model.py) | DeepSeek 非思考模式请求，保留工具调用与缓存用量 |
 | [accounting.py](src/agenttinker/m0/accounting.py) | 每个 Run 新增 Token 覆盖率、缓存字段核对、版本化价格与 Decimal 估算 |
 | [cli.py](src/agenttinker/m0/cli.py) | 显式 live/synthetic 模式、价格输入、原子写报告和单独失败诊断 |
-| [tests](tests) | 63 项测试：分支、策略校验、SDK 模拟 HTTP、用量费用、失败诊断及异常 choices 响应保留 |
+| [core](src/agenttinker/core) | M1 的 Run/Span/CheckpointRef/Artifact、版本引用、能力、用量费用、类型化事件、状态转换与纯重建；与 M0 格式分开 |
+| [tests](tests) | 95 项测试：M0 63 项；M1 核心协议及完整性校验 32 项 |
 
 本次实际安装版本：LangGraph 1.2.14、langgraph-checkpoint 4.2.0、OpenAI SDK 2.54.0、Pydantic 2.13.5。依赖安装以仓库锁文件为准。
 
@@ -96,7 +97,7 @@ M0 实验语义：
 | 阶段 | 当前状态 / 下一阶段目标 |
 | --- | --- |
 | M0 | 技术验收完成；真实分支、新增用量、价格估算与异常响应观测均已核对，实际账单独立待办 |
-| M1 | 当前接续 CORE-01；正式对象/事件 schema、Run 状态机、SQLite、持久化、SSE 及续传去重待实现 |
+| M1 | 进行中；核心对象/事件 schema、状态机和事件重建已实现；SQLite、运行服务、SSE 及续传去重待实现 |
 | M2 | 未开始：步骤列表/图、详情、时间线、历史记录播放 |
 | M3 | 未开始：完整超时实验、单变量 fork、A/B 对比和内嵌讲解 |
 | M4 | 未开始：第二个实验、评价、实验包导入导出、真实参考记录无密钥回看 |
@@ -111,10 +112,10 @@ M0 实验语义：
 | 操作 | 实际结果 |
 | --- | --- |
 | UV_CACHE_DIR=/tmp/agenttinker-uv-cache bash scripts/setup.sh | 成功，锁定依赖同步通过；默认缓存只读，未修改依赖或安装脚本 |
-| uv run pytest -q | M0-07：63 passed |
+| uv run pytest -q | M1-01：95 passed |
 | uv run ruff check . | 通过 |
 | uv run ruff format --check . | 通过 |
-| uv run agenttinker-m0 --mode synthetic --output artifacts/m0-response-observation-synthetic.json | M0-07：7 项 checks 全部 true，m0_real_call_verified=false |
+| uv run agenttinker-m0 --mode synthetic --output artifacts/m0-core-regression-synthetic.json | M1-01：7 项 checks 全部 true，m0_real_call_verified=false；不重复真实付费实验 |
 | git ls-remote origin refs/heads/work | 与本次核对起点一致 |
 | curl HEAD https://api.deepseek.com（无密钥） | 到达服务端，HTTP 401；未被旧环境的代理 403 阻止 |
 | SDK 鉴权模型列表 | 成功，配置的 deepseek-flash 可用 |
@@ -130,7 +131,7 @@ uv 命令在本环境使用 `UV_CACHE_DIR=/tmp/agenttinker-uv-cache`。继续保
 
 ## 7. 下一步：M1 运行记录
 
-1. **CORE-01：版本化协议与状态机。** 定义 Run、Span、Event、CheckpointRef、Artifact 及实验版本引用，校验状态转换、事件序号、来源和必要关联；从 Pydantic 生成 JSON Schema，不维护另一套手写前端类型。
+1. **CORE-01 核心协议已完成。** core 下已实现 Run、Span、Event、CheckpointRef、Artifact 及实验版本引用，校验状态转换、事件序号、来源、重试和必要关联；从 Pydantic 生成 JSON Schema。实验、评价等完整内容模型随后续阶段补齐，不与 M0 格式混用。
 2. **STORE-01：持久化与事件追加。** SQLite 保存运行元数据、追加事件和可重建投影，文件保存内容寻址 artifact；先持久化，再广播，不覆盖旧事件。为 SSE 提供单调序号和断线游标。
 3. **运行服务与 SSE。** 增加 HTTP 控制和事件订阅，验证失败、重试、协作式取消、进程中断、断线补发与去重。M1 完成条件仍以架构路线为准，不把协议文件本身记成服务已实现。
 4. **逐节点完成。** 每块工作验证、更新受影响文档、日志及本文件，提交推送并核对远程；无须再次询问日常实现或已批准的费用口径。
@@ -138,4 +139,4 @@ uv 命令在本环境使用 `UV_CACHE_DIR=/tmp/agenttinker-uv-cache`。继续保
 
 ## 8. 给新对话的最短接续提示
 
-> 请在 Babapei/AgentTinker-preview 的 work 分支接续开发。先阅读 HANDOFF.md、AGENTS.md 和开发日志，再核对源码及环境。用户已确认按真实用量和可追溯估算完成 M0，实际账单另列待办，不阻挡 M1，也不重复请求批准。当前接续 M1 / CORE-01，再做 STORE-01 和 SSE；逐块验证、写日志、提交推送。不要重做已完成工程或把旧环境故障当现状，关键范围变更先与我确定。
+> 请在 Babapei/AgentTinker-preview 的 work 分支接续开发。先阅读 HANDOFF.md、AGENTS.md、docs/runtime-records.md 和开发日志，再核对源码及环境。M0 已验收，账单独立待办；M1 核心协议、状态机和重建已实现，95 项测试通过，下一步 STORE-01 / SQLite，再做运行服务和 SSE。逐块验证、写日志、提交推送，不重复询问已批准事项或重做工程；关键范围变更先与我确定。

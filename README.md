@@ -17,6 +17,7 @@
 | [开发日志](docs/development-log.md) | 已完成工作、验证结果、限制和下一步 |
 | [M0 验证说明](docs/m0-validation.md) | 本地环境、检查点分支验证和真实调用验收进度 |
 | [M0 验收证据](docs/m0-acceptance.md) | 技术验收表、费用明细与用户已确认的阶段结论 |
+| [运行记录协议](docs/runtime-records.md) | M1 对象、事件、状态转换与重建规则 |
 | [云端环境配置](docs/cloud-environment.md) | 设置页填写内容、固定安装入口及配置生效检查 |
 | [新环境接续审视](docs/resumption-audit.md) | 2026-10-15 全仓核对、环境实测、真实 M0 证据及待修问题 |
 
@@ -28,4 +29,4 @@
 
 **命名约定：**产品、文档和界面统一使用 **AgentTinker**。当前仓库为 [AgentTinker-preview](https://github.com/Babapei/AgentTinker-preview)，`-preview` 标记开发预览阶段；完成后仓库更名为 `AgentTinker`。
 
-**M0 技术验收已完成**：模拟与真实 DeepSeek 分支的 7 项检查均通过，异常响应用量保留已修复，63 项测试通过。用户确认以真实用量和可追溯估算验收，实际账单核对不阻挡 M1。下一步为 **M1 / CORE-01：对象、事件协议和运行状态机**，再接 SQLite 与 SSE。详见 [M0 验收证据](docs/m0-acceptance.md)。
+**当前为 M1：运行记录。** CORE-01 的核心运行对象、类型化事件、状态机及纯事件重建已实现，95 项测试通过；下一步接 SQLite 持久化，再实现 HTTP/SSE 和运行服务。M0 技术验收已按用户确认的真实用量及可追溯估算口径完成，实际账单独立待办。详见 [运行记录协议](docs/runtime-records.md)和 [M0 验收证据](docs/m0-acceptance.md)。
