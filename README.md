@@ -29,4 +29,4 @@
 
 **命名约定：**产品、文档和界面统一使用 **AgentTinker**。当前仓库为 [AgentTinker-preview](https://github.com/Babapei/AgentTinker-preview)，`-preview` 标记开发预览阶段；完成后仓库更名为 `AgentTinker`。
 
-**当前为 M1：运行记录。** CORE-01 的核心运行对象、类型化事件、状态机及纯事件重建已实现，95 项测试通过；下一步接 SQLite 持久化，再实现 HTTP/SSE 和运行服务。M0 技术验收已按用户确认的真实用量及可追溯估算口径完成，实际账单独立待办。详见 [运行记录协议](docs/runtime-records.md)和 [M0 验收证据](docs/m0-acceptance.md)。
+**当前为 M1：运行记录。** 核心对象、类型化事件、状态机、事件重建及 SQLite/文件持久化已实现，108 项测试通过；下一步接执行器和 HTTP/SSE，验证实际取消与断线重连。M0 技术验收已按用户确认的真实用量及可追溯估算口径完成，实际账单独立待办。详见 [运行记录协议](docs/runtime-records.md)和 [M0 验收证据](docs/m0-acceptance.md)。

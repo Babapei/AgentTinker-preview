@@ -12,7 +12,7 @@
 | [projection.py](../src/agenttinker/core/projection.py) | 从原生事件流重建 Run、spans、checkpoints，校验流的完整性 |
 | [schema.py](../src/agenttinker/core/schema.py) | 从上述 Pydantic 模型生成 JSON Schema |
 
-Experiment、DatasetCase、Variant、Agent 和 FaultPlan 当前通过明确的 ID + version 引用连接运行配置；其完整内容模型和服务随实验功能实现。当前并未完成整个 M1，也没有声称已接入 M0 执行器、SQLite、HTTP 或 SSE。
+Experiment、DatasetCase、Variant、Agent 和 FaultPlan 当前通过明确的 ID + version 引用连接运行配置；其完整内容模型和服务随实验功能实现。STORE-01 已加入 SQLite 事件存储及 artifact 内容存储，见第 6 节。整个 M1 仍在进行中，尚未接入执行器、HTTP 或 SSE。
 
 ## 2. 数据规则
 
@@ -71,4 +71,29 @@ print(json.dumps(protocol_schemas(), ensure_ascii=False, indent=2))
 
 Run、Span、CheckpointRef、Artifact、Event 和 RunView 的 schema 均来自同一实现；Event 包含 type 判别器。后续 API/前端以此生成类型，不另写一份协议定义。生成产物可写入忽略的 artifacts，不手工维护副本。
 
-CORE-01 新增 32 项验证，覆盖状态转换、取消与在途结果、中断、分支引用、版本/来源/关联校验、费用与未知值、事件顺序、重试与 schema 往返。后续 STORE-01 仍需验证原子追加、重启读取和去重；整个 M1 的退出条件还包含 HTTP/SSE 与运行服务的集成验证。
+CORE-01 新增 32 项验证，覆盖状态转换、取消与在途结果、中断、分支引用、版本/来源/关联校验、费用与未知值、事件顺序、重试与 schema 往返。STORE-01 新增 13 项 SQLite/文件集成验证；全套共 108 项测试通过。整个 M1 的退出条件还包含 HTTP/SSE 与运行服务的集成验证。
+
+## 6. SQLite 事件日志与 artifact 存储（STORE-01）
+
+实现位于 [storage/sqlite.py](../src/agenttinker/storage/sqlite.py)，仅使用 Python 标准库 sqlite3；数据库 schema 版本当前为 1，通过 user_version 校验，不静默使用未知版本或其他应用的非空数据库。
+
+```python
+from agenttinker.storage.sqlite import SQLiteEventStore
+
+with SQLiteEventStore("artifacts/runs.sqlite") as store:
+    view = store.get_view("run_A")
+    backlog = store.events("run_A", after_seq=2, limit=100)
+    restored = store.rebuild_view("run_A")
+```
+
+上述读取例子要求已通过追加接口保存相应 Run；首次打开数据库只建表，不生成运行或执行请求。
+
+- **原子追加：**BEGIN IMMEDIATE 内校验事实、重建投影、写入缓存和事件后一起提交。事件 ID 全局唯一，Run 内 seq 唯一；数据库触发器拒绝 UPDATE/DELETE 事件。中途写入失败会回滚事件与投影，提交后才可以向订阅者发送。
+- **序号与幂等：**原生服务使用 append_next，在事务中分配下一个 seq 和首次 received_at；draft 不接受 seq。同 event ID 且内容完全一致时返回原记录，不重复追加，received_at 保持原值；同 ID 不同内容或显式序号冲突报 EventConflict。append 保留为接受已确定序号的内部入口，仍执行相同校验。
+- **续传读取：**events 按 seq 返回 after_seq 之后的事实，支持每页 1–1000 条；拒绝负数、布尔游标和超出当前 head 的游标。当前提供持久化游标基础，HTTP Last-Event-ID、SSE 订阅与去重集成尚未实现。
+- **投影与谱系：**get_view 读取持久化缓存；rebuild_view 从完整事件重建，事实不被重写。创建分支记录前检查父 Run、源 checkpoint 和继承 span 已存在；B 不复制父 spans。此步骤只保存分支谱系，不恢复 LangGraph。
+- **内容存储：**put_artifact 先校验元数据，用 SHA-256 分目录保存内容，经临时文件写入、flush/fsync 和替换后登记 SQLite 元数据。相同内容共用 blob，不同来源可以有不同 artifact ID。read_artifact 检查长度和哈希；已知 actual 费用的证据引用必须可读取。保存证据不等于程序已经判断其财务真实性。
+- **文件与数据库边界：**内容文件先写、元数据后登记；两者不是跨资源事务。中断可能留下无元数据引用的 blob，但不会先提交元数据再写内容。本节点未实现孤立文件回收或整机掉电保证，导入导出仍按后续阶段实现。
+- **进程边界：**每个线程/worker 使用自己的 SQLiteEventStore 连接。打开数据库不会将其他 worker 的运行擅自标为 interrupted，也不会重发 provider 请求；由运行服务在确认 worker 消失后追加中断事件。当前测试以真实子进程 os._exit 验证已提交事件可恢复；自动监测尚未接入。
+
+当前每次追加会重建该 Run 的完整原生事件投影，优先保证语义一致，适合当前单用户、小规模记录。后续按实际规模优化增量投影，不把此实现宣传为多 worker 分布式调度服务。

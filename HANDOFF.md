@@ -2,7 +2,7 @@
 
 更新时间：2026-10-15（Asia/Shanghai）。面向新对话、新环境及中断后的接续开发。
 
-**当前 M1 进行中：CORE-01 核心运行协议、状态机和事件重建已实现，95 项测试通过；下一步 STORE-01 / SQLite。** M0 技术验收已完成，用户确认以真实用量及可追溯估算验收，实际账单独立待办，不阻挡 M1。协议见 [运行记录](docs/runtime-records.md)，完整证据见 [M0 验收结论](docs/m0-acceptance.md)，最新节点见[开发日志](docs/development-log.md)。
+**当前 M1 进行中：核心协议、状态机、事件重建及 SQLite/文件存储已实现，108 项测试通过；下一步执行器接入和 HTTP/SSE。** M0 技术验收已完成，用户确认以真实用量及可追溯估算验收，实际账单独立待办，不阻挡 M1。协议见 [运行记录](docs/runtime-records.md)，完整证据见 [M0 验收结论](docs/m0-acceptance.md)，最新节点见[开发日志](docs/development-log.md)。
 
 ## 1. 接手先确认这几件事
 
@@ -69,7 +69,8 @@ Git 保存了源码、锁文件、设计、日志和 examples 中的示例。本
 | [accounting.py](src/agenttinker/m0/accounting.py) | 每个 Run 新增 Token 覆盖率、缓存字段核对、版本化价格与 Decimal 估算 |
 | [cli.py](src/agenttinker/m0/cli.py) | 显式 live/synthetic 模式、价格输入、原子写报告和单独失败诊断 |
 | [core](src/agenttinker/core) | M1 的 Run/Span/CheckpointRef/Artifact、版本引用、能力、用量费用、类型化事件、状态转换与纯重建；与 M0 格式分开 |
-| [tests](tests) | 95 项测试：M0 63 项；M1 核心协议及完整性校验 32 项 |
+| [storage/sqlite.py](src/agenttinker/storage/sqlite.py) | SQLite 原子事件追加与缓存投影、事务内序号、幂等重试、游标读取、重建、父分支引用与内容寻址 artifact |
+| [tests](tests) | 108 项测试：M0 63 项，核心协议 32 项，SQLite/文件集成 13 项 |
 
 本次实际安装版本：LangGraph 1.2.14、langgraph-checkpoint 4.2.0、OpenAI SDK 2.54.0、Pydantic 2.13.5。依赖安装以仓库锁文件为准。
 
@@ -92,18 +93,18 @@ M0 实验语义：
 - examples/m0/ 中有 synthetic、首次真实技术验证记录及 DeepSeek 高峰/低峰价格快照。价格采集于 2026-10-08，2026-10-15 实跑前重新核对官方协议和适用价格，显式选择低峰快照；以后调用仍应重查，不自动按峰谷或节假日套价。
 - M0-07 已修复异常 choices 响应丢失用量的问题：SDK 适配器先保留请求、响应 ID、choice_count、usage/raw_response；probe 记录 span 后在 model_protocol 阶段拒绝空/多个 choices。16 项离线回归覆盖两个适配器、A/B 两个阶段和用量已知/缺失，验证保留实际返回值、不调用后续工具、不重复计算继承前缀。本节点未重复付费调用。
 
-## 5. 尚未实现的阶段
+## 5. 阶段进度与后续目标
 
 | 阶段 | 当前状态 / 下一阶段目标 |
 | --- | --- |
 | M0 | 技术验收完成；真实分支、新增用量、价格估算与异常响应观测均已核对，实际账单独立待办 |
-| M1 | 进行中；核心对象/事件 schema、状态机和事件重建已实现；SQLite、运行服务、SSE 及续传去重待实现 |
+| M1 | 进行中；核心协议与 SQLite/文件存储完成，运行服务、执行器事件接入、HTTP/SSE 及端到端续传去重待实现 |
 | M2 | 未开始：步骤列表/图、详情、时间线、历史记录播放 |
 | M3 | 未开始：完整超时实验、单变量 fork、A/B 对比和内嵌讲解 |
 | M4 | 未开始：第二个实验、评价、实验包导入导出、真实参考记录无密钥回看 |
 | M5 | 未开始：实际工具对照与用户使用验证 |
 
-仓库没有 FastAPI 服务、React/Vite 工程、网页预览、持久化 checkpoint、取消能力或公开部署。M0 的内存状态/span 和 JSON 输出不能当作 M1 已完成；synthetic 成功不能当作真实验收。
+仓库没有 FastAPI 服务、React/Vite 工程、网页预览、持久化 LangGraph checkpoint、真实任务取消或公开部署。SQLite 已持久化对象、事件和 CheckpointRef，但引用不等于运行时可恢复状态；M0 内存 checkpoint 仍不能跨进程恢复。M1 的核心和存储测试不能替代 HTTP/SSE、执行器及实际取消的集成验收。
 
 首版技术路线仍为 React/TypeScript/Vite + React Flow、Python/FastAPI/Pydantic、LangGraph、SQLite + 文件存储、HTTP + SSE。公开托管、域名、额外模型和外部工具服务尚未确定；当前不需要额外托管数据库或搜索服务账号。
 
@@ -112,7 +113,7 @@ M0 实验语义：
 | 操作 | 实际结果 |
 | --- | --- |
 | UV_CACHE_DIR=/tmp/agenttinker-uv-cache bash scripts/setup.sh | 成功，锁定依赖同步通过；默认缓存只读，未修改依赖或安装脚本 |
-| uv run pytest -q | M1-01：95 passed |
+| uv run pytest -q | M1-02：108 passed |
 | uv run ruff check . | 通过 |
 | uv run ruff format --check . | 通过 |
 | uv run agenttinker-m0 --mode synthetic --output artifacts/m0-core-regression-synthetic.json | M1-01：7 项 checks 全部 true，m0_real_call_verified=false；不重复真实付费实验 |
@@ -125,18 +126,18 @@ M0 实验语义：
 
 uv 命令在本环境使用 `UV_CACHE_DIR=/tmp/agenttinker-uv-cache`。继续保留继承的平台代理和 TLS，不通过修改策略文件或绕开代理解决访问；命令工具权限以当前会话为准。
 
-首次审视时状态接口为 unknown；M0-07 节点重新核对，当前 observations_current=true、running、修订 3，网络 unrestricted/enforced，DEEPSEEK_API_KEY 和 DEEPSEEK_MODEL 均 ready。正常 SDK 的鉴权和推理此前已实测成功，不再要求用户重复配置已可用密钥。
+首次审视时状态接口为 unknown；M0-07 时修订 3 已就绪，M1 接续时重查修订 4，observations_current=true、running，网络 unrestricted/enforced，DEEPSEEK_API_KEY 和 DEEPSEEK_MODEL 均 ready。正常 SDK 的鉴权和推理此前已实测成功，不再要求用户重复配置已可用密钥。
 
 旧环境曾为 restricted/enforced、无变量并被代理以 403 拒绝，设置保存/发布问题的具体原因仍未确认；详见旧日志。它不是本环境的现状。本次真实请求发生在北京时间 20:14（UTC 12:14），7 项检查和 A 的 4 个 checkpoint 不变性均通过，估算已核对，但未取得逐笔账单。未来换环境仍需重查。
 
 ## 7. 下一步：M1 运行记录
 
 1. **CORE-01 核心协议已完成。** core 下已实现 Run、Span、Event、CheckpointRef、Artifact 及实验版本引用，校验状态转换、事件序号、来源、重试和必要关联；从 Pydantic 生成 JSON Schema。实验、评价等完整内容模型随后续阶段补齐，不与 M0 格式混用。
-2. **STORE-01：持久化与事件追加。** SQLite 保存运行元数据、追加事件和可重建投影，文件保存内容寻址 artifact；先持久化，再广播，不覆盖旧事件。为 SSE 提供单调序号和断线游标。
+2. **STORE-01 核心存储已完成。** SQLite 原子保存事件和投影，触发器禁止改写/删除事实；append_next 事务内分配序号、同事件幂等、按游标补读。文件按哈希保存 artifact。真实子进程异常退出、独立并发连接、缓存重建、写入回滚和文件校验已有测试；还未接运行时或 SSE。
 3. **运行服务与 SSE。** 增加 HTTP 控制和事件订阅，验证失败、重试、协作式取消、进程中断、断线补发与去重。M1 完成条件仍以架构路线为准，不把协议文件本身记成服务已实现。
 4. **逐节点完成。** 每块工作验证、更新受影响文档、日志及本文件，提交推送并核对远程；无须再次询问日常实现或已批准的费用口径。
 5. **独立账单待办。** 将来有可对应请求或明确时段的费用证据时再核对；实际扣费保持未知，余额不是逐笔账单，不将 CNY 余额等同 USD 估算，不为此重复付费实验。
 
 ## 8. 给新对话的最短接续提示
 
-> 请在 Babapei/AgentTinker-preview 的 work 分支接续开发。先阅读 HANDOFF.md、AGENTS.md、docs/runtime-records.md 和开发日志，再核对源码及环境。M0 已验收，账单独立待办；M1 核心协议、状态机和重建已实现，95 项测试通过，下一步 STORE-01 / SQLite，再做运行服务和 SSE。逐块验证、写日志、提交推送，不重复询问已批准事项或重做工程；关键范围变更先与我确定。
+> 请在 Babapei/AgentTinker-preview 的 work 分支接续开发。先阅读 HANDOFF.md、AGENTS.md、docs/runtime-records.md 和开发日志，再核对源码及环境。M0 已验收，账单独立待办；M1 核心协议与 SQLite/文件存储已实现，108 项测试通过，下一步运行服务、执行器事件接入和 HTTP/SSE，补实际取消与断线重连验证。逐块验证、写日志、提交推送，不重复询问已批准事项或重做工程；关键范围变更先与我确定。
