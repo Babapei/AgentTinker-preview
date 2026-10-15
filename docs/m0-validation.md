@@ -2,6 +2,8 @@
 
 对应 [架构路线 M0](03-architecture-roadmap.md#10-开发顺序与完成条件)。本阶段验证运行语义，不代表实验工作台已经实现。
 
+**2026-10-15 用户确认：M0 技术验收完成，进入 M1。** 费用依据为真实提供商用量及可追溯价格估算；实际账单核对独立保留待办，实际扣费仍为未知。完整证据及确认口径见 [M0 验收证据](m0-acceptance.md)。
+
 ## 本地环境
 
 使用 Python 3.12 或更高版本及 [uv](https://docs.astral.sh/uv/getting-started/installation/)。在仓库根目录执行：
@@ -22,7 +24,7 @@ uv run agenttinker-m0 --mode synthetic
 - 已用真实 LangGraph 引擎和模拟模型验证检查点分支、A/B 新增调用计数和历史不变性；模型来源明确标为 `synthetic`。
 - 已加入官方 OpenAI SDK 的 Chat Completions 调用入口及配置校验；SDK 请求使用模拟 HTTP 响应进行测试。
 - 已加入 DeepSeek 非思考模式的请求配置，复用同一个 SDK 和检查点流程。
-- 2026-10-15 新环境首次真实 DeepSeek 分支的 7 项检查通过，用量与价格表估算已核对；逐笔实际扣费尚无可核对凭证，M0 整体仍未完成。SDK 模拟响应不作为真实调用证据。
+- 2026-10-15 新环境首次真实 DeepSeek 分支的 7 项检查通过，用量与价格表估算已核对；用户已按此口径确认 M0 技术验收完成。逐笔实际扣费仍未知，不作为进入 M1 的前置条件；SDK 模拟响应不作为真实调用证据。
 - 审视发现的异常 choices 数量导致用量丢失问题已在 M0-07 修复：先记录请求、原始响应、响应 ID、choice_count 和已返回用量，再在 model_protocol 阶段拒绝继续执行。当前 63 项测试通过；详见下方异常响应验证。
 
 ## 超时与重试验证
@@ -128,7 +130,7 @@ uv run agenttinker-m0 --mode live --provider deepseek \
 - 环境变量 `DEEPSEEK_MODEL=deepseek-flash`；默认端点已内置，无需另设地址。
 - 执行环境允许访问 `api.deepseek.com`。
 
-异常响应观测已修复，当前剩余项是可核对的实际费用证据。完成费用验收前，M0 保持进行中，不进入 M1；不需因余额接口无法提供逐笔账单而重复运行已通过的付费实验。
+异常响应观测已修复，M0 技术验收已由用户确认。实际费用证据为独立待办，不阻挡 M1；不需因余额接口无法提供逐笔账单而重复运行已通过的付费实验。
 
 ### 异常响应验证（M0-07）
 
@@ -151,4 +153,4 @@ uv run agenttinker-m0 --mode live --provider deepseek \
 
 7 项 checks 全部 true，A 的 4 个祖先 checkpoint 和原始 evidence 保持不变。返回模型均为 `deepseek-flash`；B 没有重新请求分支前的模型。新增总 Token 为 634，合计估算 `0.00014640 USD`，独立复算与报告一致。
 
-请求发生在北京时间 20:14（UTC 12:14），当日重新核对[官方价格](https://api-docs.deepseek.com/quick_start/pricing/)和协议，显式使用仍适用的 `deepseek-flash-usd-off-peak-2026-10-08` 快照。账户余额查询 HTTP 200、账户可用，返回 CNY；它没有提供两次请求的独立扣费凭证，不能与美元估算直接视为同一金额。因此 `m0_real_call_verified=true`，但完整费用验收仍未完成。更多环境、代码审视及可复现问题见 [接续审视](resumption-audit.md)。
+请求发生在北京时间 20:14（UTC 12:14），当日重新核对[官方价格](https://api-docs.deepseek.com/quick_start/pricing/)和协议，显式使用仍适用的 `deepseek-flash-usd-off-peak-2026-10-08` 快照。账户余额查询 HTTP 200、账户可用，返回 CNY；它没有提供两次请求的独立扣费凭证，不能与美元估算直接视为同一金额。`m0_real_call_verified=true`；用户已确认技术验收通过，实际账单另列待办。更多环境和代码审视见 [接续审视](resumption-audit.md)。
