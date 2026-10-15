@@ -75,7 +75,7 @@ Phoenix 的入门路径已经围绕观测、正确性、失败数据集和实验
 3. 商业版权限、自托管授权、开源许可证和跨产品数据导出细节，要在确定依赖前按实际版本另行核对。
 4. Dify 部分导航路径访问失败，改用官方仓库说明和可访问资料；没有据此断言功能缺失。
 5. AgentOps 的时间旅行暂按官网功能宣称记录；状态分支能力待技术验证。
-6. 产品名称已确定为 AgentTinker，当前仓库名为 AgentTinker-preview；完成后仓库更名为 AgentTinker。包名和域名尚未确定。
+6. 产品名称已确定为 AgentTinker，当前仓库名为 AgentTinker-preview；完成后仓库更名为 AgentTinker。后续工程使用 Python 包名 agenttinker；域名尚未确定。
 
 ## 7. 来源索引
 

@@ -21,8 +21,9 @@ uv run agenttinker-m0 --mode synthetic
 - 已建立 Python 工程、LangGraph/Pydantic 依赖与代码检查工具。
 - 已用真实 LangGraph 引擎和模拟模型验证检查点分支、A/B 新增调用计数和历史不变性；模型来源明确标为 `synthetic`。
 - 已加入官方 OpenAI SDK 的 Chat Completions 调用入口及配置校验；SDK 请求使用模拟 HTTP 响应进行测试。
-- 已加入 DeepSeek 非思考模式的请求配置，复用同一个 SDK 和检查点流程；真实请求仍待密钥及网络访问就绪。
-- 真实模型调用待配置提供商、模型和凭据；M0 的真实调用验收尚未完成，SDK 模拟响应不作为真实调用证据。
+- 已加入 DeepSeek 非思考模式的请求配置，复用同一个 SDK 和检查点流程。
+- 2026-10-15 新环境首次真实 DeepSeek 分支的 7 项检查通过，用量与价格表估算已核对；逐笔实际扣费尚无可核对凭证，M0 整体仍未完成。SDK 模拟响应不作为真实调用证据。
+- 审视发现异常 choices 数量可能使已返回的用量丢失，已离线复现，待修复；详见 [接续审视](resumption-audit.md#6-发现的问题与优先级)。
 
 ## 超时与重试验证
 
@@ -56,7 +57,7 @@ B 通过 `inherited_model_span_ids` 引用复用的模型前缀，其模型调�
 - checkpoint 仅保存在当前进程内；尚不支持进程重启恢复。span 记录是 M0 验证格式，不是 M1 的事件持久化和 SSE 协议。
 - `tool_retry_limit` 和 `top_k` 是允许的工具策略补丁；查询、运行标识和任意状态不能通过该补丁入口修改。
 - 此验证只处理一次串行工具调用，没有实现完整 ReAct 模板、取消、UI、评测或实验导入导出。
-- 模拟模型不产生真实 Token 或费用；缺失值保留为 `null`。真实调用与新增费用验收仍需实际提供商及可核对的价格信息。可选价格文件只产生明确标注的估算，不代表账户实际扣费。
+- 模拟模型不产生真实 Token 或费用；缺失值保留为 `null`。真实调用的用量与估算已有本次证据；实际费用验收仍需账户扣费记录。可选价格文件只产生明确标注的估算，不代表账户实际扣费。
 
 ## 真实模型验证入口
 
@@ -78,7 +79,7 @@ uv run agenttinker-m0 --mode live
 
 M0 通过明确的 `tool_choice` 要求首次调用检索，得到工具结果后要求模型回答；它验证执行边界，不评价模型自主选择工具的能力。SDK 自动重试关闭，单次请求超时为 30 秒，输出上限为 1024 个 completion tokens。B 复用真实产生的工具调用与对话前缀，仅新增工具后的模型请求。
 
-当前环境没有就绪的模型凭据，受限网络也尚未允许模型端点。已加入 DeepSeek 验证配置；仍需通过环境配置提供凭据与网络访问，才能执行真实验收。
+旧环境曾缺少凭据并被受限代理阻止；2026-10-15 新环境已完成 DeepSeek 实际鉴权与模型调用。后续接续仍需核对当前实例，不能把历史配置问题当作一直存在的事实。
 
 即使真实模型流程通过，费用仍需结合可核对的价格版本判断；未指定价格或必要用量缺失时，金额保留未知。`m0_real_call_verified` 仅标识真实模式的调用/分支检查通过，不代表 M0 的全部费用验收或后续应用已完成。
 
@@ -94,7 +95,7 @@ uv run agenttinker-m0 --mode live --provider deepseek
 
 DeepSeek 请求显式关闭思考模式，使用 `max_tokens`，不发送 OpenAI 的 `parallel_tool_calls` 和 `max_completion_tokens`。标准端点不启用 Beta 的 strict 属性，工具参数仍由本地校验。named tool_choice 与非思考模式的配合依据 [Chat Completions API](https://api-docs.deepseek.com/api/create-chat-completion/)；strict 的 Beta 条件依据 [Tool Calls](https://api-docs.deepseek.com/guides/tool_calls/)。
 
-SDK 保留原始缓存命中/未命中用量，供费用核对使用。官方价格区分缓存和高峰/低峰，不应仅用一个固定输入单价推断实际扣费。真实运行仍需环境允许访问 `api.deepseek.com`；目前尚未配置。
+SDK 保留原始缓存命中/未命中用量，供费用核对使用。官方价格区分缓存和高峰/低峰，不应仅用一个固定输入单价推断实际扣费。当前环境已实际访问 `api.deepseek.com` 并完成首次真实验证。
 
 ## 新增用量和价格核对
 
@@ -121,10 +122,27 @@ uv run agenttinker-m0 --mode live --provider deepseek \
 
 失败节点未写入新的 checkpoint 时，快照可能仍为 `running`；报告通过 `observed_status=failed` 单独记录观察到的失败，不改写旧历史。诊断始终标记 `m0_real_call_verified=false`，缺失用量保持未知。报告先完整序列化并写入临时文件，再替换目标文件，避免写入失败截断旧报告。
 
-截至 2026-10-08，47 项测试及 synthetic 的 7 项分支检查通过；真实 DeepSeek 调用尚未执行。当前还需配置：
+2026-10-15 重新执行：47 项测试、代码与格式检查、synthetic 的 7 项分支检查均通过；首次真实 DeepSeek 分支的 7 项检查也通过。新的独立环境执行时仍需以下配置；本次实例已实测可用：
 
 - 环境凭据 `DEEPSEEK_API_KEY`；不要将密钥粘贴到聊天或提交到仓库。
 - 环境变量 `DEEPSEEK_MODEL=deepseek-flash`；默认端点已内置，无需另设地址。
 - 执行环境允许访问 `api.deepseek.com`。
 
-环境就绪后运行 live 验证，核对实际响应、A 的原始历史、B 的新增调用与用量，再用适用价格快照和账户账单核对费用。完成这些证据前，M0 保持进行中，不进入 M1。
+当前下一步是修复异常响应观测，并取得可核对的实际费用证据。完成这些证据前，M0 保持进行中，不进入 M1；不需因余额接口无法提供逐笔账单而重复运行已通过的付费实验。
+
+## 2026-10-15 首次真实 DeepSeek 验证
+
+无密钥 HEAD 到达服务端返回 401；正常 SDK 鉴权模型列表成功，存在 `deepseek-flash`。平台状态仍标 unknown，实际请求结果独立证明了当前使用路径可用。通过现有 CLI 执行两次真实 Chat Completions 请求，保存 [原始验证记录](../examples/m0/deepseek-retry-live.json)。记录仅涉及虚构夹具和请求/响应，不含密钥或账户余额。
+
+| 指标 | A | B 新增部分 |
+| --- | --- | --- |
+| 终态 | failed（注入超时） | succeeded |
+| 新模型请求 / 逻辑工具调用 | 1 / 1 | 1 / 1 |
+| 工具 attempts | 1 | 2 |
+| 输入 / 输出 Token | 341 / 33 | 179 / 81 |
+| 缓存命中 / 未命中输入 | 0 / 341 | 0 / 179 |
+| 低峰价格估算 USD | 0.00007095 | 0.00007545 |
+
+7 项 checks 全部 true，A 的 4 个祖先 checkpoint 和原始 evidence 保持不变。返回模型均为 `deepseek-flash`；B 没有重新请求分支前的模型。新增总 Token 为 634，合计估算 `0.00014640 USD`，独立复算与报告一致。
+
+请求发生在北京时间 20:14（UTC 12:14），当日重新核对[官方价格](https://api-docs.deepseek.com/quick_start/pricing/)和协议，显式使用仍适用的 `deepseek-flash-usd-off-peak-2026-10-08` 快照。账户余额查询 HTTP 200、账户可用，返回 CNY；它没有提供两次请求的独立扣费凭证，不能与美元估算直接视为同一金额。因此 `m0_real_call_verified=true`，但完整费用验收仍未完成。更多环境、代码审视及可复现问题见 [接续审视](resumption-audit.md)。

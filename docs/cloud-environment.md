@@ -36,3 +36,18 @@ bash scripts/setup.sh
 真实 M0 验证命令及报告说明见 [M0 验证说明](m0-validation.md)。只有实际调用和分支检查通过后，才判断 M0 是否完成。仅报告密钥是否就绪，不输出其内容。
 
 按当前首版设计，SQLite 和文件 artifact store 位于本地，不需要额外托管数据库、向量数据库、Redis 或搜索服务账号。新增模型、外部工具或公开托管时，再补充实际采用服务的配置。
+
+## 2026-10-15 新环境实测
+
+当前 checkout 为 `/workspace/AgentTinker-preview` 的 work 分支。Python 3.12.14、uv 0.12.23、Node 24.19.0 和 npm 11.9.0 可用。DeepSeek 密钥及 `DEEPSEEK_MODEL=deepseek-flash` 已注入；正常 SDK 的鉴权模型列表和首次真实分支调用成功。旧环境的代理 403 和缺失变量不能继续当作当前阻塞。
+
+环境状态接口仍将网络策略、秘密绑定和运行变量标为 unknown；不能写成平台已报告 ready/enforced。实际请求成功是另一项独立证据。网络命令需要命令工具的网络权限，继续保留继承的代理和 TLS 设置。
+
+本次 uv 默认缓存目录只读，使用可写临时缓存完成安装，无需修改固定脚本或环境配置：
+
+```bash
+UV_CACHE_DIR=/tmp/agenttinker-uv-cache bash scripts/setup.sh
+UV_CACHE_DIR=/tmp/agenttinker-uv-cache uv run pytest -q
+```
+
+后续 uv 命令在同样限制下使用相同缓存选择即可。具体调用证据与剩余费用验收见 [接续审视](resumption-audit.md)。
