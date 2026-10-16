@@ -9,6 +9,7 @@ import {
   type RunView,
 } from './protocol';
 import { shortId } from './observations';
+import { terminal } from './event-log';
 
 function restored(runId: string) {
   try {
@@ -71,7 +72,9 @@ export default function ForkPanel({
   if (!view.checkpoints.length)
     return (
       <p className="capability-note">
-        当前记录位置没有工具前检查点；请继续检查实际事件，不能从显示位置直接恢复。
+        {terminal(view.run.status) && view.run.config.fault_parameters.inject_timeout === true
+          ? '本次未到达目标工具，故障条件未触发；不纳入超时对比。'
+          : '当前记录位置没有工具前检查点；请继续检查实际事件，不能从显示位置直接恢复。'}
       </p>
     );
   const visible = items.filter((item) =>

@@ -107,6 +107,24 @@ test('reports an explicitly unconfigured live provider without falling back to s
   expect(modes).toEqual(['live']);
 });
 
+test('does not claim an injected failure when the model protocol never reaches the tool', async ({
+  page,
+}) => {
+  const task = `协议未到工具 ${Date.now()}`;
+  await page.request.post('http://127.0.0.1:8000/__test__/prepare', {
+    data: { task, reject_protocol: true },
+  });
+  await page.goto('/');
+  await configure(page, task);
+  await page.getByRole('button', { name: '开始运行实验' }).click();
+  await expect(page.locator('.run-header')).toContainText('执行失败');
+  await expect(
+    page.getByText('本次未到达目标工具，故障条件未触发；不纳入超时对比。', { exact: true }),
+  ).toBeVisible();
+  await expect(page.locator('.step-row')).toHaveCount(1);
+  await expect(page.getByRole('button', { name: '检查分支可用性', exact: true })).toHaveCount(0);
+});
+
 test('keeps the experiment form keyboard accessible and usable on narrow screens', async ({
   page,
 }) => {

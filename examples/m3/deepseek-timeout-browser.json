@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "mode": "live_reference_read_only",
+  "browser": "154.0.8037.57",
+  "http_mutations": 0,
+  "known_tokens": {
+    "A": 374,
+    "B": 250
+  },
+  "unknown_costs_preserved": true,
+  "historical_B_prefix_verified": true,
+  "before_sha256": "1991adca0310699fcb8de0a952ba14a54785dbd8c4f6c67d69bc77a5395580ac",
+  "after_sha256": "1991adca0310699fcb8de0a952ba14a54785dbd8c4f6c67d69bc77a5395580ac"
+}

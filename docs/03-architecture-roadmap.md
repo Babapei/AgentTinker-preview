@@ -1,6 +1,6 @@
 # AgentTinker 架构与开发路线
 
-2026-10-08 · 架构基线；M1/M2 已完成，见 [M2 验收](m2-acceptance.md)、[运行记录协议](runtime-records.md)、[HTTP/SSE](runtime-api.md)及 [M1 验收](m1-acceptance.md)；其余接口按阶段验证。
+2026-10-08 · 架构基线；M0–M3 已完成，见 [M3 验收](m3-acceptance.md)、[M2 验收](m2-acceptance.md)、[运行记录协议](runtime-records.md)、[HTTP/SSE](runtime-api.md)及 [M1 验收](m1-acceptance.md)；其余接口按阶段验证。
 
 ## 1. 首先确定哪些能力可以承诺
 
@@ -246,7 +246,7 @@ Run 至少保存 provider、实际返回的模型标识、请求参数、prompt 
 - 用一份没有 checkpoint 的外部记录验证能力降级；用缺失用量/评分数据验证 UI 不显示虚假零值或成功。
 - 检查键盘访问、颜色以外的状态信息和减少动画模式。
 
-以上是各阶段的验证要求。M0 已执行模拟与真实 DeepSeek 下的检查点分支、故障重置与旧历史不变性验证，详见 [M0 验证说明](m0-validation.md)；实际费用核对和后续应用验收尚未完成。
+以上是各阶段的验证要求。M0–M3 已完成，首个闭环及当前协议真实参考见 [M3 验收](m3-acceptance.md)；实际账单核对独立未知，M4/M5 尚未完成。
 
 ## 11. 需要保留的决策空间
 

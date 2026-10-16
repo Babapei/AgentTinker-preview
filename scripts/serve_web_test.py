@@ -19,6 +19,11 @@ def no_execution(_request):
 
 def test_app(database):
     gates = {}
+    rejected = set()
+
+    class Rejected(SyntheticModel):
+        def complete(self, messages):
+            return super().complete(messages).model_copy(update={"choice_count": 0})
 
     class Gated(SyntheticModel):
         def __init__(self, entered, release):
@@ -35,6 +40,8 @@ def test_app(database):
     def factory(request):
         if request.mode != "synthetic":
             return no_execution(request)
+        if request.task in rejected:
+            return Rejected()
         return Gated(*gates[request.task]) if request.task in gates else SyntheticModel()
 
     def service_factory(path, **kwargs):
@@ -59,7 +66,10 @@ def test_app(database):
     def prepare_fixture(body: dict):
         # Register a task gate, then let the browser submit through the production API.
         task = body["task"]
-        gates[task] = Event(), Event()
+        if body.get("reject_protocol"):
+            rejected.add(task)
+        else:
+            gates[task] = Event(), Event()
         return {"ready": True}
 
     @app.post("/__test__/runs/{run_id}/release")
