@@ -12,8 +12,8 @@ async function records(page: Page) {
     }),
   );
   return {
-    failed: views.find((view) => view.run.status === 'failed')!,
-    retried: views.find((view) => view.run.status === 'succeeded')!,
+    failed: views.find((view) => view.run.config.task === '基线：首次检索超时')!,
+    retried: views.find((view) => view.run.config.task === '重试：比较虚构发布说明')!,
   };
 }
 

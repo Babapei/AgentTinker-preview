@@ -1,6 +1,6 @@
 # M2：运行检查界面
 
-工程位于 [web](../web)，采用 React、TypeScript 和 Vite。共享协议、只读历史列表和运行/步骤详情已接入后端；图、实时事件订阅、时间线与历史播放尚待实现，M2 继续进行。
+工程位于 [web](../web)，采用 React、TypeScript 和 Vite。共享协议、只读历史列表和运行/步骤详情已接入后端；事件重建、实时订阅及断线补发已接入；图、时间线与历史播放尚待实现，M2 继续进行。
 
 ## 本地开发
 
@@ -41,9 +41,9 @@ npm --prefix web run format:check
 - **步骤：**区分模型每次调用和工具每次尝试，筛选模型/工具/失败步骤；默认定位首个失败步骤，也可键盘操作。展示实际输入、输出、元数据及注入故障来源；JSON 作为文本显示。
 - **观测：**逻辑工具调用和 attempts 分开；指标仅统计本 Run 新增步骤，继承前缀只说明引用数。用量不完整则总量未知并显示覆盖率；已知 0 保留为 0。费用用 Decimal 精确相加，只有币种/口径/价格版本一致且完整时显示合计；估算不称实际账单。
 - **来源与限制：**显式显示 live/synthetic/recorded/imported；模型输出标注尚未评价。检查点分支由后端 capabilities 决定，不提供虚假分支入口；未知值不补造。空历史、无匹配步骤、缺失 Run、协议不兼容与服务不可达分别提示。
-- **刷新：**本节点显示带 last_seq 的持久化快照，需手动刷新读取最新进度。没有把停止更新或动画当成暂停/取消远端任务；运行控制、实时订阅和完整事件终止原因随后续节点接入。
+- **事件订阅：**先读取快照，再从 seq=1 补读和校验事件；追平后只由已验证事实更新视图。连接断开按最后已应用序号补读，事件 ID 去重；跨 Run、冲突、持续缺口或快照不一致会停在保留快照并提示，不能进入历史播放。终态追平后停止订阅。切换记录只结束订阅，不取消执行。运行控制、图、时间线和播放随后接入。
 
-17 项 Vitest 验证协议、请求身份、未知/部分观测、已知零值、逻辑计数和精确费用。9 项 Playwright 测试使用实际 Chromium 和本机 Vite/FastAPI/SQLite；真实 LangGraph synthetic 生成失败/重试记录，API 运行适配器禁止任何再次执行。另用明确的路由 fixture 覆盖分页、部分用量、错误响应及竞态。检查了键盘选择、390px 窄屏无横向溢出、减少动画，以及默认页 axe WCAG 2 A/AA 自动检查；这不替代完整人工可访问性评审。后端 136 项回归继续通过，没有付费调用。
+31 项 Vitest 验证协议、请求身份、未知/部分观测、已知零值、逻辑计数和精确费用。11 项 Playwright 测试使用实际 Chromium 和本机 Vite/FastAPI/SQLite；真实 LangGraph synthetic 生成失败/重试记录，历史适配器拒绝新执行；新增受测试驱动端点控制的 gated synthetic 运行验证真实 SSE。另用明确的路由 fixture 覆盖分页、部分用量、错误响应及竞态。检查了键盘选择、390px 窄屏无横向溢出、减少动画，以及默认页 axe WCAG 2 A/AA 自动检查；这不替代完整人工可访问性评审。后端 136 项回归继续通过，没有付费调用。
 
 ## 浏览器验证与模拟预览
 
@@ -61,4 +61,6 @@ UV_CACHE_DIR=/tmp/agenttinker-uv-cache npm --prefix web run test:e2e
 uv run python scripts/serve_web_test.py
 ```
 
-该服务仅在临时 SQLite 生成两条 native synthetic 记录，关闭即删除，不使用 live 密钥、不修改 artifacts/runs.sqlite。空数据库的普通界面仍显示空态，不自动生成或冒充已有实验。生产静态托管、公开部署和完整实验工作台尚未实现。
+该服务在临时 SQLite 生成两条 native synthetic 记录；仅此测试脚本提供 /__test__ 驱动端点，可显式创建/放行 gated synthetic 验证订阅，普通 create_app 不含这些端点。关闭即删除，不使用 live 密钥、不修改 artifacts/runs.sqlite。空数据库的普通界面仍显示空态，不自动生成或冒充已有实验。生产静态托管、公开部署和完整实验工作台尚未实现。
+
+事件读取复用 eventsource-parser，UTF-8 分片交由 TextDecoderStream；重连使用新的 after_seq，不将旧 query 与新 Last-Event-ID 混用。浏览器 EventLog 检查顺序、身份、状态、父引用和重试来源，只有投影成功才推进游标。跨语言测试通过实际模拟运行，把失败/重试/取消每个前缀与 Python project_events 输出逐一比较；没有从最终状态补造中间事实。

@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { getRun, getRuns } from './api';
-import type { Run, RunPage, RunView } from './protocol';
+import equal from 'fast-deep-equal';
+import { EventIntegrityError, EventLog } from './event-log';
+import { followEvents, type Connection } from './event-stream';
+import type { Run, RunPage, RunView, RuntimeEvent } from './protocol';
 
 export function useHistory(revision: number) {
   const [page, setPage] = useState({ revision, offset: 0 });
@@ -56,7 +59,18 @@ export function useRun(runId: string | null, revision: number) {
     view: RunView | null;
     loading: boolean;
     error: Error | null;
-  }>({ id: null, view: null, loading: false, error: null });
+    streamError: Error | null;
+    connection: Connection;
+    events: readonly RuntimeEvent[];
+  }>({
+    id: null,
+    view: null,
+    loading: false,
+    error: null,
+    streamError: null,
+    connection: 'connecting',
+    events: [],
+  });
 
   useEffect(() => {
     if (runId === null) return;
@@ -67,13 +81,52 @@ export function useRun(runId: string | null, revision: number) {
       view: previous.id === runId ? previous.view : null,
       loading: true,
       error: null,
+      streamError: null,
+      connection: 'connecting',
+      events: [],
     }));
     getRun(runId, controller.signal)
-      .then((view) => {
-        if (active) setState({ id: runId, view, loading: false, error: null });
+      .then(async (snapshot) => {
+        if (!active) return;
+        setState((previous) => ({ ...previous, view: snapshot, loading: false }));
+        if (!snapshot.run.capabilities.record_playback) {
+          setState((previous) => ({ ...previous, connection: 'unavailable' }));
+          return;
+        }
+        const log = new EventLog(runId);
+        try {
+          await followEvents(log, {
+            signal: controller.signal,
+            onConnection(connection) {
+              if (active) setState((previous) => ({ ...previous, connection }));
+            },
+            onUpdate() {
+              if (!active) return;
+              if (log.cursor === snapshot.last_seq && !equal(log.view, snapshot)) {
+                throw new EventIntegrityError('event_snapshot_mismatch');
+              }
+              // Capture this validated prefix before React runs the updater later.
+              const view = log.cursor >= snapshot.last_seq ? log.view : snapshot;
+              const events = log.events;
+              setState((previous) => ({
+                ...previous,
+                view,
+                events,
+              }));
+            },
+          });
+        } catch (error) {
+          if (active)
+            setState((previous) => ({
+              ...previous,
+              streamError: error as Error,
+              connection: 'unavailable',
+            }));
+        }
       })
       .catch((error: Error) => {
-        if (active) setState({ id: runId, view: null, loading: false, error });
+        if (active)
+          setState((previous) => ({ ...previous, id: runId, view: null, loading: false, error }));
       });
     return () => {
       active = false;
@@ -81,5 +134,14 @@ export function useRun(runId: string | null, revision: number) {
     };
   }, [runId, revision]);
 
-  return state.id === runId ? state : { view: null, loading: runId !== null, error: null };
+  return state.id === runId
+    ? state
+    : {
+        view: null,
+        loading: runId !== null,
+        error: null,
+        streamError: null,
+        connection: 'connecting' as Connection,
+        events: [],
+      };
 }

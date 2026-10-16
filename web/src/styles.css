@@ -74,6 +74,33 @@ pre {
   grid-template-columns: 252px minmax(0, 1fr);
   min-height: 100vh;
 }
+.record-connection {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #536e5e;
+  background: #eef5f0;
+  border: 1px solid #dce8df;
+  border-radius: 7px;
+  padding: 11px 14px;
+  margin-bottom: 17px;
+  font-size: 11px;
+  line-height: 1.8;
+}
+.record-connection code {
+  margin-left: auto;
+  font-size: 10px;
+}
+.connection-warning {
+  color: #806029;
+  background: #fbf6e9;
+  border-color: #e9dfc4;
+}
+.record-connection .text-button {
+  margin-left: auto;
+  white-space: nowrap;
+  padding: 0;
+}
 .sidebar {
   background: #fff;
   border-right: 1px solid var(--border);

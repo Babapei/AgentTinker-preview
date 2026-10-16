@@ -24,6 +24,7 @@ import {
 import { ApiError } from './api';
 import type { Run, RunView, Span } from './protocol';
 import { useHistory, useRun } from './use-records';
+import RecordConnection from './RecordConnection';
 import {
   dateTime,
   duration,
@@ -467,9 +468,9 @@ export default function App() {
       navigate(history.runs[0].run_id, null, true);
   }, [history.runs, selection.run, navigate]);
   const search = query.trim().toLocaleLowerCase();
-  const runs = history.runs.filter((run) =>
-    `${run.config.task ?? ''} ${run.run_id}`.toLocaleLowerCase().includes(search),
-  );
+  const runs = history.runs
+    .map((run) => (current.view?.run.run_id === run.run_id ? current.view.run : run))
+    .filter((run) => `${run.config.task ?? ''} ${run.run_id}`.toLocaleLowerCase().includes(search));
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main">
@@ -596,6 +597,15 @@ export default function App() {
             </div>
           )}
           {current.view && (
+            <RecordConnection
+              connection={current.connection}
+              error={current.streamError}
+              count={current.events.length}
+              head={current.view.last_seq}
+              retry={refresh}
+            />
+          )}
+          {current.view && (
             <RunInspector
               key={current.view.run.run_id}
               view={current.view}
@@ -622,7 +632,7 @@ export default function App() {
           )}
           <footer className="main-footer">
             <span>AgentTinker · 让 Agent 的每一步都有据可查</span>
-            <span>检查视图 · 手动刷新读取进度</span>
+            <span>只读检查 · 事件补读与订阅</span>
           </footer>
         </div>
       </main>
