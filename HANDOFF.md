@@ -2,7 +2,7 @@
 
 更新时间：2026-10-16（Asia/Shanghai）。面向新对话、新环境及中断后的接续开发。
 
-**M0–M2 已完成，M3 进行中。** 持久化 checkpoint、重启定位、动态可用性与单变量 fork 后端/API 已完成；界面运行控制、分支、A/B 对比和讲解待接入。165 项后端、41 项前端单元和 15 项实际浏览器回归通过。见 [运行服务](docs/runtime-service.md)、[API](docs/runtime-api.md)及 [M2 验收](docs/m2-acceptance.md)。实际账单按用户确认独立待办，不重复询问。
+**M0–M2 已完成，M3 进行中。** 持久化 checkpoint、重启定位、动态可用性与单变量 fork 后端/API 已完成；界面已接任务/模式/策略配置、运行及取消；分支、A/B 对比和讲解待接入。165 项后端、47 项前端单元和 20 项实际浏览器回归通过。见 [运行服务](docs/runtime-service.md)、[API](docs/runtime-api.md)及 [M2 验收](docs/m2-acceptance.md)。实际账单按用户确认独立待办，不重复询问。
 
 ## 1. 接手先确认这几件事
 
@@ -10,7 +10,7 @@
 2. 阅读 [产品设计](docs/02-product-design.md)、[架构路线](docs/03-architecture-roadmap.md)和 [开发日志](docs/development-log.md)；需要理解复用选择时查看 [竞品调研](docs/01-landscape.md)。
 3. 执行 git status、git log、git remote，核对实际 checkout 和远程；保留已有改动。若后续代码与本快照不同，以实际提交和更新后的日志核对进度。
 4. 检查当前环境的配置与真实可访问性。不要沿用旧环境“已发布”“已就绪”或“已失败”的推断。
-5. 从第 7 节接续 M3 实验界面，沿用已完成的 M0 证据，不重复询问账单等待口径。持久化/fork 后端见 [运行服务](docs/runtime-service.md)；不能把模拟/离线 SDK 测试写成新的真实提供商调用。
+5. 从第 7 节接续 M3 分支与对比界面，沿用已完成的 M0 证据，不重复询问账单等待口径。持久化/fork 后端见 [运行服务](docs/runtime-service.md)；不能把模拟/离线 SDK 测试写成新的真实提供商调用。
 
 本文件是当前状态索引；详细设计以对应文档为准。每个完成的工作节点继续更新开发日志；阶段、阻塞、入口或下一步变化时，同步维护本文件。
 
@@ -73,7 +73,7 @@ Git 保存了源码、锁文件、设计、日志和 examples 中的示例。本
 | [runtime](src/agenttinker/runtime) | 单 owner/幂等/取消；官方 SQLite saver、版本/可用性检查、单变量 fork、前缀继承和重启中断恢复 |
 | [web](web) | React/Vite 检查页、共享协议生成/校验、历史/步骤/原始数据；事件校验/订阅/补读、列表/图、时间线与独立播放状态 |
 | [api](src/agenttinker/api) | 创建/读取/取消/fork、checkpoint 当前可用性、分页、SSE 心跳/补发、协议 schema |
-| [tests](tests) | 165 项 Python、41 项 Vitest、15 项实际 Chromium；M3 后缀 SDK 请求使用离线 MockTransport |
+| [tests](tests) | 165 项 Python、47 项 Vitest、20 项实际 Chromium；模型侧为模拟/离线 SDK |
 
 本次实际安装版本：LangGraph 1.2.14、langgraph-checkpoint 4.3.0、langgraph-checkpoint-sqlite 3.1.2、OpenAI SDK 2.54.0、Pydantic 2.13.5、FastAPI 0.143.2、Uvicorn 0.54.0。SQLite saver 要求 checkpoint >=4.3.0，依赖以锁文件为准；原 M0 真实证据的版本不改写。
 
@@ -103,11 +103,11 @@ M0 实验语义：
 | M0 | 技术验收完成；真实分支、新增用量、价格估算与异常响应观测均已核对，实际账单独立待办 |
 | M1 | 已完成：核心协议、存储、串行运行服务及 HTTP/SSE；失败/重试/取消、刷新、断线续传去重已验证 |
 | M2 | 已完成：实际事件驱动的列表/图、节点详情、时间线、只读播放；未知值与缺失事件降级已验证 |
-| M3 | 未开始：完整超时实验、单变量 fork、A/B 对比和内嵌讲解 |
+| M3 | 进行中：持久化/fork 后端及运行控制界面已完成；分支入口、A/B 对比、讲解与验收待完成 |
 | M4 | 未开始：第二个实验、评价、实验包导入导出、真实参考记录无密钥回看 |
 | M5 | 未开始：实际工具对照与用户使用验证 |
 
-本地 FastAPI 服务已实现；React/Vite 工程已建立；只读检查页已接后端历史与步骤，校验事件后跟随持久化进度，尚无持久化 LangGraph checkpoint 或公开部署。SQLite 已持久化对象、事件和 CheckpointRef，但引用不等于运行时可恢复状态；M0 内存 checkpoint 仍不能跨进程恢复。运行服务已验证在途模型/工具取消与队列取消；HTTP/SSE 已通过真实本机 TCP 断线续传与取消集成验证。
+本地 FastAPI 与 React/Vite 已接任务/模式/策略配置、运行取消、历史检查及事件回放，尚未公开部署。服务的 LangGraph checkpoint 已由独立 SQLite saver 持久化；M0 CLI 的内存状态仍不能跨进程恢复。运行服务已验证在途模型/工具取消与队列取消；HTTP/SSE 已通过真实本机 TCP 断线续传与取消集成验证。
 
 首版技术路线仍为 React/TypeScript/Vite + React Flow、Python/FastAPI/Pydantic、LangGraph、SQLite + 文件存储、HTTP + SSE。公开托管、域名、额外模型和外部工具服务尚未确定；当前不需要额外托管数据库或搜索服务账号。
 
@@ -142,11 +142,11 @@ uv 命令在本环境使用 `UV_CACHE_DIR=/tmp/agenttinker-uv-cache`。继续保
 1. **M0–M2 已完成。** 技术验证、运行记录、事件重建/订阅/补发、列表/图/详情/时间线及只读历史播放已有验收证据。前端 40 项 Vitest、15 项实际 Chromium 与后端 136 项回归通过；M2 模型侧为明确模拟，不重复付费。见 [M2 验收](docs/m2-acceptance.md)及 [前端说明](docs/web-inspector.md)。
 2. **持久化与 fork 后端已验证。** Agent v2 使用官方 SQLite saver；子进程重启可定位旧点，不自动重发。新 Run 声明 fork/patch，GET checkpoint-availability 逐次检测，POST forks 重新核对终态、能力、版本/数据/价格、真实状态、字段与 live 配置；旧内存能力不升级。Intervention 原子保存在 run.created，A 原事件和 saver checkpoint/pending writes 不变。状态位于 `<database>.checkpoints.sqlite`，需保留两库并正确处理 WAL；跨库无原子事务，未发布状态不自动恢复。
 3. **单变量对照语义。** 分支仅允许 tool_retry_limit/top_k，保留模型原查询/tool call ID、fixture/版本和同一故障计划。A 首次工具失败，B 新执行区间首次仍注入同样故障；B 引用而不重复执行/计费前缀，A 历史不变。
-4. **下一步接实验界面。** 任务/模式/策略配置、运行取消、可用边界单变量分支、A/B 差异和内嵌讲解。当前 UI 仍只读，不能据后端完成宣布 M3 验收。生成协议已有 Intervention/CheckpointAvailability；fork 每次只改一个字段，拒绝空补丁/原值/多字段，源 Run 须终态。按 P01–P05/P09 验收，真实参考案例按需要调用并记录，不把模拟结果冒充真实验证。
+4. **下一步接分支与对比界面。** 任务/模式/策略表单、实际运行与取消已接 API；未确认请求在会话存储保留幂等键，响应丢失/刷新后仍可重试同一运行。当前继续可用边界单变量分支、A/B 差异与内嵌讲解，不能据部分完成宣布 M3 验收。生成协议已有 Intervention/CheckpointAvailability；fork 每次只改一个字段，拒绝空补丁/原值/多字段，源 Run 须终态。按 P01–P05/P09 验收，真实参考案例按需要调用并记录，不把模拟结果冒充真实验证。
 5. **入口。** 固定 bash scripts/setup.sh 安装 Python/npm 锁定依赖；uv run agenttinker-server --database artifacts/runs.sqlite 默认本机 8000，npm --prefix web run dev 默认 5173。模拟预览用 uv run python scripts/serve_web_test.py，仅临时数据。生产静态托管和公开部署未实现。
 6. **逐节点完成。** 每块验证、更新文档与日志，提交推送并核对远程；日常实现和既定 M0 费用口径已授权，关键范围变化先讨论。
 7. **独立账单待办。** 实际扣费仍未知，余额不是逐笔账单；有可对应的费用证据时再核对，不为此重复付费。
 
 ## 8. 给新对话的最短接续提示
 
-> 请在 Babapei/AgentTinker-preview 的 work 分支接续，先读 HANDOFF.md、AGENTS.md、运行服务/API、设计和日志，再核对 Git 与环境。M0–M2 完成，M3 持久化 checkpoint、重启定位、动态可用性和单变量 fork 后端/API 已验证；165 后端、41 前端、15 浏览器回归通过，模型侧为模拟/离线 SDK。下一步运行控制、分支界面、A/B 对比和讲解，再按原条件验收 M3。UI 仍只读；事件播放不是恢复执行，旧内存记录不能 fork。逐块验证、记录、提交推送，不重复询问已批准事项。
+> 请在 Babapei/AgentTinker-preview 的 work 分支接续，先读 HANDOFF.md、AGENTS.md、运行服务/API、设计和日志，再核对 Git 与环境。M0–M2 完成，M3 持久化 checkpoint、重启定位、动态可用性和单变量 fork 后端/API 已验证；165 后端、47 前端、20 浏览器回归通过，运行/取消表单已接入，模型侧为模拟/离线 SDK。下一步分支界面、A/B 对比和讲解，再按原条件验收 M3。事件播放不是恢复执行，旧内存记录不能 fork。逐块验证、记录、提交推送，不重复询问已批准事项。

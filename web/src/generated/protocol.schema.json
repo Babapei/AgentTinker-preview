@@ -402,6 +402,29 @@
       "title": "Cost",
       "type": "object"
     },
+    "ForkRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "patch": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Patch",
+          "type": "object"
+        },
+        "source_checkpoint_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+          "title": "Source Checkpoint Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_checkpoint_id",
+        "patch"
+      ],
+      "title": "ForkRequest",
+      "type": "object"
+    },
     "Intervention": {
       "additionalProperties": false,
       "properties": {
@@ -962,6 +985,75 @@
         "next_offset"
       ],
       "title": "RunPage",
+      "type": "object"
+    },
+    "RunRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "inject_timeout": {
+          "default": true,
+          "title": "Inject Timeout",
+          "type": "boolean"
+        },
+        "mode": {
+          "enum": [
+            "live",
+            "synthetic"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "\\S",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "policy": {
+          "$ref": "#/$defs/ToolPolicy"
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "enum": [
+                "openai",
+                "deepseek"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider"
+        },
+        "task": {
+          "default": "Compare the fictional release notes. Search for release, then cite the returned document IDs.",
+          "maxLength": 8000,
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Task",
+          "type": "string"
+        }
+      },
+      "required": [
+        "mode",
+        "provider",
+        "model",
+        "task",
+        "policy",
+        "inject_timeout"
+      ],
+      "title": "RunRequest",
       "type": "object"
     },
     "RunStatus": {
@@ -1821,6 +1913,31 @@
       "title": "ToolFailure",
       "type": "object"
     },
+    "ToolPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "tool_retry_limit": {
+          "default": 0,
+          "maximum": 3,
+          "minimum": 0,
+          "title": "Tool Retry Limit",
+          "type": "integer"
+        },
+        "top_k": {
+          "default": 2,
+          "maximum": 3,
+          "minimum": 1,
+          "title": "Top K",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tool_retry_limit",
+        "top_k"
+      ],
+      "title": "ToolPolicy",
+      "type": "object"
+    },
     "ToolRetryScheduled": {
       "additionalProperties": false,
       "properties": {
@@ -2088,8 +2205,14 @@
       ],
       "title": "Event"
     },
+    "fork_request": {
+      "$ref": "#/$defs/ForkRequest"
+    },
     "run_page": {
       "$ref": "#/$defs/RunPage"
+    },
+    "run_request": {
+      "$ref": "#/$defs/RunRequest"
     },
     "run_view": {
       "$ref": "#/$defs/RunView"
@@ -2103,7 +2226,9 @@
     "run_page",
     "span_page",
     "event",
-    "checkpoint_availability"
+    "checkpoint_availability",
+    "run_request",
+    "fork_request"
   ],
   "title": "RuntimeProtocol",
   "type": "object"

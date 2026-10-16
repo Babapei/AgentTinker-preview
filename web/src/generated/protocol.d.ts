@@ -188,9 +188,17 @@ export type SchemaVersion10 = '0.1';
 export type Seq6 = number;
 export type SpanId7 = string | null;
 export type Type6 = 'checkpoint.saved';
+export type SourceCheckpointId2 = string;
 export type Items = Run[];
 export type NextOffset = number | null;
 export type Total = number;
+export type InjectTimeout = boolean;
+export type Mode1 = 'live' | 'synthetic';
+export type Model1 = string | null;
+export type ToolRetryLimit = number;
+export type TopK = number;
+export type Provider2 = ('openai' | 'deepseek') | null;
+export type Task1 = string;
 export type Checkpoints = CheckpointRef[];
 export type LastSeq = number;
 export type SchemaVersion11 = '0.1';
@@ -202,7 +210,9 @@ export type Total1 = number;
 export interface RuntimeProtocol {
   checkpoint_availability: CheckpointAvailability;
   event: Event;
+  fork_request: ForkRequest;
   run_page: RunPage;
+  run_request: RunRequest;
   run_view: RunView;
   span_page: SpanPage;
 }
@@ -486,10 +496,29 @@ export interface CheckpointSaved {
   span_id: SpanId7;
   type: Type6;
 }
+export interface ForkRequest {
+  patch: Patch1;
+  source_checkpoint_id: SourceCheckpointId2;
+}
+export interface Patch1 {
+  [k: string]: JsonValue;
+}
 export interface RunPage {
   items: Items;
   next_offset: NextOffset;
   total: Total;
+}
+export interface RunRequest {
+  inject_timeout: InjectTimeout;
+  mode: Mode1;
+  model: Model1;
+  policy: ToolPolicy1;
+  provider: Provider2;
+  task: Task1;
+}
+export interface ToolPolicy1 {
+  tool_retry_limit: ToolRetryLimit;
+  top_k: TopK;
 }
 export interface RunView {
   checkpoints: Checkpoints;

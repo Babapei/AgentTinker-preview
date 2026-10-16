@@ -23,7 +23,8 @@ body {
 }
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 button,
@@ -53,6 +54,111 @@ input:focus-visible,
 pre:focus-visible {
   outline: 3px solid #82bba2;
   outline-offset: 3px;
+}
+textarea:focus-visible {
+  outline: 3px solid #82bba2;
+  outline-offset: 3px;
+}
+.heading-actions {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+.button.primary-button {
+  background: var(--green);
+  color: #fff;
+  border-color: var(--green);
+}
+.experiment-panel,
+.run-control {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  padding: 20px;
+}
+.experiment-panel > p,
+.form-note,
+.run-control p {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #53685c;
+}
+.experiment-panel .panel-heading {
+  padding: 0 0 12px;
+}
+.experiment-panel fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  min-width: 0;
+  margin-bottom: 16px;
+}
+.form-field :is(input, select, textarea) {
+  width: 100%;
+  min-width: 0;
+  background: #fbfcfb;
+  border: 1px solid #b8c8bd;
+  border-radius: 6px;
+  padding: 11px;
+  color: #24332e;
+  font-size: 12px;
+}
+.form-field textarea {
+  resize: vertical;
+  min-height: 86px;
+  line-height: 1.8;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 15px;
+}
+.check-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.action-error {
+  color: #963b30;
+  font-size: 12px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.run-control {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+.run-control strong {
+  font-size: 12px;
+  margin-right: 12px;
+}
+.run-control p {
+  margin-bottom: 0;
+}
+.run-control .button {
+  margin-left: auto;
+}
+@media (max-width: 680px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .experiment-panel,
+  .run-control {
+    padding: 15px;
+  }
 }
 button {
   border: none;

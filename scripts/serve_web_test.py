@@ -33,9 +33,9 @@ def test_app(database):
             return super().complete(messages)
 
     def factory(request):
-        if request.mode != "synthetic" or request.task not in gates:
+        if request.mode != "synthetic":
             return no_execution(request)
-        return Gated(*gates[request.task])
+        return Gated(*gates[request.task]) if request.task in gates else SyntheticModel()
 
     def service_factory(path, **kwargs):
         return RunService(path, model_factory=factory, **kwargs)
@@ -54,6 +54,13 @@ def test_app(database):
         if not entered.wait(3):
             raise TimeoutError("offline_browser_start")
         return {"run_id": view.run.run_id}
+
+    @app.post("/__test__/prepare")
+    def prepare_fixture(body: dict):
+        # Register a task gate, then let the browser submit through the production API.
+        task = body["task"]
+        gates[task] = Event(), Event()
+        return {"ready": True}
 
     @app.post("/__test__/runs/{run_id}/release")
     def release_fixture(run_id: str):

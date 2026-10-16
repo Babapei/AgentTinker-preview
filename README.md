@@ -36,7 +36,7 @@
 
 **M0–M2 已完成，下一步 M3 首个实验闭环。** 已贯通核心协议、SQLite、运行服务、HTTP/SSE 和浏览器事件校验，支持列表/实际执行图、节点详情、时间线与只读历史播放。后端 136 项、前端 40 项单元及 15 项浏览器集成通过；本轮模型侧为模拟，没有新付费调用。证据见 [M2 验收](docs/m2-acceptance.md)，实际账单独立待办。
 
-M3 进行中：已接官方 SQLite checkpoint saver、重启定位、动态可用性和单变量 fork API。分支只执行后缀、引用旧前缀，保留 A 的事件及运行时状态；165 项后端、41 项前端单元和 15 项实际 Chromium 回归通过，无新增付费调用。界面仍只读，下一步任务/运行控制、分支、A/B 对比和讲解。详见 [运行服务](docs/runtime-service.md)和 [API](docs/runtime-api.md)。
+M3 进行中：已接官方 SQLite checkpoint saver、重启定位、动态可用性和单变量 fork API。分支只执行后缀、引用旧前缀，保留 A 的事件及运行时状态；任务/模式/策略表单及运行取消已接 API，丢失响应后可使用原幂等键重试。165 项后端、47 项前端单元、20 项实际 Chromium 回归通过，无新增付费调用；下一步分支、A/B 对比和讲解。详见 [运行服务](docs/runtime-service.md)和 [API](docs/runtime-api.md)。
 
 本地后端入口（启动不调用模型）：
 
@@ -45,4 +45,4 @@ bash scripts/setup.sh
 uv run agenttinker-server --database artifacts/runs.sqlite
 ```
 
-默认监听 `127.0.0.1:8000`，API 文档 `/docs`。创建 Run 时必须显式选择 live/synthetic，详见 [HTTP 与 SSE](docs/runtime-api.md)。只读检查界面通过 npm --prefix web run dev 启动，默认本机 5173；详见 [前端说明](docs/web-inspector.md)。完整实验工作台和公开部署尚未完成。
+默认监听 `127.0.0.1:8000`，API 文档 `/docs`。创建 Run 时必须显式选择 live/synthetic，详见 [HTTP 与 SSE](docs/runtime-api.md)。实验界面通过 npm --prefix web run dev 启动，默认本机 5173；详见 [前端说明](docs/web-inspector.md)。完整实验工作台和公开部署尚未完成。

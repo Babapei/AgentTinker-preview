@@ -8,7 +8,7 @@ from pydantic.json_schema import GenerateJsonSchema
 from agenttinker.api.app import RunPage, SpanPage
 from agenttinker.core.events import Event
 from agenttinker.core.projection import RunView
-from agenttinker.runtime.service import CheckpointAvailability
+from agenttinker.runtime.service import CheckpointAvailability, ForkRequest, RunRequest
 
 
 class ResponseSchema(GenerateJsonSchema):
@@ -26,6 +26,8 @@ class RuntimeProtocol(BaseModel):
     span_page: SpanPage
     event: Event
     checkpoint_availability: tuple[CheckpointAvailability, ...]
+    run_request: RunRequest
+    fork_request: ForkRequest
 
 
 if __name__ == "__main__":

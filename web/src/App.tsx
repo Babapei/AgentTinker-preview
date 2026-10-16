@@ -12,6 +12,7 @@ import {
   Layers2,
   ListOrdered,
   LockKeyhole,
+  Plus,
   RefreshCw,
   Search,
   Terminal,
@@ -25,6 +26,8 @@ import RecordConnection from './RecordConnection';
 import Status from './Status';
 import JsonBlock from './JsonBlock';
 import EventWorkspace from './EventWorkspace';
+import RunComposer from './RunComposer';
+import RunControl from './RunControl';
 import {
   dateTime,
   duration,
@@ -459,6 +462,7 @@ function RunInspector({
 }
 
 export default function App() {
+  const [composing, setComposing] = useState(false);
   const [selection, setSelection] = useState(readSelection);
   const [revision, setRevision] = useState(0);
   const [query, setQuery] = useState('');
@@ -581,8 +585,8 @@ export default function App() {
             <strong>运行记录</strong>
           </div>
           <span className="readonly-tag">
-            <LockKeyhole size={12} />
-            只读检查
+            <FlaskConical size={12} />
+            本地实验
           </span>
         </header>
         <div className="main-content">
@@ -594,15 +598,31 @@ export default function App() {
               </h1>
               <p>沿着每一次调用，找到结果背后的证据。</p>
             </div>
-            <button
-              className="button"
-              onClick={refresh}
-              disabled={history.loading || current.loading}
-            >
-              <RefreshCw size={14} />
-              {current.loading ? '读取中…' : '刷新记录'}
-            </button>
+            <div className="heading-actions">
+              <button className="button primary-button" onClick={() => setComposing(true)}>
+                <Plus size={14} />
+                新建实验
+              </button>
+              <button
+                className="button"
+                onClick={refresh}
+                disabled={history.loading || current.loading}
+              >
+                <RefreshCw size={14} />
+                {current.loading ? '读取中…' : '刷新记录'}
+              </button>
+            </div>
           </div>
+          {composing && (
+            <RunComposer
+              close={() => setComposing(false)}
+              created={(view) => {
+                setComposing(false);
+                navigate(view.run.run_id, null);
+                refresh();
+              }}
+            />
+          )}
           {current.error && <ErrorNotice error={current.error} retry={refresh} />}
           {current.loading && !current.view && (
             <div className="empty-state loading-state" role="status">
@@ -618,6 +638,13 @@ export default function App() {
               count={current.events.length}
               head={current.view.last_seq}
               retry={refresh}
+            />
+          )}
+          {current.view && (
+            <RunControl
+              key={`control:${current.view.run.run_id}`}
+              view={current.view}
+              cancelled={refresh}
             />
           )}
           {current.view && (
@@ -651,7 +678,7 @@ export default function App() {
               <p>
                 {history.error
                   ? '服务连接后，可以继续检查保存的实验。'
-                  : '选择一条运行，检查模型决策、工具尝试与实际返回。暂无记录时，先在后端运行一个实验。'}
+                  : '选择一条记录，或点击“新建实验”，观察模型决策、工具尝试与实际返回。'}
               </p>
               <span className="empty-hint">
                 <Database size={13} /> 查看历史不会调用模型
@@ -660,7 +687,7 @@ export default function App() {
           )}
           <footer className="main-footer">
             <span>AgentTinker · 让 Agent 的每一步都有据可查</span>
-            <span>只读检查 · 事件补读与订阅</span>
+            <span>显式运行 · 历史回看不调用模型</span>
           </footer>
         </div>
       </main>

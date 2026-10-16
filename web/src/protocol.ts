@@ -9,6 +9,9 @@ export type RuntimeEvent = RuntimeProtocol['event'];
 export type Run = RunView['run'];
 export type Span = RunView['spans'][number];
 export type Checkpoint = RunView['checkpoints'][number];
+export type RunRequest = RuntimeProtocol['run_request'];
+export type ForkRequest = RuntimeProtocol['fork_request'];
+export type CheckpointAvailability = RuntimeProtocol['checkpoint_availability'][number];
 
 const ajv = new Ajv({ strict: false, allErrors: false });
 addFormats(ajv);
