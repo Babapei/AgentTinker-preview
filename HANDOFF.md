@@ -2,7 +2,7 @@
 
 更新时间：2026-10-16（Asia/Shanghai）。面向新对话、新环境及中断后的接续开发。
 
-**M0–M2 已完成，下一步 M3 首个实验闭环。** 已有持久化运行服务、HTTP/SSE、事件校验与补发、列表/实际执行图、步骤详情、时间线和只读历史播放；后端 136 项、前端 40 项单元与 15 项浏览器测试通过。证据见 [M2 验收](docs/m2-acceptance.md)、[M1 验收](docs/m1-acceptance.md)和 [M0 验收](docs/m0-acceptance.md)。实际账单按用户确认独立待办，不重复询问。
+**M0–M2 已完成，M3 进行中。** 已有检查/回放、原生持久化 checkpoint 和重启定位；fork 执行尚未接入。后端 140 项、前端 40 项单元通过，M2 有 15 项浏览器验收。证据见 [M2 验收](docs/m2-acceptance.md)、[M1 验收](docs/m1-acceptance.md)和 [M0 验收](docs/m0-acceptance.md)。实际账单按用户确认独立待办，不重复询问。
 
 ## 1. 接手先确认这几件事
 
@@ -10,7 +10,7 @@
 2. 阅读 [产品设计](docs/02-product-design.md)、[架构路线](docs/03-architecture-roadmap.md)和 [开发日志](docs/development-log.md)；需要理解复用选择时查看 [竞品调研](docs/01-landscape.md)。
 3. 执行 git status、git log、git remote，核对实际 checkout 和远程；保留已有改动。若后续代码与本快照不同，以实际提交和更新后的日志核对进度。
 4. 检查当前环境的配置与真实可访问性。不要沿用旧环境“已发布”“已就绪”或“已失败”的推断。
-5. 从第 7 节接续 M3，沿用已完成的 M0 证据，不重新要求用户确认账单等待口径。
+5. 从第 7 节接续 M3，沿用已完成的 M0 证据，不重新要求用户确认账单等待口径。新增持久化节点见 [运行服务](docs/runtime-service.md)：140 项后端和 40 项前端测试通过，fork 尚未接入。
 
 本文件是当前状态索引；详细设计以对应文档为准。每个完成的工作节点继续更新开发日志；阶段、阻塞、入口或下一步变化时，同步维护本文件。
 
@@ -53,7 +53,7 @@
 | 17c19c2 | 保存旧环境交接断点与读取入口 |
 | 0c1f3d3 | 新环境全仓审视及首次真实 DeepSeek 分支证据 |
 
-Git 保存了源码、锁文件、设计、日志和 examples 中的示例。本次新增的 [真实 DeepSeek 技术验证记录](examples/m0/deepseek-retry-live.json)也纳入版本管理。artifacts/、.venv/、缓存及 .env 文件不入库，不能将它们视为已备份。本环境 artifacts 含 synthetic、live 和不入库的账户查询产物；不可整目录提交。当前 checkpoint 只在单个进程内存中，JSON 报告不能恢复已退出进程的 checkpoint。
+Git 保存了源码、锁文件、设计、日志和 examples 中的示例。本次新增的 [真实 DeepSeek 技术验证记录](examples/m0/deepseek-retry-live.json)也纳入版本管理。artifacts/、.venv/、缓存及 .env 文件不入库，不能将它们视为已备份。本环境 artifacts 含 synthetic、live 和不入库的账户查询产物；不可整目录提交。M0 checkpoint 仍在内存，JSON 报告不能恢复；新版服务另存真实 SQLite saver 数据库，详见第 7 节。
 
 ## 4. 已实现的代码及边界
 
@@ -73,9 +73,9 @@ Git 保存了源码、锁文件、设计、日志和 examples 中的示例。本
 | [runtime](src/agenttinker/runtime) | 单 owner、幂等启动、真实 LangGraph 串行执行、协作式取消和重启中断恢复 |
 | [web](web) | React/Vite 检查页、共享协议生成/校验、历史/步骤/原始数据；事件校验/订阅/补读、列表/图、时间线与独立播放状态 |
 | [api](src/agenttinker/api) | 本地服务入口、创建/读取/取消、分页、SSE 心跳和游标补发、协议 schema |
-| [tests](tests) | 136 项 Python：M0 63 项，核心 32 项，存储 13 项，运行服务 12 项，API 16 项；另有前端 40 项 Vitest 与 15 项浏览器测试 |
+| [tests](tests) | 140 项 Python：原有 136 项加 4 项持久化/restart 检查；另有前端 40 项 Vitest 与 M2 的 15 项浏览器验收 |
 
-本次实际安装版本：LangGraph 1.2.14、langgraph-checkpoint 4.2.0、OpenAI SDK 2.54.0、Pydantic 2.13.5、FastAPI 0.143.2、Uvicorn 0.54.0。依赖安装以仓库锁文件为准。
+本次实际安装版本：LangGraph 1.2.14、langgraph-checkpoint 4.3.0、langgraph-checkpoint-sqlite 3.1.2、OpenAI SDK 2.54.0、Pydantic 2.13.5、FastAPI 0.143.2、Uvicorn 0.54.0。SQLite saver 要求 checkpoint >=4.3.0，依赖以锁文件为准；原 M0 真实证据的版本不改写。
 
 M0 实验语义：
 
@@ -138,7 +138,7 @@ uv 命令在本环境使用 `UV_CACHE_DIR=/tmp/agenttinker-uv-cache`。继续保
 ## 7. 下一步：M3 首个实验闭环
 
 1. **M0–M2 已完成。** 技术验证、运行记录、事件重建/订阅/补发、列表/图/详情/时间线及只读历史播放已有验收证据。前端 40 项 Vitest、15 项实际 Chromium 与后端 136 项回归通过；M2 模型侧为明确模拟，不重复付费。见 [M2 验收](docs/m2-acceptance.md)及 [前端说明](docs/web-inspector.md)。
-2. **先接持久化 checkpoint 与 fork。** 复用 LangGraph saver，保存兼容版本和真实运行时状态；先验证服务重启后能定位旧工具前 checkpoint，再做能力检测、允许字段校验和 fork API。当前 fork_from_checkpoint=false、saver 仍为内存，不能用 UI 事件投影冒充 checkpoint。
+2. **持久化与重启定位已验证，继续 fork。** Agent v2 复用官方 SQLite saver，真实子进程正常退出/工具中意外退出后均能定位旧工具前状态，严格核对版本、所属 Run 和原配置，不自动重发。下一步能力检测、允许字段校验和 fork API；当前 fork_from_checkpoint=false。不能用 UI 事件投影冒充 checkpoint，也不能给旧内存记录自动增加能力。新版状态在 `<database>.checkpoints.sqlite`，需保留真实数据库，运行中备份须正确处理两库 WAL；旧 M0 内存状态未恢复。
 3. **单变量对照语义。** 分支仅允许 tool_retry_limit/top_k，保留模型原查询/tool call ID、fixture/版本和同一故障计划。A 首次工具失败，B 新执行区间首次仍注入同样故障；B 引用而不重复执行/计费前缀，A 历史不变。
 4. **随后接实验界面。** 任务/运行配置、明确模式、运行与取消、可用边界分支、A/B 差异和内嵌讲解。按产品 P01–P05/P09 验收，真实参考案例按实际需要调用并记录，不把模拟结果冒充真实验证。
 5. **入口。** 固定 bash scripts/setup.sh 安装 Python/npm 锁定依赖；uv run agenttinker-server --database artifacts/runs.sqlite 默认本机 8000，npm --prefix web run dev 默认 5173。模拟预览用 uv run python scripts/serve_web_test.py，仅临时数据。生产静态托管和公开部署未实现。
@@ -147,4 +147,4 @@ uv 命令在本环境使用 `UV_CACHE_DIR=/tmp/agenttinker-uv-cache`。继续保
 
 ## 8. 给新对话的最短接续提示
 
-> 请在 Babapei/AgentTinker-preview 的 work 分支接续。先读 HANDOFF.md、AGENTS.md、docs/m2-acceptance.md、docs/03-architecture-roadmap.md 和开发日志，再核对 Git 与环境。M0–M2 已完成，136 项后端、40 项前端、15 项浏览器验证通过。下一步 M3：先持久化 LangGraph checkpoint、重启定位/能力检测和允许字段 fork API，再任务运行控制、A/B 对比和内嵌讲解。当前 fork 能力仍 false；事件播放不是恢复执行。逐块验证、记录、提交推送，不重复询问已批准事项。
+> 请在 Babapei/AgentTinker-preview 的 work 分支接续。先读 HANDOFF.md、AGENTS.md、docs/m2-acceptance.md、docs/03-architecture-roadmap.md 和开发日志，再核对 Git 与环境。M0–M2 已完成，M3 的 SQLite checkpoint 持久化和重启定位已验证；140 项后端、40 项前端通过，M2 有 15 项浏览器验收。继续能力检测和允许字段 fork API，再任务运行控制、A/B 对比和内嵌讲解。当前 fork 能力仍 false；事件播放不是恢复执行。逐块验证、记录、提交推送，不重复询问已批准事项。

@@ -7,7 +7,6 @@ from time import perf_counter
 from typing import Any, TypedDict
 from uuid import uuid4
 
-from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 
 from agenttinker.core.records import CheckpointRef
@@ -15,10 +14,20 @@ from agenttinker.m0.fixtures import search_documents
 from agenttinker.m0.openai_model import OpenAIModel
 from agenttinker.m0.probe import SYSTEM
 from agenttinker.m0.protocol import validate_reply
+from agenttinker.runtime.checkpoints import (
+    AGENT_VERSION,
+    SAVER_ID,
+    TOOL_VERSIONS,
+    CheckpointUnavailable,
+    checkpoint_config,
+)
 from agenttinker.runtime.journal import ExecutionFailed, RunJournal
+from agenttinker.storage.sqlite import SQLiteEventStore
 
 
 class SerialState(TypedDict):
+    run_id: str
+    run_config: dict
     messages: list[dict[str, Any]]
     tool_call: dict | None
     model_span_id: str | None
@@ -125,17 +134,54 @@ class SerialExecutor:
             }
         raise ExecutionFailed("tool_retry_exhausted")
 
-    def execute(self):
+    @classmethod
+    def graph(cls, saver, *, executor=None):
+        def read_only(_state):
+            raise RuntimeError("checkpoint_inspection_cannot_execute")
+
         graph = StateGraph(SerialState)
-        graph.add_node("model", self.model_node)
-        graph.add_node("tool", self.tool_node)
+        graph.add_node("model", executor.model_node if executor else read_only)
+        graph.add_node("tool", executor.tool_node if executor else read_only)
         graph.add_edge(START, "model")
         graph.add_conditional_edges("model", lambda state: "tool" if state["tool_call"] else END)
         graph.add_edge("tool", "model")
-        compiled = graph.compile(checkpointer=InMemorySaver(), interrupt_before=["tool"])
+        return graph.compile(checkpointer=saver, interrupt_before=["tool"])
+
+    @classmethod
+    def load_checkpoint(cls, saver, view, reference):
+        config = checkpoint_config(view, reference)
+        if saver.get_tuple(config) is None:
+            raise CheckpointUnavailable("checkpoint_missing")
+        snapshot = cls.graph(saver).get_state(config)
+        state = snapshot.values
+        prefix = next(
+            (span for span in view.spans if span.span_id == state.get("model_span_id")), None
+        )
+        if (
+            snapshot.next != ("tool",)
+            or state.get("run_id") != view.run.run_id
+            or state.get("run_config") != view.run.config.model_dump(mode="json")
+            or state.get("documents") is not None
+            or state.get("tool_span_id") is not None
+            or not state.get("tool_call")
+            or not state.get("messages")
+            or not (
+                prefix is not None
+                and prefix.kind == "model"
+                and prefix.status == "succeeded"
+                or state.get("model_span_id") in view.run.inherited_span_ids
+            )
+        ):
+            raise CheckpointUnavailable("checkpoint_state_invalid")
+        return snapshot
+
+    def execute(self, saver):
+        compiled = self.graph(saver, executor=self)
         config = {"configurable": {"thread_id": f"thread_{uuid4().hex}"}, "recursion_limit": 6}
         compiled.invoke(
             {
+                "run_id": self.journal.run_id,
+                "run_config": self._run_config(),
                 "messages": [
                     {"role": "system", "content": SYSTEM},
                     {"role": "user", "content": self.request.task},
@@ -156,11 +202,15 @@ class SerialExecutor:
                 run_id=self.journal.run_id,
                 adapter="langgraph",
                 runtime_version=version("langgraph"),
-                agent_version="1",
-                tool_versions={"search_documents": "1"},
-                locator=snapshot.config["configurable"],
-                # Saver lifetime is this execution; no persistent fork claim.
+                agent_version=AGENT_VERSION,
+                tool_versions=TOOL_VERSIONS,
+                locator={"store": SAVER_ID, **snapshot.config["configurable"]},
+                # Enabled once the fork dispatch path is available.
                 allowed_patch_fields=(),
             )
         )
         compiled.invoke(None, snapshot.config)
+
+    def _run_config(self):
+        with SQLiteEventStore(self.journal.database) as store:
+            return store.get_view(self.journal.run_id).run.config.model_dump(mode="json")

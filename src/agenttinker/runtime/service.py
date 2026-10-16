@@ -5,7 +5,6 @@ import json
 import os
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import UTC, datetime
-from importlib.metadata import version
 from pathlib import Path
 from threading import RLock
 from typing import Literal
@@ -22,11 +21,18 @@ from agenttinker.m0.models import ToolPolicy
 from agenttinker.m0.openai_model import OpenAIModel, ProviderNotConfigured
 from agenttinker.m0.probe import TASK
 from agenttinker.m0.synthetic import SyntheticModel
+from agenttinker.runtime.checkpoints import (
+    AGENT_ID,
+    AGENT_VERSION,
+    TOOL_VERSIONS,
+    CheckpointUnavailable,
+    checkpoint_path,
+    open_checkpoints,
+    runtime_versions,
+)
 from agenttinker.runtime.journal import ExecutionFailed, RunCancelled, RunJournal
 from agenttinker.runtime.serial import SerialExecutor
 from agenttinker.storage.sqlite import SQLiteEventStore
-
-AGENT_ID = "serial-checkpoint"
 
 
 class RunRequest(ValueModel):
@@ -100,6 +106,16 @@ class RunService:
         with SQLiteEventStore(self.database) as store:
             return store.get_view(run_id)
 
+    def resolve_checkpoint(self, run_id, checkpoint_id):
+        view = self.get(run_id)
+        reference = next(
+            (item for item in view.checkpoints if item.checkpoint_id == checkpoint_id), None
+        )
+        if reference is None or not checkpoint_path(self.database).is_file():
+            raise CheckpointUnavailable("checkpoint_missing")
+        with open_checkpoints(self.database) as saver:
+            return SerialExecutor.load_checkpoint(saver, view, reference)
+
     def _status(self, run_id, status, reason=None):
         with self._lock:
             previous = self.get(run_id).run.status
@@ -158,7 +174,7 @@ class RunService:
                 updated_at=now,
                 capabilities=Capabilities(run_from_start=True),
                 config=RunConfig(
-                    agent=VersionRef(id=AGENT_ID, version="1"),
+                    agent=VersionRef(id=AGENT_ID, version=AGENT_VERSION),
                     task=resolved.task,
                     tool_policy=resolved.policy.model_dump(),
                     price_version=self.pricing.version if self.pricing else None,
@@ -166,16 +182,13 @@ class RunService:
                     requested_model=resolved.model,
                     model_parameters=model_parameters,
                     prompt_version="single-tool-v1",
-                    tool_versions={"search_documents": "1"},
+                    tool_versions=TOOL_VERSIONS,
                     fixture_hash=fixture_hash(),
                     fault_plan=VersionRef(id="first-search-timeout", version="1")
                     if resolved.inject_timeout
                     else None,
                     fault_parameters={"inject_timeout": resolved.inject_timeout},
-                    runtime_versions={
-                        name: version(name)
-                        for name in ("langgraph", "langgraph-checkpoint", "openai")
-                    },
+                    runtime_versions=runtime_versions(),
                 ),
             )
             view, created = store.create_requested_run(run, request_key, fingerprint)
@@ -212,7 +225,8 @@ class RunService:
             model = self.model_factory(request)
             if model.mode != request.mode or model.provider != (request.provider or "synthetic"):
                 raise ExecutionFailed("adapter_provenance_mismatch")
-            SerialExecutor(self.journal(run_id), request, model, self.tool).execute()
+            with open_checkpoints(self.database) as saver:
+                SerialExecutor(self.journal(run_id), request, model, self.tool).execute(saver)
             self._finish(run_id, RunStatus.SUCCEEDED)
         except RunCancelled:
             self._finish(run_id, RunStatus.CANCELLED)

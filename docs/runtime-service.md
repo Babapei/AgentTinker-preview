@@ -31,6 +31,10 @@ cancel 对终态和重复请求幂等。queued 直接经过 cancel_requested 进
 
 每个数据库仅允许一个 RunService owner，通过跨进程文件锁确认；第二个 owner 拒绝启动。正常关闭停止接收请求、取消活动任务并等待在途结果。异常退出后，新 owner 获取锁再把旧非终态原生 Run 标为 interrupted，未返回的用量保持未知；不自动重试或重新发送调用。此机制适用于当前本机单用户服务，不提供分布式调度。
 
-CheckpointRef 已写入 SQLite，但 LangGraph saver 仍仅在执行进程内存中，运行服务不声明 fork 能力。跨进程恢复执行和策略分支在后续任务接入持久化 saver 后实现；事件回看不调用模型。
+M3 已接入官方 SqliteSaver，真实状态保存在事件库旁的 `<database>.checkpoints.sqlite`。需同时保留两库，运行中备份须正确处理 WAL。saver 先提交状态，再追加 checkpoint.saved；跨库无原子事务，崩溃可能留下未发布状态，服务不据此自动恢复或重发调用。
 
-12 项服务测试覆盖失败/重试、排队与在途取消、用量保留、并发幂等、调度失败、owner 排斥、子进程异常退出恢复和 SQLite v1 迁移；加上 16 项 API 集成及核心/存储/M0 验证，合计 136 项。全部使用本地或模拟调用，没有新付费请求。
+新版 Agent 为 v2，记录 LangGraph、checkpoint、SQLite saver、SDK、prompt、工具与夹具版本。`resolve_checkpoint(run_id, checkpoint_id)` 只读明确历史配置，核对版本、所属 Run、配置和工具前边界，拒绝缺失、不兼容或错属状态。检查不构造模型、不调用工具、不改写事件。旧内存引用仍可查看，不能恢复；M0 CLI 保持内存 saver。
+
+当前尚未接分支调度，fork 能力仍 false；下一节点接能力检测、允许字段补丁与分支执行。
+
+原有 136 项后端回归和 4 项新持久化测试通过，覆盖真实子进程结束后旧边界定位、工具中异常退出后的 interrupted、无自动重发、版本不匹配及缺失/错属状态；全部使用本地或模拟调用，没有新付费请求。
