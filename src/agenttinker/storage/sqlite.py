@@ -13,7 +13,7 @@ from uuid import uuid4
 
 from agenttinker.core.events import Event, RunCreated, SpanFinished, parse_event
 from agenttinker.core.projection import RunView, project_events
-from agenttinker.core.records import Artifact
+from agenttinker.core.records import Artifact, Run
 
 
 class EventConflict(ValueError):
@@ -63,7 +63,14 @@ class SQLiteEventStore:
                         "PRAGMA user_version=1",
                     ):
                         self._connection.execute(statement)
-                elif version != 1:
+                    version = 1
+                if version == 1:
+                    self._connection.execute(
+                        "CREATE TABLE run_requests (request_key TEXT PRIMARY KEY, "
+                        "fingerprint TEXT NOT NULL, run_id TEXT NOT NULL REFERENCES runs(run_id))"
+                    )
+                    self._connection.execute("PRAGMA user_version=2")
+                elif version != 2:
                     raise ValueError("unsupported_database_schema_version")
         except Exception:
             self.close()
@@ -168,6 +175,43 @@ class SQLiteEventStore:
                 }
             )
             return self._append(event)
+
+    def request_run(self, request_key: str, fingerprint: str) -> RunView | None:
+        row = self._connection.execute(
+            "SELECT run_id, fingerprint FROM run_requests WHERE request_key=?", (request_key,)
+        ).fetchone()
+        if row is None:
+            return None
+        if row[1] != fingerprint:
+            raise EventConflict("idempotency_key_payload_conflict")
+        return self.get_view(row[0])
+
+    def create_requested_run(
+        self, run: Run, request_key: str, fingerprint: str
+    ) -> tuple[RunView, bool]:
+        """Commit request identity and the initial event together before dispatch."""
+        with self._transaction():
+            existing = self.request_run(request_key, fingerprint)
+            if existing is not None:
+                return existing, False
+            self._append(
+                parse_event(
+                    {
+                        "type": "run.created",
+                        "event_id": f"evt_{uuid4().hex}",
+                        "run_id": run.run_id,
+                        "seq": 1,
+                        "occurred_at": run.created_at,
+                        "received_at": run.created_at,
+                        "data": run,
+                    }
+                )
+            )
+            self._connection.execute(
+                "INSERT INTO run_requests(request_key, fingerprint, run_id) VALUES (?, ?, ?)",
+                (request_key, fingerprint, run.run_id),
+            )
+            return self.get_view(run.run_id), True
 
     def get_view(self, run_id: str) -> RunView:
         row = self._connection.execute(

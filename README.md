@@ -17,6 +17,7 @@
 | [开发日志](docs/development-log.md) | 已完成工作、验证结果、限制和下一步 |
 | [M0 验证说明](docs/m0-validation.md) | 本地环境、检查点分支验证和真实调用验收进度 |
 | [M0 验收证据](docs/m0-acceptance.md) | 技术验收表、费用明细与用户已确认的阶段结论 |
+| [运行服务](docs/runtime-service.md) | M1 串行执行、持久化生命周期、取消与重启边界 |
 | [运行记录协议](docs/runtime-records.md) | M1 对象、事件、状态转换与重建规则 |
 | [云端环境配置](docs/cloud-environment.md) | 设置页填写内容、固定安装入口及配置生效检查 |
 | [新环境接续审视](docs/resumption-audit.md) | 2026-10-15 全仓核对、环境实测、真实 M0 证据及待修问题 |
@@ -29,4 +30,4 @@
 
 **命名约定：**产品、文档和界面统一使用 **AgentTinker**。当前仓库为 [AgentTinker-preview](https://github.com/Babapei/AgentTinker-preview)，`-preview` 标记开发预览阶段；完成后仓库更名为 `AgentTinker`。
 
-**当前为 M1：运行记录。** 核心对象、类型化事件、状态机、事件重建及 SQLite/文件持久化已实现，108 项测试通过；下一步接执行器和 HTTP/SSE，验证实际取消与断线重连。M0 技术验收已按用户确认的真实用量及可追溯估算口径完成，实际账单独立待办。详见 [运行记录协议](docs/runtime-records.md)和 [M0 验收证据](docs/m0-acceptance.md)。
+**当前为 M1：运行记录。** 核心对象、SQLite/文件存储及 LangGraph 串行运行服务已实现，120 项测试通过；已验证协作式取消与进程中断，下一步 HTTP/SSE 和断线续传。M0 技术验收已按用户确认的真实用量及可追溯估算口径完成，实际账单独立待办。详见 [运行记录协议](docs/runtime-records.md)和 [M0 验收证据](docs/m0-acceptance.md)。

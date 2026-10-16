@@ -15,6 +15,7 @@ from langgraph.graph import END, START, StateGraph
 from agenttinker.m0.accounting import PriceBook, cost_estimate, usage_summary
 from agenttinker.m0.fixtures import FIXTURE_VERSION, fixture_hash, search_documents
 from agenttinker.m0.models import ModelAdapter, ProbeSpan, ToolPolicy
+from agenttinker.m0.protocol import validate_reply
 
 TASK = (
     "Compare the fictional release notes. Search for release, then cite the returned document IDs."
@@ -112,38 +113,14 @@ class CheckpointProbe:
             usage=reply.usage,
         )
         self.stages[state["run_id"]] = "model_protocol"
-        if reply.choice_count is not None and reply.choice_count != 1:
-            raise ValueError("M0 requires one model response choice")
+        call = validate_reply(reply, has_documents=state["documents"] is not None)
         message = reply.message
-        if reply.finish_reason not in {None, "stop", "tool_calls"}:
-            raise ValueError("model_response_incomplete")
-        calls = message.get("tool_calls") or []
-        if calls:
-            if state["documents"] is not None or len(calls) != 1:
-                raise ValueError("M0 requires exactly one tool call before the final answer")
-            call = calls[0]
-            if not isinstance(call.get("id"), str) or not call["id"].strip():
-                raise ValueError("missing_tool_call_id")
-            if call.get("type") != "function" or call["function"]["name"] != "search_documents":
-                raise ValueError("M0 supports only search_documents")
-            args = json.loads(call["function"]["arguments"])
-            if (
-                set(args) != {"query"}
-                or not isinstance(args["query"], str)
-                or not args["query"].strip()
-            ):
-                raise ValueError("search_documents requires a nonempty query string")
+        if call is not None:
             return {
                 "messages": [*state["messages"], message],
                 "tool_call": call,
                 "model_span_id": span.span_id,
             }
-        if (
-            state["documents"] is None
-            or not isinstance(message.get("content"), str)
-            or not message["content"].strip()
-        ):
-            raise ValueError("Model did not call the required tool or return a final answer")
         return {
             "messages": [*state["messages"], message],
             "tool_call": None,

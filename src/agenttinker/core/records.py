@@ -55,6 +55,9 @@ class Capabilities(ValueModel):
 
 class RunConfig(ValueModel):
     agent: VersionRef
+    task: Text | None = None
+    tool_policy: JSONData = Field(default_factory=dict)
+    price_version: Text | None = None
     experiment: VersionRef | None = None
     case: VersionRef | None = None
     variant: VersionRef | None = None

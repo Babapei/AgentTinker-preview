@@ -1,8 +1,8 @@
 # AgentTinker 开发断点与交接
 
-更新时间：2026-10-15（Asia/Shanghai）。面向新对话、新环境及中断后的接续开发。
+更新时间：2026-10-16（Asia/Shanghai）。面向新对话、新环境及中断后的接续开发。
 
-**当前 M1 进行中：核心协议、状态机、事件重建及 SQLite/文件存储已实现，108 项测试通过；下一步执行器接入和 HTTP/SSE。** M0 技术验收已完成，用户确认以真实用量及可追溯估算验收，实际账单独立待办，不阻挡 M1。协议见 [运行记录](docs/runtime-records.md)，完整证据见 [M0 验收结论](docs/m0-acceptance.md)，最新节点见[开发日志](docs/development-log.md)。
+**当前 M1 进行中：核心协议、SQLite/文件存储和原生串行运行服务已实现，120 项测试通过；下一步 HTTP/SSE。** M0 技术验收已完成，用户确认以真实用量及可追溯估算验收，实际账单独立待办，不阻挡 M1。协议见 [运行记录](docs/runtime-records.md)，完整证据见 [M0 验收结论](docs/m0-acceptance.md)，最新节点见[开发日志](docs/development-log.md)。
 
 ## 1. 接手先确认这几件事
 
@@ -59,7 +59,7 @@ Git 保存了源码、锁文件、设计、日志和 examples 中的示例。本
 
 | 文件/目录 | 已实现内容 |
 | --- | --- |
-| [pyproject.toml](pyproject.toml)、uv.lock | Python >=3.12、uv、LangGraph、Pydantic、OpenAI SDK、pytest、ruff |
+| [pyproject.toml](pyproject.toml)、uv.lock | Python >=3.12、uv、LangGraph、Pydantic、OpenAI SDK、filelock、pytest、ruff |
 | [scripts/setup.sh](scripts/setup.sh) | 固定安装入口：定位仓库并执行 uv sync --locked；不调用模型 |
 | [probe.py](src/agenttinker/m0/probe.py) | StateGraph、InMemorySaver、工具前 checkpoint、允许字段分支、A 历史不变性检查 |
 | [fixtures.py](src/agenttinker/m0/fixtures.py) | 带版本与哈希的虚构发布说明、本地只读检索 |
@@ -70,7 +70,8 @@ Git 保存了源码、锁文件、设计、日志和 examples 中的示例。本
 | [cli.py](src/agenttinker/m0/cli.py) | 显式 live/synthetic 模式、价格输入、原子写报告和单独失败诊断 |
 | [core](src/agenttinker/core) | M1 的 Run/Span/CheckpointRef/Artifact、版本引用、能力、用量费用、类型化事件、状态转换与纯重建；与 M0 格式分开 |
 | [storage/sqlite.py](src/agenttinker/storage/sqlite.py) | SQLite 原子事件追加与缓存投影、事务内序号、幂等重试、游标读取、重建、父分支引用与内容寻址 artifact |
-| [tests](tests) | 108 项测试：M0 63 项，核心协议 32 项，SQLite/文件集成 13 项 |
+| [runtime](src/agenttinker/runtime) | 单 owner、幂等启动、真实 LangGraph 串行执行、协作式取消和重启中断恢复 |
+| [tests](tests) | 120 项测试：M0 63 项，核心协议 32 项，存储 13 项，运行服务 12 项 |
 
 本次实际安装版本：LangGraph 1.2.14、langgraph-checkpoint 4.2.0、OpenAI SDK 2.54.0、Pydantic 2.13.5。依赖安装以仓库锁文件为准。
 
@@ -98,13 +99,13 @@ M0 实验语义：
 | 阶段 | 当前状态 / 下一阶段目标 |
 | --- | --- |
 | M0 | 技术验收完成；真实分支、新增用量、价格估算与异常响应观测均已核对，实际账单独立待办 |
-| M1 | 进行中；核心协议与 SQLite/文件存储完成，运行服务、执行器事件接入、HTTP/SSE 及端到端续传去重待实现 |
+| M1 | 进行中；核心协议、SQLite/文件存储和串行运行服务完成；HTTP/SSE 及端到端续传去重待实现 |
 | M2 | 未开始：步骤列表/图、详情、时间线、历史记录播放 |
 | M3 | 未开始：完整超时实验、单变量 fork、A/B 对比和内嵌讲解 |
 | M4 | 未开始：第二个实验、评价、实验包导入导出、真实参考记录无密钥回看 |
 | M5 | 未开始：实际工具对照与用户使用验证 |
 
-仓库没有 FastAPI 服务、React/Vite 工程、网页预览、持久化 LangGraph checkpoint、真实任务取消或公开部署。SQLite 已持久化对象、事件和 CheckpointRef，但引用不等于运行时可恢复状态；M0 内存 checkpoint 仍不能跨进程恢复。M1 的核心和存储测试不能替代 HTTP/SSE、执行器及实际取消的集成验收。
+仓库没有 FastAPI 服务、React/Vite 工程、网页预览、持久化 LangGraph checkpoint 或公开部署。SQLite 已持久化对象、事件和 CheckpointRef，但引用不等于运行时可恢复状态；M0 内存 checkpoint 仍不能跨进程恢复。运行服务已验证在途模型/工具取消与队列取消；HTTP/SSE 集成尚未验收。
 
 首版技术路线仍为 React/TypeScript/Vite + React Flow、Python/FastAPI/Pydantic、LangGraph、SQLite + 文件存储、HTTP + SSE。公开托管、域名、额外模型和外部工具服务尚未确定；当前不需要额外托管数据库或搜索服务账号。
 
@@ -133,11 +134,11 @@ uv 命令在本环境使用 `UV_CACHE_DIR=/tmp/agenttinker-uv-cache`。继续保
 ## 7. 下一步：M1 运行记录
 
 1. **CORE-01 核心协议已完成。** core 下已实现 Run、Span、Event、CheckpointRef、Artifact 及实验版本引用，校验状态转换、事件序号、来源、重试和必要关联；从 Pydantic 生成 JSON Schema。实验、评价等完整内容模型随后续阶段补齐，不与 M0 格式混用。
-2. **STORE-01 核心存储已完成。** SQLite 原子保存事件和投影，触发器禁止改写/删除事实；append_next 事务内分配序号、同事件幂等、按游标补读。文件按哈希保存 artifact。真实子进程异常退出、独立并发连接、缓存重建、写入回滚和文件校验已有测试；还未接运行时或 SSE。
-3. **运行服务与 SSE。** 增加 HTTP 控制和事件订阅，验证失败、重试、协作式取消、进程中断、断线补发与去重。M1 完成条件仍以架构路线为准，不把协议文件本身记成服务已实现。
+2. **STORE-01 核心存储已完成。** SQLite 原子保存事件和投影，触发器禁止改写/删除事实；append_next 事务内分配序号、同事件幂等、按游标补读。文件按哈希保存 artifact。真实子进程异常退出、独立并发连接、缓存重建、写入回滚和文件校验已有测试；已接运行时，SSE 待实现。
+3. **运行服务已实现。** 独占文件锁、持久化请求幂等账本、串行 StateGraph、失败/重试/取消/在途结果和异常退出恢复已验证。见 [运行服务](docs/runtime-service.md)。下一步增加 HTTP 控制和 SSE，验证断线补发与去重。M1 完成条件仍以架构路线为准，不把协议文件本身记成服务已实现。
 4. **逐节点完成。** 每块工作验证、更新受影响文档、日志及本文件，提交推送并核对远程；无须再次询问日常实现或已批准的费用口径。
 5. **独立账单待办。** 将来有可对应请求或明确时段的费用证据时再核对；实际扣费保持未知，余额不是逐笔账单，不将 CNY 余额等同 USD 估算，不为此重复付费实验。
 
 ## 8. 给新对话的最短接续提示
 
-> 请在 Babapei/AgentTinker-preview 的 work 分支接续开发。先阅读 HANDOFF.md、AGENTS.md、docs/runtime-records.md 和开发日志，再核对源码及环境。M0 已验收，账单独立待办；M1 核心协议与 SQLite/文件存储已实现，108 项测试通过，下一步运行服务、执行器事件接入和 HTTP/SSE，补实际取消与断线重连验证。逐块验证、写日志、提交推送，不重复询问已批准事项或重做工程；关键范围变更先与我确定。
+> 请在 Babapei/AgentTinker-preview 的 work 分支接续开发。先阅读 HANDOFF.md、AGENTS.md、docs/runtime-records.md 和开发日志，再核对源码及环境。M0 已验收，账单独立待办；M1 核心协议、SQLite/文件存储和串行运行服务已实现，120 项测试通过，下一步 HTTP/SSE，补断线重连验证。逐块验证、写日志、提交推送，不重复询问已批准事项或重做工程；关键范围变更先与我确定。

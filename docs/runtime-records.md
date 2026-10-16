@@ -12,7 +12,7 @@
 | [projection.py](../src/agenttinker/core/projection.py) | 从原生事件流重建 Run、spans、checkpoints，校验流的完整性 |
 | [schema.py](../src/agenttinker/core/schema.py) | 从上述 Pydantic 模型生成 JSON Schema |
 
-Experiment、DatasetCase、Variant、Agent 和 FaultPlan 当前通过明确的 ID + version 引用连接运行配置；其完整内容模型和服务随实验功能实现。STORE-01 已加入 SQLite 事件存储及 artifact 内容存储，见第 6 节。整个 M1 仍在进行中，尚未接入执行器、HTTP 或 SSE。
+Experiment、DatasetCase、Variant、Agent 和 FaultPlan 当前通过明确的 ID + version 引用连接运行配置；其完整内容模型和服务随实验功能实现。STORE-01 已加入 SQLite 事件存储及 artifact 内容存储，见第 6 节。原生串行执行器和运行服务已接入，见 [运行服务](runtime-service.md)。整个 M1 仍在进行中，HTTP/SSE 尚未实现。
 
 ## 2. 数据规则
 
@@ -38,7 +38,7 @@ Pydantic 的 frozen 配置仅限制字段赋值，嵌套 JSON 仍可能被 Pytho
 
 同状态重放不作为一次合法转换；HTTP 操作的幂等性由后续服务处理。只有 running 可启动新的模型/工具调用。cancel_requested 时仍可接收已经在途的 span 结果和真实用量，等待处理完后才进入 cancelled；不能把取消请求直接显示成已经停止，也不将随后收到的响应误丢弃。
 
-进程中断通过 run.status_changed → interrupted 表达；仍在途的 spans 在投影中标为 interrupted，未取得的结束时间、结果和用量继续未知，不伪造 provider 返回。此处只实现事件语义，进程监测和取消执行逻辑由后续运行服务接入。
+进程中断通过 run.status_changed → interrupted 表达；仍在途的 spans 在投影中标为 interrupted，未取得的结束时间、结果和用量继续未知，不伪造 provider 返回。运行服务已接入协作式取消；新 owner 获取独占锁后标记旧非终态运行中断，不重发请求。
 
 ## 4. 事件和重建
 
@@ -71,11 +71,11 @@ print(json.dumps(protocol_schemas(), ensure_ascii=False, indent=2))
 
 Run、Span、CheckpointRef、Artifact、Event 和 RunView 的 schema 均来自同一实现；Event 包含 type 判别器。后续 API/前端以此生成类型，不另写一份协议定义。生成产物可写入忽略的 artifacts，不手工维护副本。
 
-CORE-01 新增 32 项验证，覆盖状态转换、取消与在途结果、中断、分支引用、版本/来源/关联校验、费用与未知值、事件顺序、重试与 schema 往返。STORE-01 新增 13 项 SQLite/文件集成验证；全套共 108 项测试通过。整个 M1 的退出条件还包含 HTTP/SSE 与运行服务的集成验证。
+CORE-01 新增 32 项验证，覆盖状态转换、取消与在途结果、中断、分支引用、版本/来源/关联校验、费用与未知值、事件顺序、重试与 schema 往返。STORE-01 新增 13 项 SQLite/文件集成验证；运行服务新增 12 项集成验证，全套共 120 项测试通过。整个 M1 的退出条件还包含 HTTP/SSE 与运行服务的集成验证。
 
 ## 6. SQLite 事件日志与 artifact 存储（STORE-01）
 
-实现位于 [storage/sqlite.py](../src/agenttinker/storage/sqlite.py)，仅使用 Python 标准库 sqlite3；数据库 schema 版本当前为 1，通过 user_version 校验，不静默使用未知版本或其他应用的非空数据库。
+实现位于 [storage/sqlite.py](../src/agenttinker/storage/sqlite.py)，仅使用 Python 标准库 sqlite3；数据库 schema 版本当前为 2，兼容迁移版本 1，通过 user_version 校验，不静默使用未知版本或其他应用的非空数据库。
 
 ```python
 from agenttinker.storage.sqlite import SQLiteEventStore
@@ -94,6 +94,8 @@ with SQLiteEventStore("artifacts/runs.sqlite") as store:
 - **投影与谱系：**get_view 读取持久化缓存；rebuild_view 从完整事件重建，事实不被重写。创建分支记录前检查父 Run、源 checkpoint 和继承 span 已存在；B 不复制父 spans。此步骤只保存分支谱系，不恢复 LangGraph。
 - **内容存储：**put_artifact 先校验元数据，用 SHA-256 分目录保存内容，经临时文件写入、flush/fsync 和替换后登记 SQLite 元数据。相同内容共用 blob，不同来源可以有不同 artifact ID。read_artifact 检查长度和哈希；已知 actual 费用的证据引用必须可读取。保存证据不等于程序已经判断其财务真实性。
 - **文件与数据库边界：**内容文件先写、元数据后登记；两者不是跨资源事务。中断可能留下无元数据引用的 blob，但不会先提交元数据再写内容。本节点未实现孤立文件回收或整机掉电保证，导入导出仍按后续阶段实现。
-- **进程边界：**每个线程/worker 使用自己的 SQLiteEventStore 连接。打开数据库不会将其他 worker 的运行擅自标为 interrupted，也不会重发 provider 请求；由运行服务在确认 worker 消失后追加中断事件。当前测试以真实子进程 os._exit 验证已提交事件可恢复；自动监测尚未接入。
+- **进程边界：**每个线程/worker 使用自己的 SQLiteEventStore 连接。打开数据库不会将其他 worker 的运行擅自标为 interrupted，也不会重发 provider 请求；由运行服务在确认 worker 消失后追加中断事件。当前测试以真实子进程 os._exit 验证已提交事件可恢复；运行服务现已通过独占文件锁确认旧 owner 结束后追加中断事件。
 
 当前每次追加会重建该 Run 的完整原生事件投影，优先保证语义一致，适合当前单用户、小规模记录。后续按实际规模优化增量投影，不把此实现宣传为多 worker 分布式调度服务。
+
+版本 2 增加 `run_requests` 请求幂等账本：请求指纹、key 与 run.created 在同一事务提交，避免创建后崩溃导致重试产生第二个 Run。相同 key 和请求返回已有 Run；内容不同时拒绝。迁移不重写版本 1 的事实。RunConfig 现补充 task、tool_policy、price_version，保留服务端实际执行配置。
