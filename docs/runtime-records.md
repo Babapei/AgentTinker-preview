@@ -12,7 +12,7 @@
 | [projection.py](../src/agenttinker/core/projection.py) | 从原生事件流重建 Run、spans、checkpoints，校验流的完整性 |
 | [schema.py](../src/agenttinker/core/schema.py) | 从上述 Pydantic 模型生成 JSON Schema |
 
-Experiment、DatasetCase、Variant、Agent 和 FaultPlan 当前通过明确的 ID + version 引用连接运行配置；其完整内容模型和服务随实验功能实现。STORE-01 已加入 SQLite 事件存储及 artifact 内容存储，见第 6 节。原生串行执行器和运行服务已接入，见 [运行服务](runtime-service.md)。整个 M1 仍在进行中，HTTP/SSE 尚未实现。
+Experiment、DatasetCase、Variant、Agent 和 FaultPlan 当前通过明确的 ID + version 引用连接运行配置；其完整内容模型和服务随实验功能实现。STORE-01 已加入 SQLite 事件存储及 artifact 内容存储，见第 6 节。原生串行执行器和运行服务已接入，见 [运行服务](runtime-service.md)。HTTP/SSE 已实现，见 [API 说明](runtime-api.md)；M1 完成证据见 [验收记录](m1-acceptance.md)。
 
 ## 2. 数据规则
 
@@ -36,7 +36,7 @@ Pydantic 的 frozen 配置仅限制字段赋值，嵌套 JSON 仍可能被 Pytho
 | cancel_requested | cancelled、failed、interrupted |
 | succeeded / failed / cancelled / interrupted | 无；不覆盖终态 |
 
-同状态重放不作为一次合法转换；HTTP 操作的幂等性由后续服务处理。只有 running 可启动新的模型/工具调用。cancel_requested 时仍可接收已经在途的 span 结果和真实用量，等待处理完后才进入 cancelled；不能把取消请求直接显示成已经停止，也不将随后收到的响应误丢弃。
+同状态重放不作为一次合法转换；HTTP 操作的幂等性由运行服务处理。只有 running 可启动新的模型/工具调用。cancel_requested 时仍可接收已经在途的 span 结果和真实用量，等待处理完后才进入 cancelled；不能把取消请求直接显示成已经停止，也不将随后收到的响应误丢弃。
 
 进程中断通过 run.status_changed → interrupted 表达；仍在途的 spans 在投影中标为 interrupted，未取得的结束时间、结果和用量继续未知，不伪造 provider 返回。运行服务已接入协作式取消；新 owner 获取独占锁后标记旧非终态运行中断，不重发请求。
 
@@ -69,9 +69,9 @@ from agenttinker.core.schema import protocol_schemas
 print(json.dumps(protocol_schemas(), ensure_ascii=False, indent=2))
 ```
 
-Run、Span、CheckpointRef、Artifact、Event 和 RunView 的 schema 均来自同一实现；Event 包含 type 判别器。后续 API/前端以此生成类型，不另写一份协议定义。生成产物可写入忽略的 artifacts，不手工维护副本。
+Run、Span、CheckpointRef、Artifact、Event 和 RunView 的 schema 均来自同一实现；Event 包含 type 判别器。API 与后续前端以此生成类型，不另写一份协议定义。生成产物可写入忽略的 artifacts，不手工维护副本。
 
-CORE-01 新增 32 项验证，覆盖状态转换、取消与在途结果、中断、分支引用、版本/来源/关联校验、费用与未知值、事件顺序、重试与 schema 往返。STORE-01 新增 13 项 SQLite/文件集成验证；运行服务新增 12 项集成验证，全套共 120 项测试通过。整个 M1 的退出条件还包含 HTTP/SSE 与运行服务的集成验证。
+CORE-01 新增 32 项验证，覆盖状态转换、取消与在途结果、中断、分支引用、版本/来源/关联校验、费用与未知值、事件顺序、重试与 schema 往返。STORE-01 新增 13 项 SQLite/文件集成验证；运行服务新增 12 项、API 新增 16 项集成验证，全套共 136 项测试通过；HTTP/SSE 与运行服务的验收见 [M1 记录](m1-acceptance.md)。
 
 ## 6. SQLite 事件日志与 artifact 存储（STORE-01）
 
@@ -90,7 +90,7 @@ with SQLiteEventStore("artifacts/runs.sqlite") as store:
 
 - **原子追加：**BEGIN IMMEDIATE 内校验事实、重建投影、写入缓存和事件后一起提交。事件 ID 全局唯一，Run 内 seq 唯一；数据库触发器拒绝 UPDATE/DELETE 事件。中途写入失败会回滚事件与投影，提交后才可以向订阅者发送。
 - **序号与幂等：**原生服务使用 append_next，在事务中分配下一个 seq 和首次 received_at；draft 不接受 seq。同 event ID 且内容完全一致时返回原记录，不重复追加，received_at 保持原值；同 ID 不同内容或显式序号冲突报 EventConflict。append 保留为接受已确定序号的内部入口，仍执行相同校验。
-- **续传读取：**events 按 seq 返回 after_seq 之后的事实，支持每页 1–1000 条；拒绝负数、布尔游标和超出当前 head 的游标。当前提供持久化游标基础，HTTP Last-Event-ID、SSE 订阅与去重集成尚未实现。
+- **续传读取：**events 按 seq 返回 after_seq 之后的事实，支持每页 1–1000 条；拒绝负数、布尔游标和超出当前 head 的游标。HTTP Last-Event-ID、SSE 补读与去重已通过集成验证。
 - **投影与谱系：**get_view 读取持久化缓存；rebuild_view 从完整事件重建，事实不被重写。创建分支记录前检查父 Run、源 checkpoint 和继承 span 已存在；B 不复制父 spans。此步骤只保存分支谱系，不恢复 LangGraph。
 - **内容存储：**put_artifact 先校验元数据，用 SHA-256 分目录保存内容，经临时文件写入、flush/fsync 和替换后登记 SQLite 元数据。相同内容共用 blob，不同来源可以有不同 artifact ID。read_artifact 检查长度和哈希；已知 actual 费用的证据引用必须可读取。保存证据不等于程序已经判断其财务真实性。
 - **文件与数据库边界：**内容文件先写、元数据后登记；两者不是跨资源事务。中断可能留下无元数据引用的 blob，但不会先提交元数据再写内容。本节点未实现孤立文件回收或整机掉电保证，导入导出仍按后续阶段实现。

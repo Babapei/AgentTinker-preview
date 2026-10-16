@@ -1,6 +1,6 @@
 # M1：原生串行运行服务
 
-实现位于 [runtime](../src/agenttinker/runtime)，依赖 [运行记录协议与 SQLite](runtime-records.md)。当前提供 Python 入口，HTTP/SSE 在下一节点实现。
+实现位于 [runtime](../src/agenttinker/runtime)，依赖 [运行记录协议与 SQLite](runtime-records.md)。Python 入口与 HTTP/SSE 均已提供，网络接口见 [API 说明](runtime-api.md)。
 
 ```python
 from agenttinker.runtime.service import RunRequest, RunService
@@ -33,4 +33,4 @@ cancel 对终态和重复请求幂等。queued 直接经过 cancel_requested 进
 
 CheckpointRef 已写入 SQLite，但 LangGraph saver 仍仅在执行进程内存中，运行服务不声明 fork 能力。跨进程恢复执行和策略分支在后续任务接入持久化 saver 后实现；事件回看不调用模型。
 
-12 项服务测试覆盖失败/重试、排队与在途取消、用量保留、并发幂等、调度失败、owner 排斥、子进程异常退出恢复和 SQLite v1 迁移；与核心/存储/M0 合计 120 项。全部使用本地或模拟调用，没有新付费请求。
+12 项服务测试覆盖失败/重试、排队与在途取消、用量保留、并发幂等、调度失败、owner 排斥、子进程异常退出恢复和 SQLite v1 迁移；加上 16 项 API 集成及核心/存储/M0 验证，合计 136 项。全部使用本地或模拟调用，没有新付费请求。
