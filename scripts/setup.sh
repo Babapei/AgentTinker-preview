@@ -12,5 +12,10 @@ fi
 
 uv sync --locked
 
-# Add later frontend installation steps here when its lockfile is committed.
+if ! command -v npm >/dev/null 2>&1; then
+  printf '%s\n' 'Setup requires Node.js >=22.12 and npm for the web inspector.' >&2
+  exit 1
+fi
+npm --prefix web ci
+
 # Setup installs dependencies only; model validation is run separately.

@@ -2,7 +2,7 @@
 
 更新时间：2026-10-16（Asia/Shanghai）。面向新对话、新环境及中断后的接续开发。
 
-**M1 已完成：核心协议、SQLite/文件存储、原生串行运行服务、HTTP/SSE 已贯通，136 项测试通过；下一步 M2 检查与回放界面。** M0 技术验收已完成，用户确认以真实用量及可追溯估算验收，实际账单独立待办，不阻挡 M1。协议见 [运行记录](docs/runtime-records.md)，阶段证据见 [M1 验收](docs/m1-acceptance.md)及 [M0 验收结论](docs/m0-acceptance.md)，最新节点见[开发日志](docs/development-log.md)。
+**M1 已完成：核心协议、SQLite/文件存储、原生串行运行服务、HTTP/SSE 已贯通，136 项测试通过；M2 已开始，前端工程与共享协议完成，下一步历史和步骤详情。** M0 技术验收已完成，用户确认以真实用量及可追溯估算验收，实际账单独立待办，不阻挡 M1。协议见 [运行记录](docs/runtime-records.md)，阶段证据见 [M1 验收](docs/m1-acceptance.md)及 [M0 验收结论](docs/m0-acceptance.md)，最新节点见[开发日志](docs/development-log.md)。
 
 ## 1. 接手先确认这几件事
 
@@ -101,12 +101,12 @@ M0 实验语义：
 | --- | --- |
 | M0 | 技术验收完成；真实分支、新增用量、价格估算与异常响应观测均已核对，实际账单独立待办 |
 | M1 | 已完成：核心协议、存储、串行运行服务及 HTTP/SSE；失败/重试/取消、刷新、断线续传去重已验证 |
-| M2 | 未开始：步骤列表/图、详情、时间线、历史记录播放 |
+| M2 | 进行中：React/Vite 工程、协议生成及只读客户端完成；历史/步骤界面、图、时间线和播放待接入 |
 | M3 | 未开始：完整超时实验、单变量 fork、A/B 对比和内嵌讲解 |
 | M4 | 未开始：第二个实验、评价、实验包导入导出、真实参考记录无密钥回看 |
 | M5 | 未开始：实际工具对照与用户使用验证 |
 
-本地 FastAPI 服务已实现；尚无 React/Vite 工程、网页预览、持久化 LangGraph checkpoint 或公开部署。SQLite 已持久化对象、事件和 CheckpointRef，但引用不等于运行时可恢复状态；M0 内存 checkpoint 仍不能跨进程恢复。运行服务已验证在途模型/工具取消与队列取消；HTTP/SSE 已通过真实本机 TCP 断线续传与取消集成验证。
+本地 FastAPI 服务已实现；React/Vite 工程已建立；检查页面尚未接运行数据，尚无持久化 LangGraph checkpoint 或公开部署。SQLite 已持久化对象、事件和 CheckpointRef，但引用不等于运行时可恢复状态；M0 内存 checkpoint 仍不能跨进程恢复。运行服务已验证在途模型/工具取消与队列取消；HTTP/SSE 已通过真实本机 TCP 断线续传与取消集成验证。
 
 首版技术路线仍为 React/TypeScript/Vite + React Flow、Python/FastAPI/Pydantic、LangGraph、SQLite + 文件存储、HTTP + SSE。公开托管、域名、额外模型和外部工具服务尚未确定；当前不需要额外托管数据库或搜索服务账号。
 
@@ -137,12 +137,12 @@ uv 命令在本环境使用 `UV_CACHE_DIR=/tmp/agenttinker-uv-cache`。继续保
 ## 7. 下一步：M2 检查与回放
 
 1. **M1 已完成。** 协议、存储、串行运行、HTTP 创建/读取/取消、SSE 心跳与游标补发均已验证；见 [M1 验收](docs/m1-acceptance.md)。模型侧为离线模拟；本机进程、SQLite 和 HTTP 为实际集成。M0 真实证据继续有效，不重复付费。
-2. **M2 / UI-01。** 按产品设计和架构路线建立 React/TypeScript/Vite 工程，先生成共享协议类型、接历史列表与步骤/原始输入输出详情；随后图与时间线、历史播放。回放只处理已保存事件，不触发 provider/tool。未知费用、用量与结果保持未知，取消请求与停止分开显示。
+2. **M2 / UI-01。** React/TypeScript/Vite 工程、从 Pydantic 生成的响应类型和浏览器结构校验、只读客户端已完成，10 项前端测试与构建通过。见 [前端说明](docs/web-inspector.md)。下一步接历史列表与步骤/原始输入输出详情；随后图与时间线、历史播放。回放只处理已保存事件，不触发 provider/tool。未知费用、用量与结果保持未知，取消请求与停止分开显示。
 3. **能力边界。** CheckpointRef 可读但 saver 在内存，当前运行服务 fork_from_checkpoint=false。持久化 checkpoint、完整超时实验、单变量分支和 A/B 比较继续在 M3 接入；不提前开放不具备的能力。
-4. **入口。** uv run agenttinker-server --database artifacts/runs.sqlite；默认本机 127.0.0.1:8000、/docs。密钥只由服务端配置，启动和历史读取不调用模型。前端新增依赖后同步 scripts/setup.sh，保持安装入口固定。
+4. **入口。** uv run agenttinker-server --database artifacts/runs.sqlite；默认本机 127.0.0.1:8000、/docs。密钥只由服务端配置，启动和历史读取不调用模型。scripts/setup.sh 已同时执行 uv sync --locked 与 npm --prefix web ci；前端 npm --prefix web run dev，默认本机 5173。
 5. **逐节点完成。** 每块工作验证、更新受影响文档与日志，提交推送并核对远程；无须再次询问日常实现或已批准的费用口径。
 6. **独立账单待办。** 有可对应请求或明确时段的费用证据时再核对；实际扣费仍未知，余额不是逐笔账单，不为此重复付费实验。
 
 ## 8. 给新对话的最短接续提示
 
-> 请在 Babapei/AgentTinker-preview 的 work 分支接续开发。先阅读 HANDOFF.md、AGENTS.md、docs/m1-acceptance.md、docs/runtime-api.md 和开发日志，再核对源码及环境。M0/M1 已验收，账单独立待办；136 项测试通过。下一步 M2 React/TypeScript/Vite 检查与历史播放界面，先接协议类型、历史列表和步骤详情，再图与时间线。运行服务没有持久化 checkpoint 或 fork 能力。逐块验证、写日志、提交推送，不重复询问已批准事项或重做工程；关键范围变更先与我确定。
+> 请在 Babapei/AgentTinker-preview 的 work 分支接续开发。先阅读 HANDOFF.md、AGENTS.md、docs/m1-acceptance.md、docs/runtime-api.md 和开发日志，再核对源码及环境。M0/M1 已验收，账单独立待办；136 项测试通过。M2 的 React/Vite 与协议基础已完成，前端 10 项测试通过，下一步接历史列表和步骤详情，再图与时间线。运行服务没有持久化 checkpoint 或 fork 能力。逐块验证、写日志、提交推送，不重复询问已批准事项或重做工程；关键范围变更先与我确定。
