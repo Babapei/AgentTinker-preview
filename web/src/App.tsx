@@ -40,6 +40,8 @@ import {
 } from './observations';
 
 const ExecutionGraph = lazy(() => import('./ExecutionGraph'));
+const ForkPanel = lazy(() => import('./ForkPanel'));
+const ComparisonPanel = lazy(() => import('./ComparisonPanel'));
 
 function readSelection() {
   const query = new URLSearchParams(window.location.search);
@@ -275,10 +277,14 @@ function RunInspector({
   view,
   selectedSpan,
   selectSpan,
+  created,
+  openRun,
 }: {
   view: RunView;
   selectedSpan: string | null;
   selectSpan: (id: string) => void;
+  created: (view: RunView) => void;
+  openRun: (id: string) => void;
 }) {
   const [filter, setFilter] = useState('all');
   const [processView, setProcessView] = useState<'list' | 'graph'>('list');
@@ -457,6 +463,12 @@ function RunInspector({
         </section>
         <StepDetails span={selected} view={view} />
       </div>
+      <Suspense fallback={<p role="status">正在读取实验视图…</p>}>
+        <ForkPanel key={`fork:${view.run.run_id}`} view={view} created={created} />
+        {view.run.parent_run_id && (
+          <ComparisonPanel key={`comparison:${view.run.run_id}`} view={view} navigate={openRun} />
+        )}
+      </Suspense>
     </>
   );
 }
@@ -664,6 +676,11 @@ export default function App() {
                   view={view}
                   selectedSpan={selection.span}
                   selectSpan={(span) => navigate(current.view!.run.run_id, span)}
+                  created={(branch) => {
+                    navigate(branch.run.run_id, null);
+                    refresh();
+                  }}
+                  openRun={(run) => navigate(run, null)}
                 />
               )}
             </EventWorkspace>

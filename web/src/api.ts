@@ -49,6 +49,9 @@ export async function createRun(body: RunRequest, key: string) {
   if (
     view.run.mode !== body.mode ||
     view.run.parent_run_id !== null ||
+    view.run.config.provider !== (body.provider ?? 'synthetic') ||
+    (body.model !== null && view.run.config.requested_model !== body.model) ||
+    view.run.config.fault_parameters.inject_timeout !== body.inject_timeout ||
     view.run.config.task !== body.task ||
     !equal(view.run.config.tool_policy, body.policy)
   )

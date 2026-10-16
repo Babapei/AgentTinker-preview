@@ -1,5 +1,13 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { ApiError, cancelRun, createRun, getRun, getRuns } from './api';
+import {
+  ApiError,
+  cancelRun,
+  createRun,
+  getCheckpointAvailability,
+  getRun,
+  getRuns,
+  forkRun,
+} from './api';
 import type { RunRequest } from './protocol';
 import fixture from './test/fixtures/retried-run.json';
 
@@ -77,4 +85,27 @@ it('keeps cancel response identity and safe operation errors', async () => {
     vi.fn().mockResolvedValue(Response.json({ detail: 'private-server-text' }, { status: 500 })),
   );
   await expect(cancelRun('a')).rejects.toThrow('api_unavailable');
+});
+
+it('rejects checkpoint availability for a different run and an unrelated fork response', async () => {
+  const checkpoint = structuredClone(fixture.checkpoints[0]);
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockResolvedValue(
+        Response.json([
+          { checkpoint, available: true, reason: null, allowed_patch_fields: ['top_k'] },
+        ]),
+      ),
+  );
+  await expect(getCheckpointAvailability('foreign')).rejects.toThrow('protocol_invalid');
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(fixture)));
+  await expect(
+    forkRun(
+      fixture.run.run_id,
+      { source_checkpoint_id: checkpoint.checkpoint_id, patch: { top_k: 3 } },
+      'fork-key',
+    ),
+  ).rejects.toThrow('protocol_invalid');
 });

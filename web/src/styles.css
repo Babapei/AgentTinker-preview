@@ -151,8 +151,105 @@ textarea:focus-visible {
 .run-control .button {
   margin-left: auto;
 }
+.fork-panel,
+.comparison-panel {
+  margin-top: 20px;
+}
+.fork-panel fieldset {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+.patch-summary,
+.comparison-lineage {
+  font-size: 12px;
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+}
+.comparison-panel :is(h3, p, td, th) {
+  overflow-wrap: anywhere;
+}
+.comparison-panel h3 {
+  font-size: 13px;
+  margin: 0 0 12px;
+}
+.comparison-panel .text-button {
+  white-space: normal;
+  text-align: left;
+}
+.config-differences {
+  background: #f3f7f4;
+  border: 1px solid #cfded2;
+  padding: 16px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.comparison-table-wrap {
+  overflow-x: auto;
+}
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.comparison-table caption {
+  text-align: left;
+  font-weight: 600;
+  padding: 12px 0;
+}
+.comparison-table :is(th, td) {
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  padding: 12px 9px;
+  vertical-align: top;
+}
+.comparison-table thead th {
+  background: #f5f8f5;
+}
+.comparison-table th:first-child {
+  width: 30%;
+}
+.comparison-table tbody th {
+  font-weight: 500;
+}
+.comparison-table .status {
+  white-space: normal;
+}
+.comparison-outputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 18px;
+  gap: 18px;
+}
+.comparison-outputs > div {
+  min-width: 0;
+  background: #fafbfa;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+}
+.comparison-outputs p {
+  white-space: pre-wrap;
+  font-size: 12px;
+  line-height: 1.9;
+}
+.experiment-explanation {
+  background: #eef5f0;
+  padding: 16px;
+  margin-top: 18px;
+  border-radius: 6px;
+}
+.experiment-explanation p {
+  font-size: 12px;
+  line-height: 1.9;
+}
 @media (max-width: 680px) {
   .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .comparison-outputs {
     grid-template-columns: 1fr;
   }
   .experiment-panel,
