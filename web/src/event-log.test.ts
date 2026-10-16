@@ -77,3 +77,16 @@ it('marks unfinished work interrupted without inventing result, end time or usag
     usage: { total_tokens: null },
   });
 });
+
+it.each(['2026-10-16T10:43:30.305887Z', '2026-10-16T18:43:30.305887+08:00'])(
+  'retains sub-millisecond observations and timezone equivalence: %s',
+  (received) => {
+    const events = structuredClone(examples.retried.events.slice(0, 2));
+    if (events[0].type !== 'run.created') throw new Error('creation_required');
+    events[0].data.created_at = '2026-10-16T10:43:30.305125Z';
+    events[0].data.updated_at = '2026-10-16T10:43:30.305125Z';
+    events[0].received_at = '2026-10-16T10:43:30.305125Z';
+    events[1].received_at = received;
+    expect(projectEvents(events)?.run.updated_at).toBe(received);
+  },
+);

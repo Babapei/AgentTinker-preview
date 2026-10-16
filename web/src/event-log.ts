@@ -26,6 +26,16 @@ function immutableSpan(span: Span) {
   return identity;
 }
 
+function instant(value: string): bigint {
+  const milliseconds = Date.parse(value);
+  requireFact(Number.isFinite(milliseconds), 'event_timestamp_invalid');
+  const fraction = value.match(/\.(\d+)(?:Z|[+-]\d{2}:\d{2})$/i)?.[1] ?? '';
+  const subMillisecond = fraction.padEnd(9, '0').slice(3, 9);
+  // Date drops the microseconds retained by Python. Preserve them for updated_at
+  // comparisons; seq remains the only ordering key for execution facts.
+  return BigInt(milliseconds) * 1_000_000n + BigInt(subMillisecond);
+}
+
 /** A pure prefix projection. No SDK, HTTP, tool, or checkpoint execution. */
 export function projectEvents(events: readonly RuntimeEvent[]): RunView | null {
   const state: { run: Run | null } = { run: null };
@@ -143,7 +153,7 @@ export function projectEvents(events: readonly RuntimeEvent[]): RunView | null {
         requireFact(event[key] === null || event[key] === event.data[key]);
       }
     }
-    if (new Date(event.received_at).getTime() > new Date(run.updated_at).getTime()) {
+    if (instant(event.received_at) > instant(run.updated_at)) {
       run = { ...run, updated_at: event.received_at };
     }
     state.run = run;

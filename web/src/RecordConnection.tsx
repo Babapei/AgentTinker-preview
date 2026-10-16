@@ -29,13 +29,15 @@ export default function RecordConnection({
       </div>
     );
   const label =
-    connection === 'reconnecting'
-      ? '连接中断，正在从已应用序号补读'
-      : !caughtUp
-        ? `正在补读历史事件 ${count} / ${head}`
-        : connection === 'complete'
-          ? '事件已核对 · 运行已结束'
-          : '正在跟随已保存的运行进度';
+    connection === 'connecting'
+      ? '正在连接事件服务'
+      : connection === 'reconnecting'
+        ? '连接中断，正在从已应用序号补读'
+        : !caughtUp
+          ? `正在补读历史事件 ${count} / ${head}`
+          : connection === 'complete'
+            ? '事件已核对 · 运行已结束'
+            : '正在跟随已保存的运行进度';
   return (
     <div className="record-connection" role="status">
       {connection === 'reconnecting' ? (

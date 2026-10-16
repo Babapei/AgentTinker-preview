@@ -1,6 +1,6 @@
 # AgentTinker 架构与开发路线
 
-2026-10-08 · 架构基线；M1 已完成，见 [运行记录协议](runtime-records.md)、[HTTP/SSE](runtime-api.md)及 [M1 验收](m1-acceptance.md)；其余接口按阶段验证。
+2026-10-08 · 架构基线；M1/M2 已完成，见 [M2 验收](m2-acceptance.md)、[运行记录协议](runtime-records.md)、[HTTP/SSE](runtime-api.md)及 [M1 验收](m1-acceptance.md)；其余接口按阶段验证。
 
 ## 1. 首先确定哪些能力可以承诺
 

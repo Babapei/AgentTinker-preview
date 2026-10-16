@@ -1,11 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import {
   ArrowDownLeft,
   ArrowUpRight,
   Braces,
-  Check,
   ChevronRight,
-  Circle,
   Clock3,
   Cpu,
   Database,
@@ -19,12 +17,14 @@ import {
   Terminal,
   Workflow,
   Wrench,
-  X,
 } from 'lucide-react';
 import { ApiError } from './api';
-import type { Run, RunView, Span } from './protocol';
+import type { RunView, Span } from './protocol';
 import { useHistory, useRun } from './use-records';
 import RecordConnection from './RecordConnection';
+import Status from './Status';
+import JsonBlock from './JsonBlock';
+import EventWorkspace from './EventWorkspace';
 import {
   dateTime,
   duration,
@@ -32,29 +32,15 @@ import {
   modelAnswer,
   shortId,
   spanSummary,
-  statusLabels,
   summarize,
   textField,
 } from './observations';
 
+const ExecutionGraph = lazy(() => import('./ExecutionGraph'));
+
 function readSelection() {
   const query = new URLSearchParams(window.location.search);
   return { run: query.get('run'), span: query.get('span') };
-}
-
-function Status({ status }: { status: Run['status'] | Span['status'] }) {
-  return (
-    <span className={`status status-${status}`}>
-      {status === 'succeeded' ? (
-        <Check size={12} />
-      ) : status === 'failed' ? (
-        <X size={12} />
-      ) : (
-        <Circle size={9} />
-      )}
-      {statusLabels[status]}
-    </span>
-  );
 }
 
 function ErrorNotice({ error, retry }: { error: Error; retry: () => void }) {
@@ -76,16 +62,6 @@ function ErrorNotice({ error, retry }: { error: Error; retry: () => void }) {
         重新读取 <RefreshCw size={13} />
       </button>
     </div>
-  );
-}
-
-function JsonBlock({ value, empty }: { value: unknown; empty: string }) {
-  return value === null || value === undefined ? (
-    <p className="empty-inline">{empty}</p>
-  ) : (
-    <pre className="json-block" tabIndex={0}>
-      <code>{JSON.stringify(value, null, 2)}</code>
-    </pre>
   );
 }
 
@@ -302,6 +278,7 @@ function RunInspector({
   selectSpan: (id: string) => void;
 }) {
   const [filter, setFilter] = useState('all');
+  const [processView, setProcessView] = useState<'list' | 'graph'>('list');
   const [configOpen, setConfigOpen] = useState(false);
   const selected =
     selectedSpan === null
@@ -339,64 +316,102 @@ function RunInspector({
               <h2>执行过程</h2>
               <span className="count-pill">{view.spans.length}</span>
             </div>
-            <select
-              aria-label="筛选步骤"
-              value={filter}
-              onChange={(event) => setFilter(event.target.value)}
-            >
-              <option value="all">全部步骤</option>
-              <option value="model">模型调用</option>
-              <option value="tool">工具尝试</option>
-              <option value="failed">失败步骤</option>
-            </select>
-          </div>
-          <div className="process-caption">
-            <span>按实际调用顺序</span>
-            <span>状态 / 耗时</span>
-          </div>
-          <ol className="step-list">
-            {visibleSpans.map((span) => (
-              <li key={span.span_id}>
-                <button
-                  className={`step-row ${selected?.span_id === span.span_id ? 'is-selected' : ''}`}
-                  aria-pressed={selected?.span_id === span.span_id}
-                  onClick={() => selectSpan(span.span_id)}
-                >
-                  <span className={`step-icon kind-${span.kind}`}>
-                    {span.kind === 'model' ? <Cpu size={18} /> : <Wrench size={18} />}
-                  </span>
-                  <span className="step-body">
-                    <span className="step-title">
-                      {span.logical_node_id}
-                      <small>
-                        {span.kind === 'tool' ? `尝试 ${span.attempt}` : `调用 ${span.call_index}`}
-                      </small>
-                    </span>
-                    <span className="step-description">{spanSummary(span)}</span>
-                  </span>
-                  <span className="step-end">
-                    <Status status={span.status} />
-                    <span className="mono">{duration(span.duration_ms)}</span>
-                  </span>
-                  <ChevronRight size={14} className="row-chevron" />
-                </button>
-              </li>
-            ))}
-          </ol>
-          {visibleSpans.length === 0 && (
-            <div className="empty-state compact">
-              <Layers2 size={24} />
-              <h3>{view.spans.length === 0 ? '尚无调用记录' : '没有匹配的步骤'}</h3>
-              <p>
-                {view.spans.length === 0
-                  ? '刷新记录可读取已保存的新进度。'
-                  : '试试切换步骤筛选条件。'}
-              </p>
+            <div className="view-toggle" aria-label="执行过程视图">
+              <button aria-pressed={processView === 'list'} onClick={() => setProcessView('list')}>
+                <ListOrdered size={13} />
+                列表
+              </button>
+              <button
+                aria-pressed={processView === 'graph'}
+                onClick={() => setProcessView('graph')}
+              >
+                <Workflow size={13} />
+                执行图
+              </button>
             </div>
+          </div>
+          {processView === 'list' && (
+            <div className="process-filter">
+              <span>步骤筛选</span>
+              <select
+                aria-label="筛选步骤"
+                value={filter}
+                onChange={(event) => setFilter(event.target.value)}
+              >
+                <option value="all">全部步骤</option>
+                <option value="model">模型调用</option>
+                <option value="tool">工具尝试</option>
+                <option value="failed">失败步骤</option>
+              </select>
+            </div>
+          )}
+          {processView === 'list' ? (
+            <>
+              <div className="process-caption">
+                <span>按实际调用顺序</span>
+                <span>状态 / 耗时</span>
+              </div>
+              <ol className="step-list">
+                {visibleSpans.map((span) => (
+                  <li key={span.span_id}>
+                    <button
+                      className={`step-row ${selected?.span_id === span.span_id ? 'is-selected' : ''}`}
+                      aria-pressed={selected?.span_id === span.span_id}
+                      onClick={() => selectSpan(span.span_id)}
+                    >
+                      <span className={`step-icon kind-${span.kind}`}>
+                        {span.kind === 'model' ? <Cpu size={18} /> : <Wrench size={18} />}
+                      </span>
+                      <span className="step-body">
+                        <span className="step-title">
+                          {span.logical_node_id}
+                          <small>
+                            {span.kind === 'tool'
+                              ? `尝试 ${span.attempt}`
+                              : `调用 ${span.call_index}`}
+                          </small>
+                        </span>
+                        <span className="step-description">{spanSummary(span)}</span>
+                      </span>
+                      <span className="step-end">
+                        <Status status={span.status} />
+                        <span className="mono">{duration(span.duration_ms)}</span>
+                      </span>
+                      <ChevronRight size={14} className="row-chevron" />
+                    </button>
+                  </li>
+                ))}
+              </ol>
+              {visibleSpans.length === 0 && (
+                <div className="empty-state compact">
+                  <Layers2 size={24} />
+                  <h3>{view.spans.length === 0 ? '尚无调用记录' : '没有匹配的步骤'}</h3>
+                  <p>
+                    {view.spans.length === 0
+                      ? '刷新记录可读取已保存的新进度。'
+                      : '试试切换步骤筛选条件。'}
+                  </p>
+                </div>
+              )}
+            </>
+          ) : (
+            <Suspense
+              fallback={
+                <div className="empty-state compact" role="status">
+                  正在加载执行图…
+                </div>
+              }
+            >
+              <ExecutionGraph
+                view={view}
+                selected={selected?.span_id ?? null}
+                select={selectSpan}
+              />
+            </Suspense>
           )}
           {selectedSpan !== null && selected === null && (
             <p className="notice" role="status">
-              此步骤不在当前运行中，请选择已有步骤。
+              此步骤在当前记录位置不可见，请选择已出现的步骤。
             </p>
           )}
           <div className="process-footnote">
@@ -606,12 +621,25 @@ export default function App() {
             />
           )}
           {current.view && (
-            <RunInspector
+            <EventWorkspace
               key={current.view.run.run_id}
-              view={current.view}
-              selectedSpan={selection.span}
+              latest={current.view}
+              events={current.events}
+              available={
+                !current.streamError &&
+                current.view.run.capabilities.record_playback &&
+                current.events.length === current.view.last_seq
+              }
               selectSpan={(span) => navigate(current.view!.run.run_id, span)}
-            />
+            >
+              {(view) => (
+                <RunInspector
+                  view={view}
+                  selectedSpan={selection.span}
+                  selectSpan={(span) => navigate(current.view!.run.run_id, span)}
+                />
+              )}
+            </EventWorkspace>
           )}
           {selection.run === null && !history.loading && (
             <div className="empty-state welcome">

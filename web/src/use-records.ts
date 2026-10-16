@@ -83,7 +83,7 @@ export function useRun(runId: string | null, revision: number) {
       error: null,
       streamError: null,
       connection: 'connecting',
-      events: [],
+      events: previous.id === runId ? previous.events : [],
     }));
     getRun(runId, controller.signal)
       .then(async (snapshot) => {
@@ -107,11 +107,11 @@ export function useRun(runId: string | null, revision: number) {
               }
               // Capture this validated prefix before React runs the updater later.
               const view = log.cursor >= snapshot.last_seq ? log.view : snapshot;
-              const events = log.events;
+              const events = log.cursor >= snapshot.last_seq ? log.events : null;
               setState((previous) => ({
                 ...previous,
                 view,
-                events,
+                events: events ?? previous.events,
               }));
             },
           });
