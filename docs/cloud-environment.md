@@ -19,7 +19,7 @@
 
 网络密钥若要求指定目标域名，使用 api.deepseek.com。若编辑页要求配置 HTTP 认证，其对应 DeepSeek 标准认证为 Authorization: Bearer <密钥>；具体绑定方式以平台字段说明为准。仅在设置页看到密钥条目，不能证明当前进程已能使用它。
 
-环境需提供 Python 3.12 或更高版本与 uv；React/Vite 前端阶段需要受支持的 Node.js，当前执行环境已提供 Node 24。Python 包及后续前端依赖由仓库清单和锁文件维护，安装入口保持不变。
+环境需提供 Python 3.12 或更高版本与 uv；React/Vite 前端需要 Node.js ≥22.12 和 npm，当前执行环境已提供 Node 24。Python 包及后续前端依赖由仓库清单和锁文件维护，安装入口保持不变。
 
 ## 安装入口
 
@@ -27,7 +27,7 @@
 bash scripts/setup.sh
 ```
 
-脚本定位自身所属仓库，执行 uv sync --locked，安装当前 Python 依赖与开发工具。它不改动网络策略、凭据或模型配置，不运行付费模型调用。前端工程及锁文件加入仓库后，在同一脚本内补充安装步骤，平台仍调用此入口。
+脚本定位自身所属仓库，执行 uv sync --locked 和 npm --prefix web ci，安装当前 Python 与前端锁定依赖。它不改动网络策略、凭据或模型配置，不运行付费模型调用。前端工程与锁文件已接入该入口，平台继续调用此脚本。
 
 ## 生效检查与下一步
 
@@ -50,4 +50,4 @@ UV_CACHE_DIR=/tmp/agenttinker-uv-cache bash scripts/setup.sh
 UV_CACHE_DIR=/tmp/agenttinker-uv-cache uv run pytest -q
 ```
 
-后续 uv 命令在同样限制下使用相同缓存选择即可。具体调用证据与剩余费用验收见 [接续审视](resumption-audit.md)。
+后续 uv 命令在同样限制下使用相同缓存选择即可。具体调用证据见 [接续审视](resumption-audit.md)；实际账单按用户确认独立待办。本地 UI 与浏览器验证入口见 [前端说明](web-inspector.md)。

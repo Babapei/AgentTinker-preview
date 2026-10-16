@@ -20,5 +20,7 @@ export async function getRuns(offset = 0, signal?: AbortSignal) {
 }
 
 export async function getRun(runId: string, signal?: AbortSignal) {
-  return parseProtocol('run_view', await get(`/runs/${encodeURIComponent(runId)}`, signal));
+  const view = parseProtocol('run_view', await get(`/runs/${encodeURIComponent(runId)}`, signal));
+  if (view.run.run_id !== runId) throw new Error('protocol_invalid');
+  return view;
 }

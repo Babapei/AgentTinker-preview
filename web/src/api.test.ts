@@ -5,10 +5,12 @@ import fixture from './test/fixtures/retried-run.json';
 afterEach(() => vi.unstubAllGlobals());
 
 it('reads encoded run identity and propagates cancellation without dispatching', async () => {
-  const fetcher = vi.fn().mockResolvedValue(Response.json(fixture));
+  const encodedFixture = structuredClone(fixture);
+  encodedFixture.run.run_id = 'run:example';
+  const fetcher = vi.fn().mockResolvedValue(Response.json(encodedFixture));
   vi.stubGlobal('fetch', fetcher);
   const controller = new AbortController();
-  expect(await getRun('run:example', controller.signal)).toEqual(fixture);
+  expect(await getRun('run:example', controller.signal)).toEqual(encodedFixture);
   expect(fetcher).toHaveBeenCalledWith('/api/v1/runs/run%3Aexample', {
     signal: controller.signal,
     headers: { Accept: 'application/json' },
@@ -32,4 +34,9 @@ it('returns a stable missing-run error without exposing the response body', asyn
 it('rejects an unrecognized successful response', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ status: 'all-good' })));
   await expect(getRun('wrong-contract')).rejects.toThrow('protocol_invalid');
+});
+
+it('rejects a different run returned under the requested identity', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(fixture)));
+  await expect(getRun('run_different')).rejects.toThrow('protocol_invalid');
 });

@@ -1,6 +1,6 @@
 # M2：运行检查界面
 
-工程位于 [web](../web)，采用 React、TypeScript 和 Vite。当前已建立工程、协议生成、运行时结构校验和只读 HTTP 客户端，检查界面随后接入；M2 尚未完成。
+工程位于 [web](../web)，采用 React、TypeScript 和 Vite。共享协议、只读历史列表和运行/步骤详情已接入后端；图、实时事件订阅、时间线与历史播放尚待实现，M2 继续进行。
 
 ## 本地开发
 
@@ -33,4 +33,32 @@ npm --prefix web run format:check
 
 [生成脚本](../web/scripts/generate-protocol.mjs) 用 json-schema-to-typescript 产生 TypeScript 声明与 JSON Schema，两个产物一起提交，禁止手改。构建先与 Python 当前协议比对，发现漂移即失败。协议变更时更新 Python 源码再重新生成。
 
-浏览器使用 Ajv 校验来自网络的数据，拒绝未知版本、缺失字段与错误类型；这是结构验证，Pydantic 的跨字段语义检查仍以服务端为准。客户端只有 GET 历史/运行接口；未知用量和费用保持 null。10 项 Vitest 验证包括真实 LangGraph synthetic 生成的离线记录、未知值保留、错误协议、费用字符串、分页及请求取消信号；没有付费调用。
+浏览器使用 Ajv 校验来自网络的数据，拒绝未知版本、缺失字段与错误类型，并检查返回的 Run ID 与请求一致；这是结构验证，Pydantic 的跨字段语义检查仍以服务端为准。客户端只有 GET 历史/运行接口；查看、切换、刷新均不执行 provider/tool。
+
+## 当前检查能力
+
+- **历史：**读取实际 SQLite API，分页加载、搜索已加载记录；当前已加载记录按创建时间倒序，不把它宣称为全库最新排序。地址栏保存 run/span，刷新和浏览器返回保留选择；快速切换会取消旧读取并忽略迟到结果。
+- **步骤：**区分模型每次调用和工具每次尝试，筛选模型/工具/失败步骤；默认定位首个失败步骤，也可键盘操作。展示实际输入、输出、元数据及注入故障来源；JSON 作为文本显示。
+- **观测：**逻辑工具调用和 attempts 分开；指标仅统计本 Run 新增步骤，继承前缀只说明引用数。用量不完整则总量未知并显示覆盖率；已知 0 保留为 0。费用用 Decimal 精确相加，只有币种/口径/价格版本一致且完整时显示合计；估算不称实际账单。
+- **来源与限制：**显式显示 live/synthetic/recorded/imported；模型输出标注尚未评价。检查点分支由后端 capabilities 决定，不提供虚假分支入口；未知值不补造。空历史、无匹配步骤、缺失 Run、协议不兼容与服务不可达分别提示。
+- **刷新：**本节点显示带 last_seq 的持久化快照，需手动刷新读取最新进度。没有把停止更新或动画当成暂停/取消远端任务；运行控制、实时订阅和完整事件终止原因随后续节点接入。
+
+17 项 Vitest 验证协议、请求身份、未知/部分观测、已知零值、逻辑计数和精确费用。9 项 Playwright 测试使用实际 Chromium 和本机 Vite/FastAPI/SQLite；真实 LangGraph synthetic 生成失败/重试记录，API 运行适配器禁止任何再次执行。另用明确的路由 fixture 覆盖分页、部分用量、错误响应及竞态。检查了键盘选择、390px 窄屏无横向溢出、减少动画，以及默认页 axe WCAG 2 A/AA 自动检查；这不替代完整人工可访问性评审。后端 136 项回归继续通过，没有付费调用。
+
+## 浏览器验证与模拟预览
+
+```bash
+# 首次没有浏览器时安装 Chromium；已有系统浏览器可指定路径。
+npm --prefix web exec -- playwright install chromium
+UV_CACHE_DIR=/tmp/agenttinker-uv-cache npm --prefix web run test:e2e
+```
+
+本环境可直接使用 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium`。测试自动占用本机 8000/5173 两端口，不复用其他服务，以免读写真实开发数据；完成后关闭服务。测试截图位于忽略的 artifacts/m2-inspector-desktop.png 和 m2-inspector-mobile.png，不是发布站点。
+
+需要手动查看模拟记录时，可用以下命令代替普通后端入口，再另启前端：
+
+```bash
+uv run python scripts/serve_web_test.py
+```
+
+该服务仅在临时 SQLite 生成两条 native synthetic 记录，关闭即删除，不使用 live 密钥、不修改 artifacts/runs.sqlite。空数据库的普通界面仍显示空态，不自动生成或冒充已有实验。生产静态托管、公开部署和完整实验工作台尚未实现。

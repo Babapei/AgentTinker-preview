@@ -4,7 +4,7 @@
 
 **建议以“可交互的 Agent 实验室”为主线：让用户观察一次执行、定位失败、修改一个因素，再用新的运行验证自己的判断。** 学习和开发共享同一个实验及其运行记录。
 
-这份方案延续原对话中兼顾 Learn、Playground、Builder、Debugger、Evaluation、Explore 的愿景。仓库已完成第一轮调研与设计，以及 M0 的模拟和真实 DeepSeek 分支技术验收，M1 运行记录服务已完成，下一步 M2 检查与回放界面；实验工作台尚未实现。实际扣费仍未知，按用户确认独立保留待办。
+这份方案延续原对话中兼顾 Learn、Playground、Builder、Debugger、Evaluation、Explore 的愿景。仓库已完成第一轮调研与设计，以及 M0 的模拟和真实 DeepSeek 分支技术验收，M1 运行记录服务已完成，M2 的只读检查界面已接入历史与步骤，图和播放待实现；完整实验工作台尚未实现。实际扣费仍未知，按用户确认独立保留待办。
 
 **接续开发入口：**新对话或新环境先阅读 [开发断点与交接](HANDOFF.md)，其中保存已核对的实现、验证结果、当前边界、阻塞及下一步。
 
@@ -33,7 +33,7 @@
 
 **命名约定：**产品、文档和界面统一使用 **AgentTinker**。当前仓库为 [AgentTinker-preview](https://github.com/Babapei/AgentTinker-preview)，`-preview` 标记开发预览阶段；完成后仓库更名为 `AgentTinker`。
 
-**M1 运行记录已完成。** 核心协议、SQLite/文件存储、串行运行服务、HTTP 控制和 SSE 已贯通，136 项测试通过。真实本机 HTTP 验证断线续传、幂等和取消后的在途用量保留；本轮模型验证为离线调用。M2 的 React/Vite 工程与共享协议基础已建立，下一步接历史与步骤检查界面。证据见 [M1 验收](docs/m1-acceptance.md)，实际账单继续独立待办。
+**M1 运行记录已完成。** 核心协议、SQLite/文件存储、串行运行服务、HTTP 控制和 SSE 已贯通，136 项测试通过。真实本机 HTTP 验证断线续传、幂等和取消后的在途用量保留；本轮模型验证为离线调用。M2 已提供只读历史、步骤与原始输入输出检查，前端 17 项单元测试、9 项浏览器集成通过；下一步图、实时事件订阅、时间线与播放。证据见 [M1 验收](docs/m1-acceptance.md)，实际账单继续独立待办。
 
 本地后端入口（启动不调用模型）：
 
@@ -42,4 +42,4 @@ bash scripts/setup.sh
 uv run agenttinker-server --database artifacts/runs.sqlite
 ```
 
-默认监听 `127.0.0.1:8000`，API 文档 `/docs`。创建 Run 时必须显式选择 live/synthetic，详见 [HTTP 与 SSE](docs/runtime-api.md)。目前尚无网页工作台或公开部署。
+默认监听 `127.0.0.1:8000`，API 文档 `/docs`。创建 Run 时必须显式选择 live/synthetic，详见 [HTTP 与 SSE](docs/runtime-api.md)。只读检查界面通过 npm --prefix web run dev 启动，默认本机 5173；详见 [前端说明](docs/web-inspector.md)。完整实验工作台和公开部署尚未完成。
