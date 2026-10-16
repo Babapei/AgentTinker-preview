@@ -14,7 +14,8 @@ from agenttinker.core.records import CheckpointRef, Count, Identifier, Run, Span
 from agenttinker.core.schema import protocol_schemas
 from agenttinker.core.states import TERMINAL_STATUSES, RunStatus
 from agenttinker.m0.openai_model import ProviderNotConfigured
-from agenttinker.runtime.service import RunRequest, RunService
+from agenttinker.runtime.checkpoints import ForkRejected
+from agenttinker.runtime.service import CheckpointAvailability, ForkRequest, RunRequest, RunService
 from agenttinker.storage.sqlite import EventConflict, SQLiteEventStore
 
 
@@ -111,6 +112,17 @@ def create_app(
     async def conflict(_request, _error):
         return JSONResponse(status_code=409, content={"detail": "idempotency_key_payload_conflict"})
 
+    @app.exception_handler(ForkRejected)
+    async def rejected_fork(_request, error):
+        status = (
+            422
+            if error.code == "invalid_patch"
+            else 404
+            if error.code == "checkpoint_missing"
+            else 409
+        )
+        return JSONResponse(status_code=status, content={"detail": error.code})
+
     @app.exception_handler(KeyError)
     async def missing_run(_request, _error):
         return JSONResponse(status_code=404, content={"detail": "run_not_found"})
@@ -185,6 +197,26 @@ def create_app(
     @app.get("/api/v1/runs/{run_id}/checkpoints", response_model=tuple[CheckpointRef, ...])
     def get_checkpoints(run_id: Identifier, request: Request):
         return request.app.state.service.get(run_id).checkpoints
+
+    @app.get(
+        "/api/v1/runs/{run_id}/checkpoint-availability",
+        response_model=tuple[CheckpointAvailability, ...],
+    )
+    def checkpoint_availability(run_id: Identifier, request: Request):
+        return request.app.state.service.checkpoint_availability(run_id)
+
+    @app.post("/api/v1/runs/{run_id}/forks", response_model=RunView, status_code=201)
+    def fork_run(
+        run_id: Identifier,
+        body: ForkRequest,
+        request: Request,
+        response: Response,
+        idempotency_key: Annotated[str, Header(min_length=1, max_length=128)],
+    ):
+        view, created = request.app.state.service.fork(run_id, body, idempotency_key)
+        response.status_code = 201 if created else 200
+        response.headers["Location"] = f"/api/v1/runs/{view.run.run_id}"
+        return view
 
     @app.post("/api/v1/runs/{run_id}/cancel", response_model=RunView)
     def cancel_run(run_id: Identifier, request: Request, response: Response):

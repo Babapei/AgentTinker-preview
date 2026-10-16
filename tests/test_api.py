@@ -14,12 +14,14 @@ from openai import OpenAI
 
 import agenttinker.api.app as api_module
 import agenttinker.m0.openai_model as sdk_module
+import agenttinker.runtime.checkpoints as checkpoint_module
 from agenttinker.api.app import create_app
 from agenttinker.core.events import parse_event
 from agenttinker.core.projection import RunView, project_events
 from agenttinker.core.schema import protocol_schemas
 from agenttinker.m0.accounting import PriceBook
 from agenttinker.m0.synthetic import SyntheticModel
+from agenttinker.runtime.checkpoints import checkpoint_path
 from agenttinker.runtime.service import RunService
 
 
@@ -38,6 +40,185 @@ def sse_events(lines):
             fields[key] = value
     assert not fields
     return events
+
+
+def test_http_fork_has_durable_intervention_sse_and_restart_identity(tmp_path):
+    database = tmp_path / "runs.sqlite"
+    app = create_app(database)
+    with TestClient(app) as client:
+        a_id = client.post(
+            "/api/v1/runs", json={"mode": "synthetic"}, headers={"Idempotency-Key": "A"}
+        ).json()["run"]["run_id"]
+        a = app.state.service.wait(a_id)
+        route = f"/api/v1/runs/{a_id}"
+        availability = client.get(route + "/checkpoint-availability").json()
+        assert availability[0]["available"] and availability[0]["reason"] is None
+        body = {
+            "source_checkpoint_id": a.checkpoints[0].checkpoint_id,
+            "patch": {"tool_retry_limit": 1},
+        }
+        response = client.post(route + "/forks", json=body, headers={"Idempotency-Key": "B"})
+        assert response.status_code == 201
+        b_id = response.json()["run"]["run_id"]
+        assert response.headers["location"] == f"/api/v1/runs/{b_id}"
+        b = app.state.service.wait(b_id)
+        assert b.run.status == "succeeded"
+        assert response.json()["run"]["intervention"]["before"] == a.run.config.tool_policy
+        assert response.json()["run"]["inherited_span_ids"] == [a.spans[0].span_id]
+        assert (
+            project_events(sse_events(client.get(f"/api/v1/runs/{b_id}/events").iter_lines())) == b
+        )
+        assert RunView.model_validate(client.get(route).json()) == a
+        for patch in (
+            {},
+            {"query": "changed"},
+            {"tool_retry_limit": 1, "top_k": 3},
+            {"tool_retry_limit": True},
+        ):
+            error = client.post(
+                route + "/forks",
+                json={**body, "patch": patch},
+                headers={"Idempotency-Key": "invalid"},
+            )
+            assert error.status_code == 422 and error.json()["detail"] == "invalid_patch"
+        missing = client.post(
+            route + "/forks",
+            json={**body, "source_checkpoint_id": "missing"},
+            headers={"Idempotency-Key": "missing"},
+        )
+        assert missing.status_code == 404 and missing.json()["detail"] == "checkpoint_missing"
+        assert client.post(route + "/forks", json=body).status_code == 422
+        assert (
+            client.post(
+                route + "/forks",
+                json={**body, "task": "changed"},
+                headers={"Idempotency-Key": "invalid"},
+            ).status_code
+            == 422
+        )
+        conflict = client.post(
+            route + "/forks", json={**body, "patch": {"top_k": 3}}, headers={"Idempotency-Key": "B"}
+        )
+        assert conflict.status_code == 409
+        assert client.get("/api/v1/runs").json()["total"] == 2
+    checkpoint_path(database).unlink()
+    restarted = create_app(database)
+    with TestClient(restarted) as client:
+        duplicate = client.post(route + "/forks", json=body, headers={"Idempotency-Key": "B"})
+        assert duplicate.status_code == 200 and RunView.model_validate(duplicate.json()) == b
+        availability = client.get(route + "/checkpoint-availability").json()[0]
+        assert not availability["available"] and availability["reason"] == "checkpoint_missing"
+        assert RunView.model_validate(client.get(route).json()) == a
+
+
+def test_live_fork_uses_offline_sdk_only_for_new_suffix_and_rejects_missing_credentials(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "offline-fork-key")
+    monkeypatch.setenv("DEEPSEEK_MODEL", "deepseek-flash")
+    requests = []
+
+    def respond(request):
+        body = json.loads(request.content)
+        requests.append(body)
+        message = SyntheticModel().complete(body["messages"]).message
+        return httpx.Response(
+            200,
+            json={
+                "id": f"offline-{len(requests)}",
+                "object": "chat.completion",
+                "created": 1,
+                "model": "deepseek-flash",
+                "choices": [
+                    {
+                        "index": 0,
+                        "finish_reason": "tool_calls" if "tool_calls" in message else "stop",
+                        "message": message,
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": 10,
+                    "completion_tokens": 2,
+                    "total_tokens": 12,
+                    "prompt_cache_hit_tokens": 4,
+                    "prompt_cache_miss_tokens": 6,
+                },
+            },
+        )
+
+    monkeypatch.setattr(
+        sdk_module,
+        "OpenAI",
+        lambda **kw: OpenAI(**kw, http_client=httpx.Client(transport=httpx.MockTransport(respond))),
+    )
+    price = PriceBook.model_validate_json(
+        (Path(__file__).parents[1] / "examples/m0/pricing-deepseek-flash-peak.json").read_text()
+    )
+    database = tmp_path / "runs.sqlite"
+    app = create_app(database, pricing=price)
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/runs",
+            json={"mode": "live", "provider": "deepseek"},
+            headers={"Idempotency-Key": "A"},
+        )
+        a = app.state.service.wait(response.json()["run"]["run_id"])
+        assert a.run.status == "failed" and len(requests) == 1
+    app = create_app(database, pricing=price)
+    with TestClient(app) as client:
+        route = f"/api/v1/runs/{a.run.run_id}"
+        body = {
+            "source_checkpoint_id": a.checkpoints[0].checkpoint_id,
+            "patch": {"tool_retry_limit": 1},
+        }
+        response = client.post(route + "/forks", json=body, headers={"Idempotency-Key": "B"})
+        assert response.status_code == 201
+        b = app.state.service.wait(response.json()["run"]["run_id"])
+        assert b.run.status == "succeeded" and len(requests) == 2
+        assert requests[1]["messages"][:2] == requests[0]["messages"]
+        assert requests[1]["messages"][2] == a.spans[0].output["message"]
+        assert requests[1]["model"] == "deepseek-flash"
+        assert b.spans[-1].usage.total_tokens == 12
+        assert str(b.spans[-1].cost.amount) == "0.000004224"
+        assert b.run.config.price_version == a.run.config.price_version
+        assert "offline-fork-key" not in b.model_dump_json()
+        monkeypatch.delenv("DEEPSEEK_API_KEY")
+        error = client.post(route + "/forks", json=body, headers={"Idempotency-Key": "missing-key"})
+        assert error.status_code == 503 and error.json()["detail"] == "provider_not_configured"
+        assert len(requests) == 2 and client.get("/api/v1/runs").json()["total"] == 2
+
+
+@pytest.mark.parametrize("failure", ["incompatible", "unreadable"])
+def test_checkpoint_availability_and_fork_recheck_current_state(tmp_path, monkeypatch, failure):
+    app = create_app(tmp_path / "runs.sqlite")
+    with TestClient(app) as client:
+        a_id = client.post(
+            "/api/v1/runs", json={"mode": "synthetic"}, headers={"Idempotency-Key": "A"}
+        ).json()["run"]["run_id"]
+        a = app.state.service.wait(a_id)
+        route = f"/api/v1/runs/{a_id}"
+        if failure == "incompatible":
+            monkeypatch.setattr(checkpoint_module, "runtime_versions", lambda: {"langgraph": "new"})
+            expected = "runtime_incompatible"
+        else:
+            checkpoint_path(app.state.service.database).write_bytes(
+                b"unreadable_checkpoint_fixture"
+            )
+            expected = "checkpoint_unreadable"
+        available = client.get(route + "/checkpoint-availability").json()[0]
+        assert not available["available"] and available["reason"] == expected
+        assert available["allowed_patch_fields"] == []
+        response = client.post(
+            route + "/forks",
+            json={
+                "source_checkpoint_id": a.checkpoints[0].checkpoint_id,
+                "patch": {"tool_retry_limit": 1},
+            },
+            headers={"Idempotency-Key": "B"},
+        )
+        assert response.status_code == 409 and response.json()["detail"] == expected
+        assert client.get("/api/v1/runs").json()["total"] == 1
+        assert RunView.model_validate(client.get(route).json()) == a
 
 
 @pytest.mark.parametrize("retry_limit,status", [(0, "failed"), (1, "succeeded")])

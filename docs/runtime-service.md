@@ -35,6 +35,14 @@ M3 已接入官方 SqliteSaver，真实状态保存在事件库旁的 `<database
 
 新版 Agent 为 v2，记录 LangGraph、checkpoint、SQLite saver、SDK、prompt、工具与夹具版本。`resolve_checkpoint(run_id, checkpoint_id)` 只读明确历史配置，核对版本、所属 Run、配置和工具前边界，拒绝缺失、不兼容或错属状态。检查不构造模型、不调用工具、不改写事件。旧内存引用仍可查看，不能恢复；M0 CLI 保持内存 saver。
 
-当前尚未接分支调度，fork 能力仍 false；下一节点接能力检测、允许字段补丁与分支执行。
+## M3：从旧点创建分支
 
-原有 136 项后端回归和 4 项新持久化测试通过，覆盖真实子进程结束后旧边界定位、工具中异常退出后的 interrupted、无自动重发、版本不匹配及缺失/错属状态；全部使用本地或模拟调用，没有新付费请求。
+新版 Run 声明 fork/patch_tool_policy 支持；声明保留在原始事件中，不因重启或环境变化被改写。`checkpoint_availability(run_id)` 逐项重新检查终态、能力、实际状态、运行时/夹具与价格版本，返回可用性和稳定拒绝原因。旧内存记录保持原能力。live 的凭据和请求参数在提交 fork 时额外检查；只读检测不构造 SDK。
+
+`fork(source_run_id, ForkRequest(source_checkpoint_id=..., patch={"tool_retry_limit": 1}), request_key)` 每次只允许修改一个有效字段：tool_retry_limit 为 0–3，top_k 为 1–3，整数严格校验。空补丁、原值、多字段、任意状态/查询补丁拒绝。当前源 Run 必须终态；不会将活动运行暂停。模型原 tool call ID、查询、消息前缀、模型参数、数据/故障计划保持相同。
+
+新 Run 的 Intervention 包含 ID、父运行、源点、patch、before/after，并随 run.created 和请求幂等账本原子提交。通过官方 update_state 在同一 LangGraph thread 的明确旧点派生新 checkpoint，保存 B 的工具前引用，再运行后续节点。B 的工具输入记录 intervention_id 和有效策略；attempt 从 1 重计，首次注入故障规则仍相同。A 的事件、配置、原 checkpoint 及其 pending writes 不变。
+
+B 通过 inherited_span_ids 引用旧模型步骤，新增 spans、Token、估算只包含分支后调用。可从 B 再次分支，仍保留原模型前缀引用。模型仍可能返回不同答案。幂等 key 包含源运行、checkpoint 和规范化 patch；同 key 同请求即使 saver 后来丢失也返回原 B，冲突不创建新运行。取消、调度和服务退出沿用原有生命周期。
+
+165 项后端、41 项 Vitest 与 15 项实际 Chromium 回归通过，包括子进程重启/意外退出、A 原始状态不变、连续分支、同故障、只执行后缀、幂等与排队取消。离线 SDK MockTransport 验证重启后只新增一次回答请求、保留 usage/价格版本及凭据缺失拒绝。没有新付费调用；界面运行控制、分支和 A/B 对比仍待接入，M3 尚未完成。

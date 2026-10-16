@@ -19,6 +19,7 @@ Experiment、DatasetCase、Variant、Agent 和 FaultPlan 当前通过明确的 I
 - 所有顶层记录与事件带 `schema_version=0.1`；未知版本、事件类型、额外字段拒绝解析。计数禁止布尔值或字符串隐式转换；时间必须带时区，JSON 不接受 NaN/Infinity。
 - Run 保存模式、状态、创建/更新时间、模型请求配置、prompt/tool/runtime/fixture/evaluator 版本及实验引用。实际返回模型属于具体 Span；未取得的字段保留未知。凭据不得放入这些配置或事件，模型连接仍由服务端配置。
 - B 保存 parent_run_id、source_checkpoint_id 和 inherited_span_ids，缺少一半谱系、自引用或重复继承引用会被拒绝。继承步骤只作为引用，不复制进 B 的新增 spans。
+- M3 的 Run.intervention 保存单变量工具策略的 ID、父运行/源点、patch、before/after，属于 run.created 的不可变事实；原运行该字段为 null。校验改动范围/值及谱系，存储额外核对父策略；无需新事件类型。旧事件缺失该可选字段时按 null 读取，原存储事实不重写，浏览器响应协议已重新生成。
 - 工具 span 必须包含 logical_call_id 和 attempt；call_index 表示该逻辑节点的一次调用，工具重试保留 call_index，使用新 span ID 和递增 attempt。
 - Usage 支持逐项未知；已知总数及缓存分解必须一致。Cost 的 unknown 不携带金额；estimate 需要币种和价格版本；actual 需要独立证据 artifact 引用。Decimal 金额以字符串序列化。
 - 普通 imported 记录默认只有检查/回放能力，不得仅因导入数据而获得执行能力。原生能力也只是声明，运行服务仍需检查实际 checkpoint 和兼容版本。
@@ -69,7 +70,7 @@ from agenttinker.core.schema import protocol_schemas
 print(json.dumps(protocol_schemas(), ensure_ascii=False, indent=2))
 ```
 
-Run、Span、CheckpointRef、Artifact、Event 和 RunView 的 schema 均来自同一实现；Event 包含 type 判别器。API 与后续前端以此生成类型，不另写一份协议定义。生成产物可写入忽略的 artifacts，不手工维护副本。
+Run、Intervention、Span、CheckpointRef、Artifact、Event 和 RunView 的 schema 均来自同一实现；Event 包含 type 判别器。API 与后续前端以此生成类型，不另写一份协议定义。生成产物可写入忽略的 artifacts，不手工维护副本。
 
 CORE-01 新增 32 项验证，覆盖状态转换、取消与在途结果、中断、分支引用、版本/来源/关联校验、费用与未知值、事件顺序、重试与 schema 往返。STORE-01 新增 13 项 SQLite/文件集成验证；运行服务新增 12 项、API 新增 16 项集成验证，全套共 136 项测试通过；HTTP/SSE 与运行服务的验收见 [M1 记录](m1-acceptance.md)。
 

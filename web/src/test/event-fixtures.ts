@@ -4,7 +4,7 @@ import type { RuntimeEvent, RunView } from '../protocol';
 
 type Example = { events: RuntimeEvent[]; prefixes: RunView[]; view: RunView };
 
-export function eventFixtures(): Record<'failed' | 'retried' | 'cancelled', Example> {
+export function eventFixtures(): Record<'failed' | 'retried' | 'cancelled' | 'forked', Example> {
   return JSON.parse(
     execFileSync('uv', ['run', 'python', 'scripts/export_event_fixtures.py'], {
       cwd: fileURLToPath(new URL('../../../', import.meta.url)),

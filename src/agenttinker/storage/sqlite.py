@@ -131,6 +131,10 @@ class SQLiteEventStore:
             )
             if not set(event.data.inherited_span_ids) <= parent_spans:
                 raise ValueError("inherited_span_missing")
+            if event.data.intervention is not None and (
+                event.data.intervention.before != parent.run.config.tool_policy
+            ):
+                raise ValueError("intervention_source_policy_mismatch")
         if isinstance(event, SpanFinished) and event.data.cost.kind == "actual":
             self.read_artifact(event.data.cost.evidence_artifact_id)
         view = project_events([*self._history(event.run_id), event])

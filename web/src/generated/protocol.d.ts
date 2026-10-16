@@ -1,5 +1,27 @@
 /* Generated from Pydantic serialization schemas. Run npm run schema. */
 
+export type AllowedPatchFields = ('tool_retry_limit' | 'top_k')[];
+export type Available = boolean;
+export type Adapter = string;
+export type AgentVersion = string;
+export type AllowedPatchFields1 = ('tool_retry_limit' | 'top_k')[];
+export type Boundary = 'before_tool';
+export type CheckpointId = string;
+export type JsonValue = unknown;
+export type RunId = string;
+export type RuntimeVersion = string;
+export type SchemaVersion = '0.1';
+export type Reason =
+  | (
+      | 'unsupported_capability'
+      | 'source_run_active'
+      | 'checkpoint_missing'
+      | 'runtime_incompatible'
+      | 'checkpoint_state_invalid'
+      | 'checkpoint_unreadable'
+    )
+  | null;
+export type CheckpointAvailability = CheckpointAvailability1[];
 export type Event =
   | RunCreated
   | RunStatusChanged
@@ -19,7 +41,6 @@ export type RunFromStart = boolean;
 export type TraceView = boolean;
 export type Id = string;
 export type Version = string;
-export type JsonValue = unknown;
 export type FixtureHash = string | null;
 export type PriceVersion = string | null;
 export type PromptVersion = string | null;
@@ -28,11 +49,15 @@ export type RequestedModel = string | null;
 export type Task = string | null;
 export type CreatedAt = string;
 export type InheritedSpanIds = string[];
+export type InterventionId = string;
+export type ParentRunId = string;
+export type SchemaVersion1 = '0.1';
+export type SourceCheckpointId = string;
 export type Mode = 'live' | 'recorded' | 'synthetic' | 'imported';
-export type ParentRunId = string | null;
-export type RunId = string;
-export type SchemaVersion = '0.1';
-export type SourceCheckpointId = string | null;
+export type ParentRunId1 = string | null;
+export type RunId1 = string;
+export type SchemaVersion2 = '0.1';
+export type SourceCheckpointId1 = string | null;
 export type RunStatus =
   'queued' | 'running' | 'cancel_requested' | 'succeeded' | 'failed' | 'cancelled' | 'interrupted';
 export type UpdatedAt = string;
@@ -42,23 +67,23 @@ export type LogicalNodeId = string | null;
 export type OccurredAt = string;
 export type ParentSpanId = string | null;
 export type ReceivedAt = string;
-export type RunId1 = string;
-export type SchemaVersion1 = '0.1';
+export type RunId2 = string;
+export type SchemaVersion3 = '0.1';
 export type Seq = number;
 export type SpanId = string | null;
 export type Type = 'run.created';
 export type Attempt1 = number | null;
 export type RunStatus1 =
   'queued' | 'running' | 'cancel_requested' | 'succeeded' | 'failed' | 'cancelled' | 'interrupted';
-export type Reason = string | null;
+export type Reason1 = string | null;
 export type EventId1 = string;
 export type LogicalCallId1 = string | null;
 export type LogicalNodeId1 = string | null;
 export type OccurredAt1 = string;
 export type ParentSpanId1 = string | null;
 export type ReceivedAt1 = string;
-export type RunId2 = string;
-export type SchemaVersion2 = '0.1';
+export type RunId3 = string;
+export type SchemaVersion4 = '0.1';
 export type Seq1 = number;
 export type SpanId1 = string | null;
 export type Type1 = 'run.status_changed';
@@ -84,8 +109,8 @@ export type Output = {
 } | null;
 export type ParentSpanId2 = string | null;
 export type Provider1 = string | null;
-export type RunId3 = string;
-export type SchemaVersion3 = '0.1';
+export type RunId4 = string;
+export type SchemaVersion5 = '0.1';
 export type SpanId2 = string;
 export type StartedAt = string;
 export type Status = 'running' | 'succeeded' | 'failed' | 'cancelled' | 'interrupted';
@@ -103,8 +128,8 @@ export type LogicalNodeId3 = string | null;
 export type OccurredAt2 = string;
 export type ParentSpanId3 = string | null;
 export type ReceivedAt2 = string;
-export type RunId4 = string;
-export type SchemaVersion4 = '0.1';
+export type RunId5 = string;
+export type SchemaVersion6 = '0.1';
 export type Seq2 = number;
 export type SpanId3 = string;
 export type Type2 = 'span.started';
@@ -115,8 +140,8 @@ export type LogicalNodeId4 = string | null;
 export type OccurredAt3 = string;
 export type ParentSpanId4 = string | null;
 export type ReceivedAt3 = string;
-export type RunId5 = string;
-export type SchemaVersion5 = '0.1';
+export type RunId6 = string;
+export type SchemaVersion7 = '0.1';
 export type Seq3 = number;
 export type SpanId4 = string;
 export type Type3 = 'span.finished';
@@ -132,8 +157,8 @@ export type LogicalNodeId5 = string | null;
 export type OccurredAt4 = string;
 export type ParentSpanId5 = string | null;
 export type ReceivedAt4 = string;
-export type RunId6 = string;
-export type SchemaVersion6 = '0.1';
+export type RunId7 = string;
+export type SchemaVersion8 = '0.1';
 export type Seq4 = number;
 export type SpanId5 = string;
 export type Type4 = 'tool.attempt_failed';
@@ -146,20 +171,12 @@ export type LogicalNodeId6 = string | null;
 export type OccurredAt5 = string;
 export type ParentSpanId6 = string | null;
 export type ReceivedAt5 = string;
-export type RunId7 = string;
-export type SchemaVersion7 = '0.1';
+export type RunId8 = string;
+export type SchemaVersion9 = '0.1';
 export type Seq5 = number;
 export type SpanId6 = string;
 export type Type5 = 'tool.retry_scheduled';
 export type Attempt7 = number | null;
-export type Adapter = string;
-export type AgentVersion = string;
-export type AllowedPatchFields = ('tool_retry_limit' | 'top_k')[];
-export type Boundary = 'before_tool';
-export type CheckpointId = string;
-export type RunId8 = string;
-export type RuntimeVersion = string;
-export type SchemaVersion8 = '0.1';
 export type EventId6 = string;
 export type LogicalCallId7 = string | null;
 export type LogicalNodeId7 = string | null;
@@ -167,7 +184,7 @@ export type OccurredAt6 = string;
 export type ParentSpanId7 = string | null;
 export type ReceivedAt6 = string;
 export type RunId9 = string;
-export type SchemaVersion9 = '0.1';
+export type SchemaVersion10 = '0.1';
 export type Seq6 = number;
 export type SpanId7 = string | null;
 export type Type6 = 'checkpoint.saved';
@@ -176,17 +193,46 @@ export type NextOffset = number | null;
 export type Total = number;
 export type Checkpoints = CheckpointRef[];
 export type LastSeq = number;
-export type SchemaVersion10 = '0.1';
+export type SchemaVersion11 = '0.1';
 export type Spans = Span[];
 export type Items1 = Span[];
 export type NextOffset1 = number | null;
 export type Total1 = number;
 
 export interface RuntimeProtocol {
+  checkpoint_availability: CheckpointAvailability;
   event: Event;
   run_page: RunPage;
   run_view: RunView;
   span_page: SpanPage;
+}
+export interface CheckpointAvailability1 {
+  allowed_patch_fields: AllowedPatchFields;
+  available: Available;
+  checkpoint: CheckpointRef;
+  reason: Reason;
+}
+export interface CheckpointRef {
+  adapter: Adapter;
+  agent_version: AgentVersion;
+  allowed_patch_fields: AllowedPatchFields1;
+  boundary: Boundary;
+  checkpoint_id: CheckpointId;
+  locator: Locator;
+  run_id: RunId;
+  runtime_version: RuntimeVersion;
+  schema_version: SchemaVersion;
+  tool_versions: ToolVersions;
+}
+export interface Locator {
+  [k: string]: JsonValue;
+}
+export interface ToolVersions {
+  /**
+   * This interface was referenced by `ToolVersions`'s JSON-Schema definition
+   * via the `patternProperty` "^[A-Za-z0-9][A-Za-z0-9_.:-]*$".
+   */
+  [k: string]: string;
 }
 export interface RunCreated {
   attempt: Attempt;
@@ -197,8 +243,8 @@ export interface RunCreated {
   occurred_at: OccurredAt;
   parent_span_id: ParentSpanId;
   received_at: ReceivedAt;
-  run_id: RunId1;
-  schema_version: SchemaVersion1;
+  run_id: RunId2;
+  schema_version: SchemaVersion3;
   seq: Seq;
   span_id: SpanId;
   type: Type;
@@ -208,11 +254,12 @@ export interface Run {
   config: RunConfig;
   created_at: CreatedAt;
   inherited_span_ids: InheritedSpanIds;
+  intervention: Intervention | null;
   mode: Mode;
-  parent_run_id: ParentRunId;
-  run_id: RunId;
-  schema_version: SchemaVersion;
-  source_checkpoint_id: SourceCheckpointId;
+  parent_run_id: ParentRunId1;
+  run_id: RunId1;
+  schema_version: SchemaVersion2;
+  source_checkpoint_id: SourceCheckpointId1;
   status: RunStatus;
   updated_at: UpdatedAt;
 }
@@ -242,7 +289,7 @@ export interface RunConfig {
   runtime_versions: RuntimeVersions;
   task: Task;
   tool_policy: ToolPolicy;
-  tool_versions: ToolVersions;
+  tool_versions: ToolVersions1;
   variant: VersionRef | null;
 }
 export interface VersionRef {
@@ -272,12 +319,30 @@ export interface RuntimeVersions {
 export interface ToolPolicy {
   [k: string]: JsonValue;
 }
-export interface ToolVersions {
+export interface ToolVersions1 {
   /**
-   * This interface was referenced by `ToolVersions`'s JSON-Schema definition
+   * This interface was referenced by `ToolVersions1`'s JSON-Schema definition
    * via the `patternProperty` "^[A-Za-z0-9][A-Za-z0-9_.:-]*$".
    */
   [k: string]: string;
+}
+export interface Intervention {
+  after: After;
+  before: Before;
+  intervention_id: InterventionId;
+  parent_run_id: ParentRunId;
+  patch: Patch;
+  schema_version: SchemaVersion1;
+  source_checkpoint_id: SourceCheckpointId;
+}
+export interface After {
+  [k: string]: JsonValue;
+}
+export interface Before {
+  [k: string]: JsonValue;
+}
+export interface Patch {
+  [k: string]: JsonValue;
 }
 export interface RunStatusChanged {
   attempt: Attempt1;
@@ -288,8 +353,8 @@ export interface RunStatusChanged {
   occurred_at: OccurredAt1;
   parent_span_id: ParentSpanId1;
   received_at: ReceivedAt1;
-  run_id: RunId2;
-  schema_version: SchemaVersion2;
+  run_id: RunId3;
+  schema_version: SchemaVersion4;
   seq: Seq1;
   span_id: SpanId1;
   type: Type1;
@@ -297,7 +362,7 @@ export interface RunStatusChanged {
 export interface StatusChange {
   after: RunStatus1;
   before: RunStatus1;
-  reason: Reason;
+  reason: Reason1;
 }
 export interface SpanStarted {
   attempt: Attempt2;
@@ -308,8 +373,8 @@ export interface SpanStarted {
   occurred_at: OccurredAt2;
   parent_span_id: ParentSpanId3;
   received_at: ReceivedAt2;
-  run_id: RunId4;
-  schema_version: SchemaVersion4;
+  run_id: RunId5;
+  schema_version: SchemaVersion6;
   seq: Seq2;
   span_id: SpanId3;
   type: Type2;
@@ -328,8 +393,8 @@ export interface Span {
   output: Output;
   parent_span_id: ParentSpanId2;
   provider: Provider1;
-  run_id: RunId3;
-  schema_version: SchemaVersion3;
+  run_id: RunId4;
+  schema_version: SchemaVersion5;
   span_id: SpanId2;
   started_at: StartedAt;
   status: Status;
@@ -359,8 +424,8 @@ export interface SpanFinished {
   occurred_at: OccurredAt3;
   parent_span_id: ParentSpanId4;
   received_at: ReceivedAt3;
-  run_id: RunId5;
-  schema_version: SchemaVersion5;
+  run_id: RunId6;
+  schema_version: SchemaVersion7;
   seq: Seq3;
   span_id: SpanId4;
   type: Type3;
@@ -374,8 +439,8 @@ export interface ToolAttemptFailed {
   occurred_at: OccurredAt4;
   parent_span_id: ParentSpanId5;
   received_at: ReceivedAt4;
-  run_id: RunId6;
-  schema_version: SchemaVersion6;
+  run_id: RunId7;
+  schema_version: SchemaVersion8;
   seq: Seq4;
   span_id: SpanId5;
   type: Type4;
@@ -396,8 +461,8 @@ export interface ToolRetryScheduled {
   occurred_at: OccurredAt5;
   parent_span_id: ParentSpanId6;
   received_at: ReceivedAt5;
-  run_id: RunId7;
-  schema_version: SchemaVersion7;
+  run_id: RunId8;
+  schema_version: SchemaVersion9;
   seq: Seq5;
   span_id: SpanId6;
   type: Type5;
@@ -416,32 +481,10 @@ export interface CheckpointSaved {
   parent_span_id: ParentSpanId7;
   received_at: ReceivedAt6;
   run_id: RunId9;
-  schema_version: SchemaVersion9;
+  schema_version: SchemaVersion10;
   seq: Seq6;
   span_id: SpanId7;
   type: Type6;
-}
-export interface CheckpointRef {
-  adapter: Adapter;
-  agent_version: AgentVersion;
-  allowed_patch_fields: AllowedPatchFields;
-  boundary: Boundary;
-  checkpoint_id: CheckpointId;
-  locator: Locator;
-  run_id: RunId8;
-  runtime_version: RuntimeVersion;
-  schema_version: SchemaVersion8;
-  tool_versions: ToolVersions1;
-}
-export interface Locator {
-  [k: string]: JsonValue;
-}
-export interface ToolVersions1 {
-  /**
-   * This interface was referenced by `ToolVersions1`'s JSON-Schema definition
-   * via the `patternProperty` "^[A-Za-z0-9][A-Za-z0-9_.:-]*$".
-   */
-  [k: string]: string;
 }
 export interface RunPage {
   items: Items;
@@ -452,7 +495,7 @@ export interface RunView {
   checkpoints: Checkpoints;
   last_seq: LastSeq;
   run: Run;
-  schema_version: SchemaVersion10;
+  schema_version: SchemaVersion11;
   spans: Spans;
 }
 export interface SpanPage {

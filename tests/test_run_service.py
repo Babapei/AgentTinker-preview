@@ -57,7 +57,8 @@ def test_langgraph_execution_persists_actual_calls_and_retry_facts(
         assert created and view.run.status == expected
         assert len([s for s in view.spans if s.kind == "tool"]) == attempts
         assert len(view.checkpoints) == 1
-        assert not view.run.capabilities.fork_from_checkpoint
+        assert view.run.capabilities.fork_from_checkpoint
+        assert view.run.capabilities.patch_tool_policy
         assert view.run.config.price_version == price.version
         assert model.calls == (1 if retry_limit == 0 else 2)
         assert all(s.usage.total_tokens == 12 for s in view.spans if s.kind == "model")

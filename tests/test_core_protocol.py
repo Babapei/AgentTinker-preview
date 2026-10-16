@@ -7,7 +7,15 @@ from pydantic import ValidationError
 
 from agenttinker.core.events import parse_event
 from agenttinker.core.projection import project_events
-from agenttinker.core.records import Capabilities, CheckpointRef, Cost, Run, Span, Usage
+from agenttinker.core.records import (
+    Capabilities,
+    CheckpointRef,
+    Cost,
+    Intervention,
+    Run,
+    Span,
+    Usage,
+)
 from agenttinker.core.schema import protocol_schemas
 from agenttinker.core.states import RunStatus, can_start_call, validate_transition
 
@@ -29,6 +37,50 @@ def test_run_transition_matrix_and_terminal_immutability():
             with pytest.raises(ValueError, match="invalid_run_transition"):
                 validate_transition(before, after)
     assert [status for status in RunStatus if can_start_call(status)] == [RunStatus.RUNNING]
+
+
+@pytest.mark.parametrize(
+    "defect", [None, "multiple", "boolean", "same", "changed_other", "lineage"]
+)
+def test_intervention_survives_event_projection_and_rejects_invalid_changes(
+    run_record, make_event, defect
+):
+    intervention = {
+        "intervention_id": "intervention_B",
+        "parent_run_id": "run_A",
+        "source_checkpoint_id": "cp_A",
+        "before": {"tool_retry_limit": 0, "top_k": 2},
+        "after": {"tool_retry_limit": 1, "top_k": 2},
+        "patch": {"tool_retry_limit": 1},
+    }
+    if defect == "multiple":
+        intervention["patch"]["top_k"] = 3
+        intervention["after"]["top_k"] = 3
+    elif defect == "boolean":
+        intervention["patch"]["tool_retry_limit"] = True
+    elif defect == "same":
+        intervention["before"]["tool_retry_limit"] = 1
+    elif defect == "changed_other":
+        intervention["after"]["top_k"] = 3
+    branch = {
+        **run_record.model_dump(),
+        "run_id": "run_B",
+        "parent_run_id": "run_A",
+        "source_checkpoint_id": "cp_A",
+        "intervention": intervention,
+        "config": {**run_record.config.model_dump(), "tool_policy": intervention["after"]},
+    }
+    if defect == "lineage":
+        branch["source_checkpoint_id"] = "another_checkpoint"
+    if defect:
+        with pytest.raises(ValidationError):
+            Run.model_validate(branch)
+    else:
+        run = Run.model_validate(branch)
+        event = make_event(1, "run.created", run, run_id="run_B")
+        assert project_events(
+            [parse_event(event.model_dump_json())]
+        ).run.intervention == Intervention.model_validate(intervention)
 
 
 @pytest.mark.parametrize(

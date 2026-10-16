@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+import sqlite3
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
@@ -13,7 +14,18 @@ from uuid import uuid4
 from filelock import FileLock, Timeout
 from pydantic import Field, model_validator
 
-from agenttinker.core.records import Capabilities, Run, RunConfig, Text, ValueModel, VersionRef
+from agenttinker.core.records import (
+    Capabilities,
+    CheckpointRef,
+    Identifier,
+    Intervention,
+    JSONData,
+    Run,
+    RunConfig,
+    Text,
+    ValueModel,
+    VersionRef,
+)
 from agenttinker.core.states import TERMINAL_STATUSES, RunStatus
 from agenttinker.m0.deepseek_model import DeepSeekModel
 from agenttinker.m0.fixtures import fixture_hash, search_documents
@@ -24,8 +36,10 @@ from agenttinker.m0.synthetic import SyntheticModel
 from agenttinker.runtime.checkpoints import (
     AGENT_ID,
     AGENT_VERSION,
+    PATCH_FIELDS,
     TOOL_VERSIONS,
     CheckpointUnavailable,
+    ForkRejected,
     checkpoint_path,
     open_checkpoints,
     runtime_versions,
@@ -50,6 +64,38 @@ class RunRequest(ValueModel):
         if self.mode == "synthetic" and (self.provider is not None or self.model is not None):
             raise ValueError("synthetic_cannot_select_live_provider")
         return self
+
+
+class ForkRequest(ValueModel):
+    source_checkpoint_id: Identifier
+    patch: JSONData
+
+
+class CheckpointAvailability(ValueModel):
+    checkpoint: CheckpointRef
+    available: bool
+    reason: (
+        Literal[
+            "unsupported_capability",
+            "source_run_active",
+            "checkpoint_missing",
+            "runtime_incompatible",
+            "checkpoint_state_invalid",
+            "checkpoint_unreadable",
+        ]
+        | None
+    )
+    allowed_patch_fields: tuple[Literal["tool_retry_limit", "top_k"], ...]
+
+
+def request_identity(request_key, body):
+    if (
+        not isinstance(request_key, str)
+        or not 1 <= len(request_key) <= 128
+        or not request_key.isprintable()
+    ):
+        raise ValueError("invalid_idempotency_key")
+    return hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()
 
 
 def default_model(request: RunRequest):
@@ -113,8 +159,61 @@ class RunService:
         )
         if reference is None or not checkpoint_path(self.database).is_file():
             raise CheckpointUnavailable("checkpoint_missing")
-        with open_checkpoints(self.database) as saver:
-            return SerialExecutor.load_checkpoint(saver, view, reference)
+        try:
+            with open_checkpoints(self.database) as saver:
+                return SerialExecutor.load_checkpoint(saver, view, reference)
+        except (sqlite3.Error, ValueError, TypeError, KeyError):
+            raise CheckpointUnavailable("checkpoint_unreadable") from None
+
+    def _fork_boundary(self, view, checkpoint_id):
+        if not (
+            view.run.capabilities.fork_from_checkpoint and view.run.capabilities.patch_tool_policy
+        ):
+            raise ForkRejected("unsupported_capability")
+        if view.run.status not in TERMINAL_STATUSES:
+            raise ForkRejected("source_run_active")
+        self._compatible_context(view.run.config)
+        reference = next(
+            (item for item in view.checkpoints if item.checkpoint_id == checkpoint_id), None
+        )
+        if reference is None:
+            raise CheckpointUnavailable("checkpoint_missing")
+        snapshot = self.resolve_checkpoint(view.run.run_id, checkpoint_id)
+        if set(reference.allowed_patch_fields) != set(PATCH_FIELDS):
+            raise ForkRejected("unsupported_capability")
+        return reference, snapshot
+
+    def _compatible_context(self, config):
+        if (
+            config.price_version != (self.pricing.version if self.pricing else None)
+            or config.fault_parameters not in ({"inject_timeout": True}, {"inject_timeout": False})
+            or config.fault_plan
+            != (
+                VersionRef(id="first-search-timeout", version="1")
+                if config.fault_parameters.get("inject_timeout")
+                else None
+            )
+        ):
+            raise ForkRejected("runtime_incompatible")
+
+    def checkpoint_availability(self, run_id):
+        view = self.get(run_id)
+        results = []
+        for reference in view.checkpoints:
+            reason = None
+            try:
+                self._fork_boundary(view, reference.checkpoint_id)
+            except ForkRejected as error:
+                reason = error.code
+            results.append(
+                CheckpointAvailability(
+                    checkpoint=reference,
+                    available=reason is None,
+                    reason=reason,
+                    allowed_patch_fields=PATCH_FIELDS if reason is None else (),
+                )
+            )
+        return tuple(results)
 
     def _status(self, run_id, status, reason=None):
         with self._lock:
@@ -131,15 +230,7 @@ class RunService:
             )
 
     def submit(self, request: RunRequest, request_key: str):
-        if (
-            not isinstance(request_key, str)
-            or not 1 <= len(request_key) <= 128
-            or not request_key.isprintable()
-        ):
-            raise ValueError("invalid_idempotency_key")
-        fingerprint = hashlib.sha256(
-            json.dumps(request.model_dump(mode="json"), sort_keys=True).encode()
-        ).hexdigest()
+        fingerprint = request_identity(request_key, request.model_dump(mode="json"))
         with self._lock, SQLiteEventStore(self.database) as store:
             if self._closing:
                 raise RuntimeError("runtime_closed")
@@ -172,7 +263,9 @@ class RunService:
                 mode=resolved.mode,
                 created_at=now,
                 updated_at=now,
-                capabilities=Capabilities(run_from_start=True),
+                capabilities=Capabilities(
+                    run_from_start=True, fork_from_checkpoint=True, patch_tool_policy=True
+                ),
                 config=RunConfig(
                     agent=VersionRef(id=AGENT_ID, version=AGENT_VERSION),
                     task=resolved.task,
@@ -204,6 +297,93 @@ class RunService:
                     view = store.get_view(run.run_id)
             return view, created
 
+    def fork(self, source_run_id, request: ForkRequest, request_key: str):
+        fingerprint = request_identity(
+            request_key,
+            {
+                "operation": "fork",
+                "source_run_id": source_run_id,
+                "request": request.model_dump(mode="json"),
+            },
+        )
+        with self._lock, SQLiteEventStore(self.database) as store:
+            if self._closing:
+                raise RuntimeError("runtime_closed")
+            existing = store.request_run(request_key, fingerprint)
+            if existing is not None:
+                return existing, False
+            source = store.get_view(source_run_id)
+            reference, snapshot = self._fork_boundary(source, request.source_checkpoint_id)
+            before = source.run.config.tool_policy
+            if (
+                len(request.patch) != 1
+                or not set(request.patch) <= set(reference.allowed_patch_fields)
+                or all(before.get(key) == value for key, value in request.patch.items())
+            ):
+                raise ForkRejected("invalid_patch")
+            try:
+                policy = ToolPolicy.model_validate({**before, **request.patch})
+            except ValueError:
+                raise ForkRejected("invalid_patch") from None
+            config = source.run.config
+            resolved = RunRequest(
+                mode=source.run.mode,
+                provider=config.provider if source.run.mode == "live" else None,
+                model=config.requested_model if source.run.mode == "live" else None,
+                task=config.task,
+                policy=policy,
+                inject_timeout=config.fault_parameters["inject_timeout"],
+            )
+            if resolved.mode == "live" and self.model_factory is default_model:
+                configured = default_model(resolved)  # Validate configuration, no HTTP call.
+                try:
+                    prepared = configured._request([{"role": "user", "content": resolved.task}])
+                    parameters = {
+                        key: value
+                        for key, value in prepared.items()
+                        if key in {"max_tokens", "max_completion_tokens", "extra_body"}
+                    }
+                    if parameters != config.model_parameters:
+                        raise ForkRejected("runtime_incompatible")
+                finally:
+                    configured.close()
+            now = datetime.now(UTC)
+            intervention = Intervention(
+                intervention_id=f"intervention_{uuid4().hex}",
+                parent_run_id=source_run_id,
+                source_checkpoint_id=reference.checkpoint_id,
+                patch=request.patch,
+                before=before,
+                after=policy.model_dump(),
+            )
+            run = Run(
+                run_id=f"run_{uuid4().hex}",
+                mode=source.run.mode,
+                config=config.model_copy(update={"tool_policy": policy.model_dump()}),
+                created_at=now,
+                updated_at=now,
+                capabilities=source.run.capabilities,
+                parent_run_id=source_run_id,
+                source_checkpoint_id=reference.checkpoint_id,
+                inherited_span_ids=(snapshot.values["model_span_id"],),
+                intervention=intervention,
+            )
+            view, created = store.create_requested_run(run, request_key, fingerprint)
+            if created:
+                try:
+                    self._futures[run.run_id] = self._pool.submit(
+                        self._execute,
+                        run.run_id,
+                        resolved,
+                        (source_run_id, reference.checkpoint_id),
+                    )
+                except Exception as error:
+                    self._status(
+                        run.run_id, RunStatus.FAILED, f"dispatch_failed:{type(error).__name__}"
+                    )
+                    view = store.get_view(run.run_id)
+            return view, created
+
     def cancel(self, run_id):
         with self._lock:
             if self._closed:
@@ -215,7 +395,7 @@ class RunService:
                     self._status(run_id, RunStatus.CANCELLED, "cancelled_before_dispatch")
             return self.get(run_id)
 
-    def _execute(self, run_id, request):
+    def _execute(self, run_id, request, source=None):
         model = None
         try:
             with self._lock:
@@ -226,12 +406,22 @@ class RunService:
             if model.mode != request.mode or model.provider != (request.provider or "synthetic"):
                 raise ExecutionFailed("adapter_provenance_mismatch")
             with open_checkpoints(self.database) as saver:
-                SerialExecutor(self.journal(run_id), request, model, self.tool).execute(saver)
+                executor = SerialExecutor(self.journal(run_id), request, model, self.tool)
+                if source is None:
+                    executor.execute(saver)
+                else:
+                    parent = self.get(source[0])
+                    reference = next(
+                        item for item in parent.checkpoints if item.checkpoint_id == source[1]
+                    )
+                    executor.fork(saver, parent, reference)
             self._finish(run_id, RunStatus.SUCCEEDED)
         except RunCancelled:
             self._finish(run_id, RunStatus.CANCELLED)
         except ExecutionFailed as error:
             self._finish(run_id, RunStatus.FAILED, str(error))
+        except ForkRejected as error:
+            self._finish(run_id, RunStatus.FAILED, error.code)
         except ProviderNotConfigured:
             self._finish(run_id, RunStatus.FAILED, "provider_not_configured")
         except Exception as error:

@@ -73,6 +73,35 @@ class RunConfig(ValueModel):
     runtime_versions: dict[Identifier, Text] = Field(default_factory=dict)
 
 
+class Intervention(Record):
+    intervention_id: Identifier
+    parent_run_id: Identifier
+    source_checkpoint_id: Identifier
+    patch: JSONData
+    before: JSONData
+    after: JSONData
+
+    @model_validator(mode="after")
+    def single_tool_policy_change(self):
+        fields = {"tool_retry_limit", "top_k"}
+        if (
+            len(self.patch) != 1
+            or not set(self.patch) <= fields
+            or set(self.before) != fields
+            or set(self.after) != fields
+            or self.after != {**self.before, **self.patch}
+            or self.before == self.after
+        ):
+            raise ValueError("invalid_intervention")
+        for policy in (self.patch, self.before, self.after):
+            if any(type(value) is not int for value in policy.values()):
+                raise ValueError("invalid_intervention")
+        for policy in (self.before, self.after):
+            if not 0 <= policy["tool_retry_limit"] <= 3 or not 1 <= policy["top_k"] <= 3:
+                raise ValueError("invalid_intervention")
+        return self
+
+
 class Run(Record):
     run_id: Identifier
     mode: Literal["live", "recorded", "synthetic", "imported"]
@@ -84,6 +113,7 @@ class Run(Record):
     parent_run_id: Identifier | None = None
     source_checkpoint_id: Identifier | None = None
     inherited_span_ids: tuple[Identifier, ...] = ()
+    intervention: Intervention | None = None
 
     @model_validator(mode="after")
     def valid_lineage(self) -> "Run":
@@ -95,6 +125,12 @@ class Run(Record):
             raise ValueError("inherited_spans_require_parent")
         if len(set(self.inherited_span_ids)) != len(self.inherited_span_ids):
             raise ValueError("duplicate_inherited_span")
+        if self.intervention is not None and (
+            self.parent_run_id != self.intervention.parent_run_id
+            or self.source_checkpoint_id != self.intervention.source_checkpoint_id
+            or self.config.tool_policy != self.intervention.after
+        ):
+            raise ValueError("intervention_lineage_mismatch")
         if self.updated_at < self.created_at:
             raise ValueError("updated_before_created")
         if self.mode == "imported" and (

@@ -145,7 +145,7 @@ Run 至少保存 provider、实际返回的模型标识、请求参数、prompt 
 }
 ```
 
-这只是原生模板的目标能力；普通 trace 导入通常只有前两项，而且回放精度依赖实际记录内容。服务端逐次检查能力、checkpoint 存在性和兼容版本，不能只依赖前端禁用按钮。
+新版原生串行模板已实现上述声明，逐次检测/API 见 [运行服务](runtime-service.md)；普通 trace 导入通常只有前两项，而且回放精度依赖实际记录内容。服务端逐次检查能力、checkpoint 存在性和兼容版本，不能只依赖前端禁用按钮。
 
 分支流程：验证源运行 → 选择可恢复边界 → 验证允许的 patch → 创建新 Run/Intervention → 由适配器派生新 checkpoint 分支 → 恢复后续执行 → 记录新事件。不得覆盖 A；具体 LangGraph thread/checkpoint namespace 的映射在 M0 中验证。
 

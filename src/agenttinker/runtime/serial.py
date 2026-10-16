@@ -16,6 +16,7 @@ from agenttinker.m0.probe import SYSTEM
 from agenttinker.m0.protocol import validate_reply
 from agenttinker.runtime.checkpoints import (
     AGENT_VERSION,
+    PATCH_FIELDS,
     SAVER_ID,
     TOOL_VERSIONS,
     CheckpointUnavailable,
@@ -96,6 +97,7 @@ class SerialExecutor:
                 input={
                     "tool_call": deepcopy(call),
                     "effective_policy": self.request.policy.model_dump(),
+                    **self._intervention_input(),
                 },
             )
             start = perf_counter()
@@ -196,6 +198,10 @@ class SerialExecutor:
         snapshot = compiled.get_state(config)
         if snapshot.next != ("tool",):
             raise ExecutionFailed("tool_checkpoint_missing")
+        self.save_boundary(snapshot)
+        compiled.invoke(None, snapshot.config)
+
+    def save_boundary(self, snapshot):
         self.journal.checkpoint(
             CheckpointRef(
                 checkpoint_id=f"cp_{uuid4().hex}",
@@ -205,11 +211,29 @@ class SerialExecutor:
                 agent_version=AGENT_VERSION,
                 tool_versions=TOOL_VERSIONS,
                 locator={"store": SAVER_ID, **snapshot.config["configurable"]},
-                # Enabled once the fork dispatch path is available.
-                allowed_patch_fields=(),
+                allowed_patch_fields=PATCH_FIELDS,
             )
         )
-        compiled.invoke(None, snapshot.config)
+
+    def fork(self, saver, source, reference):
+        snapshot = self.load_checkpoint(saver, source, reference)
+        compiled = self.graph(saver, executor=self)
+        config = compiled.update_state(
+            snapshot.config,
+            {"run_id": self.journal.run_id, "run_config": self._run_config()},
+            as_node="model",
+        )
+        config["recursion_limit"] = 6
+        boundary = compiled.get_state(config)
+        if boundary.next != ("tool",):
+            raise ExecutionFailed("tool_checkpoint_missing")
+        self.save_boundary(boundary)
+        compiled.invoke(None, config)
+
+    def _intervention_input(self):
+        with SQLiteEventStore(self.journal.database) as store:
+            intervention = store.get_view(self.journal.run_id).run.intervention
+            return {"intervention_id": intervention.intervention_id} if intervention else {}
 
     def _run_config(self):
         with SQLiteEventStore(self.journal.database) as store:

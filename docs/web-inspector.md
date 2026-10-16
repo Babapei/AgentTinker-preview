@@ -43,7 +43,7 @@ npm --prefix web run format:check
 - **来源与限制：**显式显示 live/synthetic/recorded/imported；模型输出标注尚未评价。检查点分支由后端 capabilities 决定，不提供虚假分支入口；未知值不补造。空历史、无匹配步骤、缺失 Run、协议不兼容与服务不可达分别提示。
 - **事件订阅：**先读取快照，再从 seq=1 补读和校验事件；追平后只由已验证事实更新视图。连接断开按最后已应用序号补读，事件 ID 去重；跨 Run、冲突、持续缺口或快照不一致会停在保留快照并提示，不能进入历史播放。终态追平后停止订阅。切换记录只结束订阅，不取消执行。运行控制随后续实验闭环接入。
 
-40 项 Vitest 验证协议、请求身份、未知/部分观测、已知零值、逻辑计数和精确费用。15 项 Playwright 测试使用实际 Chromium 和本机 Vite/FastAPI/SQLite；真实 LangGraph synthetic 生成失败/重试记录，历史适配器拒绝新执行；新增受测试驱动端点控制的 gated synthetic 运行验证真实 SSE。另用明确的路由 fixture 覆盖分页、部分用量、错误响应及竞态。检查了键盘选择、390px 窄屏无横向溢出、减少动画，以及默认列表和图的 axe WCAG 2 A/AA 自动检查；这不替代完整人工可访问性评审。后端 136 项回归继续通过，没有付费调用。
+41 项 Vitest 验证协议、请求身份、未知/部分观测、已知零值、逻辑计数和精确费用。15 项 Playwright 测试使用实际 Chromium 和本机 Vite/FastAPI/SQLite；真实 LangGraph synthetic 生成失败/重试记录，历史适配器拒绝新执行；新增受测试驱动端点控制的 gated synthetic 运行验证真实 SSE。另用明确的路由 fixture 覆盖分页、部分用量、错误响应及竞态。检查了键盘选择、390px 窄屏无横向溢出、减少动画，以及默认列表和图的 axe WCAG 2 A/AA 自动检查；这不替代完整人工可访问性评审。后端 165 项回归继续通过，没有付费调用。
 
 ## 浏览器验证与模拟预览
 
@@ -63,7 +63,7 @@ uv run python scripts/serve_web_test.py
 
 该服务在临时 SQLite 生成两条 native synthetic 记录；仅此测试脚本提供 /__test__ 驱动端点，可显式创建/放行 gated synthetic 验证订阅，普通 create_app 不含这些端点。关闭即删除，不使用 live 密钥、不修改 artifacts/runs.sqlite。空数据库的普通界面仍显示空态，不自动生成或冒充已有实验。生产静态托管、公开部署和完整实验工作台尚未实现。
 
-事件读取复用 eventsource-parser，UTF-8 分片交由 TextDecoderStream；重连使用新的 after_seq，不将旧 query 与新 Last-Event-ID 混用。浏览器 EventLog 检查顺序、身份、状态、父引用和重试来源，只有投影成功才推进游标。跨语言测试通过实际模拟运行，把失败/重试/取消每个前缀与 Python project_events 输出逐一比较；没有从最终状态补造中间事实。
+事件读取复用 eventsource-parser，UTF-8 分片交由 TextDecoderStream；重连使用新的 after_seq，不将旧 query 与新 Last-Event-ID 混用。浏览器 EventLog 检查顺序、身份、状态、父引用和重试来源，只有投影成功才推进游标。跨语言测试通过实际模拟运行，把失败/重试/取消/分支每个前缀与 Python project_events 输出逐一比较；没有从最终状态补造中间事实。
 
 ## 执行图与历史播放
 
@@ -74,3 +74,5 @@ uv run python scripts/serve_web_test.py
 播放条支持首事件、上/下事件、滑条、0.5×/1×/2×/4×、暂停及返回最新。每个事件间隔为 700ms / 速度，是查看节奏，不是模拟实际请求耗时。进入历史后固定当前已保存的播放边界；新事件继续订阅，但只提示新增条数，不推动历史游标。实际运行状态单独显示，播放与暂停都不控制实际执行。刷新重新补读时保留同一 Run 已验证事实，避免历史位置跳到尚未验证的数据。
 
 播放只调用纯 projectEvents；完整事件可用后，所有播放操作都不增加 API 请求，更不会调用 provider/tool。缺少完整事件或发现冲突时保留快照、禁用播放；ordinary imported 摘要不会凭空获得 checkpoint 或执行能力。当前播放游标不写入 URL，刷新回到最新记录并保留 Run/Span 选择。
+
+M3 已有持久化/fork 后端/API，浏览器生成契约新增 Intervention 与 CheckpointAvailability；当前界面仍只读，任务配置、执行/取消、分支入口与 A/B 对比将在后续节点接入。

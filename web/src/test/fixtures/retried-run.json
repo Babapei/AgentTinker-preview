@@ -55,7 +55,8 @@
     },
     "parent_run_id": null,
     "source_checkpoint_id": null,
-    "inherited_span_ids": []
+    "inherited_span_ids": [],
+    "intervention": null
   },
   "last_seq": 14,
   "spans": [

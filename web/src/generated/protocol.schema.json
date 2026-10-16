@@ -60,6 +60,56 @@
       "title": "Capabilities",
       "type": "object"
     },
+    "CheckpointAvailability": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_patch_fields": {
+          "items": {
+            "enum": [
+              "tool_retry_limit",
+              "top_k"
+            ],
+            "type": "string"
+          },
+          "title": "Allowed Patch Fields",
+          "type": "array"
+        },
+        "available": {
+          "title": "Available",
+          "type": "boolean"
+        },
+        "checkpoint": {
+          "$ref": "#/$defs/CheckpointRef"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "enum": [
+                "unsupported_capability",
+                "source_run_active",
+                "checkpoint_missing",
+                "runtime_incompatible",
+                "checkpoint_state_invalid",
+                "checkpoint_unreadable"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Reason"
+        }
+      },
+      "required": [
+        "checkpoint",
+        "available",
+        "reason",
+        "allowed_patch_fields"
+      ],
+      "title": "CheckpointAvailability",
+      "type": "object"
+    },
     "CheckpointRef": {
       "additionalProperties": false,
       "properties": {
@@ -352,6 +402,64 @@
       "title": "Cost",
       "type": "object"
     },
+    "Intervention": {
+      "additionalProperties": false,
+      "properties": {
+        "after": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "After",
+          "type": "object"
+        },
+        "before": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Before",
+          "type": "object"
+        },
+        "intervention_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+          "title": "Intervention Id",
+          "type": "string"
+        },
+        "parent_run_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+          "title": "Parent Run Id",
+          "type": "string"
+        },
+        "patch": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Patch",
+          "type": "object"
+        },
+        "schema_version": {
+          "const": "0.1",
+          "default": "0.1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "source_checkpoint_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+          "title": "Source Checkpoint Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "intervention_id",
+        "parent_run_id",
+        "source_checkpoint_id",
+        "patch",
+        "before",
+        "after"
+      ],
+      "title": "Intervention",
+      "type": "object"
+    },
     "JsonValue": {},
     "Retry": {
       "additionalProperties": false,
@@ -397,6 +505,17 @@
           },
           "title": "Inherited Span Ids",
           "type": "array"
+        },
+        "intervention": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Intervention"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "mode": {
           "enum": [
@@ -466,7 +585,8 @@
         "capabilities",
         "parent_run_id",
         "source_checkpoint_id",
-        "inherited_span_ids"
+        "inherited_span_ids",
+        "intervention"
       ],
       "title": "Run",
       "type": "object"
@@ -1923,6 +2043,13 @@
     }
   },
   "properties": {
+    "checkpoint_availability": {
+      "items": {
+        "$ref": "#/$defs/CheckpointAvailability"
+      },
+      "title": "Checkpoint Availability",
+      "type": "array"
+    },
     "event": {
       "discriminator": {
         "mapping": {
@@ -1975,7 +2102,8 @@
     "run_view",
     "run_page",
     "span_page",
-    "event"
+    "event",
+    "checkpoint_availability"
   ],
   "title": "RuntimeProtocol",
   "type": "object"

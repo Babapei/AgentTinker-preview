@@ -22,6 +22,8 @@ uv run agenttinker-server --database artifacts/runs.sqlite
 | `GET /api/v1/runs/{run_id}` | RunView，包含当前 Run、spans、checkpoints、last_seq |
 | `GET /api/v1/runs/{run_id}/spans` | 同样分页，支持 logical_node_id 和 failed_only；total 是筛选后的数量 |
 | `GET /api/v1/runs/{run_id}/checkpoints` | CheckpointRef 列表；引用可读不等于可恢复 |
+| `GET /api/v1/runs/{run_id}/checkpoint-availability` | 每项含 checkpoint、available、reason、当前允许字段；只读实时检测 |
+| `POST /api/v1/runs/{run_id}/forks` | ForkRequest + Idempotency-Key；201 新分支 / 200 原分支，响应 RunView 与 Location |
 | `POST /api/v1/runs/{run_id}/cancel` | cancel_requested 返回 202；已取消或其他终态返回 200；响应 RunView，重复请求幂等 |
 | `GET /api/v1/runs/{run_id}/events` | 已提交事件 SSE，支持游标补发；终态且追平后结束响应 |
 | `GET /api/v1/protocol` | 核心 Pydantic JSON Schema，包括类型化 Event |
@@ -38,6 +40,23 @@ curl -sS http://127.0.0.1:8000/api/v1/runs \
 synthetic 明确标注，无提供商用量或虚构费用。live 必须指定 provider，model 可显式传入或使用服务端变量。默认 inject_timeout=true、tool_retry_limit=0，得到带故障的失败基线；设置 retry_limit=1 可从头运行重试案例，这不是 checkpoint fork。请求策略字段为 `policy.tool_retry_limit`。
 
 相同 key 与完整规范化请求始终返回原 Run，包括服务重启后；同 key 不同请求返回 409 `idempotency_key_payload_conflict`。缺失 provider 配置返回 503 `provider_not_configured`，未创建 Run；未知 Run 返回 404 `run_not_found`。输入/游标非法返回 422，运行服务不可用返回 503。异常响应不包含原始 SDK 错误文本。
+
+## M3 分支接口
+
+源 Run 当前必须终态。先查看 checkpoint-availability，再显式 POST；服务端仍会重新检查，不能只依赖按钮或 Run 中的历史能力声明。
+
+```json
+{
+  "source_checkpoint_id": "cp_...",
+  "patch": {"tool_retry_limit": 1}
+}
+```
+
+每次只修改 tool_retry_limit（0–3）或 top_k（1–3）中的一个，严格整数，不允许原值/空补丁/同时修改两个字段。模型原查询/tool call ID、前缀、版本及同一故障计划保留。B 含 parent_run_id、source_checkpoint_id、inherited_span_ids 和 intervention（patch/before/after）；后续工具输入含 intervention_id。费用/调用计数只算 B 新增 spans。
+
+返回 422 invalid_patch、404 checkpoint_missing；不支持能力、活动源运行、版本/价格不兼容、错属或不可读状态分别返回 409 unsupported_capability / source_run_active / runtime_incompatible / checkpoint_state_invalid / checkpoint_unreadable。live 配置缺失返回 503 provider_not_configured。前置校验失败不创建 B、不消费 key。调度或执行失败保留原身份，不自动重发。重复同 key 请求先返回原 B，即使原 checkpoint 后来不可用。
+
+availability 检查持久化状态和服务上下文；live 凭据/SDK 参数在显式提交时再校验。不可用时 allowed_patch_fields=[]，reason 为稳定码；不改写原 CheckpointRef 或能力声明。普通历史、SSE、可用性检测均不调用模型。
 
 ## SSE 游标与消费规则
 
@@ -57,4 +76,4 @@ data 是完整、单行 JSON Event；上述仅省略展示。`id` 为 `<run_id>:
 - 断线只结束订阅；不会取消、重启或重发运行。HTTP cancel 才请求取消。运行进入终态且所有事件已送出后响应结束；浏览器消费者应在应用终态事件后主动关闭 EventSource。
 - 消费者按 event_id 去重，仅在事件已成功应用后推进游标；seq 应连续，发现缺口则从最后已应用位置重新补读。刷新也可以重新 GET RunView，再从其 last_seq 订阅增量。不要将时间戳用作游标。
 
-场景/实验定义、fork、比较和导入导出等架构草案接口在后续阶段实现。M1 的运行服务 fork 能力保持 false；React 只读检查页已接入，见 [前端说明](web-inspector.md)。16 项 API 测试包含真实本机 Uvicorn/HTTP 断线、重连、取消与心跳，离线 SDK 请求/响应与估算保存，以及服务重启后的只读回看；没有新付费调用。
+M3 的后端 fork 已接入；界面仍为只读检查，任务控制/分支/比较待接入。场景/实验定义、比较服务和导入导出按后续节点实现，见 [前端说明](web-inspector.md)。20 项 API 测试包含原有 HTTP/SSE、重启分支、幂等、可用性降级及离线 SDK 后缀请求/用量/估算；没有新付费调用。

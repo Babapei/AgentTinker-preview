@@ -32,12 +32,16 @@ def open_checkpoints(database):
         yield saver
 
 
-class CheckpointUnavailable(Exception):
+class ForkRejected(Exception):
     """Safe, stable reasons; never expose serialized state or filesystem errors."""
 
     def __init__(self, code):
         self.code = code
         super().__init__(code)
+
+
+class CheckpointUnavailable(ForkRejected):
+    pass
 
 
 def checkpoint_config(view, reference):
