@@ -88,7 +88,7 @@ M3 的后端 fork 已接入；界面已接任务配置、运行取消、分支�
 
 `GET /api/v1/scenarios` 当前返回 document-missing:1，不构造 SDK。`POST /api/v1/scenarios/document-missing/runs` 接受 `{ "mode": "synthetic", "variant": "baseline" }`，也可显式 live/provider/model。baseline 为 top_k=2，candidate 为 3；不接受任意脚本、工具代码或状态。缺少 provider 配置明确 503；未知场景 404 scenario_not_found。既有 POST runs 的请求规范化/指纹保持原样，不因新增场景字段破坏旧幂等重试。
 
-文档 Run 记录独立 Agent/prompt/工具/材料/Case/Variant/评价器版本，无超时注入；首个检索前 checkpoint 仅允许 top_k，其他工具点只可观察。复用 GET Run/SSE/cancel/forks 和稳定拒绝码；详情见[文档实验](document-experiment.md)。评价为独立的纯规则计算并已持久化；前端场景/评价表单尚待接入。
+文档 Run 记录独立 Agent/prompt/工具/材料/Case/Variant/评价器版本，无超时注入；首个检索前 checkpoint 仅允许 top_k，其他工具点只可观察。复用 GET Run/SSE/cancel/forks 和稳定拒绝码；详情见[文档实验](document-experiment.md)。评价为独立的纯规则计算并已持久化；前端场景/评价/人工复核表单已接入，见[界面说明](web-inspector.md)。
 
 ## M4 评价与人工复核
 

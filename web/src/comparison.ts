@@ -1,6 +1,7 @@
 import equal from 'fast-deep-equal';
 import type { RunView } from './protocol';
 import { isRecord, summarize } from './observations';
+import { isDocumentRun } from './document-experiment';
 
 export type Difference = { path: string; before: unknown; after: unknown };
 function differences(before: unknown, after: unknown, path = ''): Difference[] {
@@ -21,6 +22,21 @@ export function runEvidence(view: RunView) {
   return {
     ...summarize(view),
     documents: [...new Set(documents)],
+    readDocuments: [
+      ...new Set(
+        view.spans
+          .filter(
+            (span) =>
+              span.kind === 'tool' &&
+              span.status === 'succeeded' &&
+              span.logical_node_id === 'read_document',
+          )
+          .map((span) => span.output?.document)
+          .filter(isRecord)
+          .map((doc) => doc.id)
+          .filter((id): id is string => typeof id === 'string'),
+      ),
+    ],
     callTime: view.spans.some((span) => span.duration_ms === null)
       ? null
       : view.spans.reduce((sum, span) => sum + span.duration_ms!, 0),
@@ -32,17 +48,42 @@ export function compareRuns(source: RunView, branch: RunView) {
   if (source.run.mode !== branch.run.mode)
     changed.unshift({ path: 'mode', before: source.run.mode, after: branch.run.mode });
   const intervention = branch.run.intervention;
+  const documentCase =
+    isDocumentRun(source.run) &&
+    isDocumentRun(branch.run) &&
+    [source, branch].every(
+      (view) =>
+        view.run.config.case?.id === 'release-v2-evidence' && view.run.config.case.version === '1',
+    );
+  const derivedVariant =
+    documentCase &&
+    [source, branch].every(({ run }) => {
+      const k = run.config.tool_policy.top_k;
+      return (
+        typeof k === 'number' &&
+        Number.isInteger(k) &&
+        k >= 1 &&
+        k <= 3 &&
+        run.config.tool_policy.tool_retry_limit === 0 &&
+        run.config.variant?.id === `document-top${k}` &&
+        run.config.variant.version === '1'
+      );
+    });
+  const factors = derivedVariant
+    ? changed.filter((change) => change.path !== 'variant.id')
+    : changed;
   const lineage =
     branch.run.parent_run_id === source.run.run_id &&
     source.checkpoints.some((cp) => cp.checkpoint_id === branch.run.source_checkpoint_id);
   const singleFactor =
     lineage &&
+    (!documentCase || derivedVariant) &&
     !!intervention &&
     Object.keys(intervention.patch).length === 1 &&
-    changed.length === 1 &&
+    factors.length === 1 &&
     intervention.parent_run_id === source.run.run_id &&
     intervention.source_checkpoint_id === branch.run.source_checkpoint_id &&
-    changed[0].path === `tool_policy.${Object.keys(intervention.patch)[0]}` &&
+    factors[0].path === `tool_policy.${Object.keys(intervention.patch)[0]}` &&
     equal({ ...intervention.before, ...intervention.patch }, intervention.after) &&
     equal(intervention.before, source.run.config.tool_policy) &&
     equal(intervention.after, branch.run.config.tool_policy);
@@ -63,6 +104,8 @@ export function compareRuns(source: RunView, branch: RunView) {
     changed,
     lineage,
     singleFactor,
+    derivedVariant,
+    documentCase,
     sameCall,
     sameFirstFault,
     retryObserved:

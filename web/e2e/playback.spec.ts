@@ -75,7 +75,7 @@ test('links graph nodes and raw events to the same projected step evidence', asy
   await expect(page).toHaveURL(new RegExp(view.spans[2].span_id));
   const failure = events.find((event) => event.type === 'tool.attempt_failed')!;
   await page.getByLabel('筛选事件').selectOption('tool.');
-  await page.getByRole('button', { name: `事件 ${failure.seq} 注入故障 · TOOL_TIMEOUT` }).click();
+  await page.getByRole('button', { name: `#${failure.seq} 注入故障 · TOOL_TIMEOUT` }).click();
   await expect(graph.getByRole('button', { name: /^检查步骤/ })).toHaveCount(2);
   await expect(page.getByLabel('事件原始记录').locator('pre')).toContainText(
     '"origin": "injected"',

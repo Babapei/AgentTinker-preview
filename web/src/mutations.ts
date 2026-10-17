@@ -72,6 +72,13 @@ export function actionError(error: unknown): string {
     invalid_request: '配置未通过校验，请检查任务和参数。',
     protocol_invalid: '响应协议或运行来源不兼容，请核对前后端版本后重试同一请求。',
     request_memory_unavailable: '浏览器无法暂存请求，请启用本站会话存储后重试。',
+    scenario_not_found: '该场景当前不可用，请重新读取场景定义。',
+    assessment_not_found: '评价或复核记录不存在，请重新读取记录。',
+    evaluation_run_active: '请等待运行结束后执行规则评价。',
+    evaluation_context_mismatch: '用例、材料或评价版本不匹配，无法评价这条记录。',
+    evaluator_unsupported: '当前服务不支持该评价器版本。',
+    review_evidence_mismatch: '复核依据的输入摘要不匹配，请重新读取评价。',
+    review_evaluation_failed: '规则评价尚未成功完成，请先新增一份规则评价。',
   };
   return (
     known[code] ??

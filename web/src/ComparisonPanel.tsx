@@ -88,6 +88,11 @@ export default function ComparisonPanel({
                 配置或来源不满足单变量对照，不能仅归因于这一参数。
               </p>
             )}
+            {comparison.singleFactor && comparison.derivedVariant && (
+              <p className="form-note">
+                Variant 标识随同 top_k 配置更新，已核对两者对应关系；实际只改一个执行器参数。
+              </p>
+            )}
           </div>
           <p className="form-note">
             B 引用 {view.run.inherited_span_ids.length} 个既有步骤，只计分支后的新增调用、Token
@@ -154,9 +159,16 @@ export default function ComparisonPanel({
                 </tr>
                 <tr>
                   <th scope="row">答案评价</th>
-                  <td>未评价</td>
-                  <td>未评价</td>
+                  <td>{comparison.documentCase ? '见 A 的独立评价与人工意见' : '未评价'}</td>
+                  <td>{comparison.documentCase ? '见下方独立评价与人工意见' : '未评价'}</td>
                 </tr>
+                {comparison.documentCase && (
+                  <tr>
+                    <th scope="row">已读取正文 ID</th>
+                    <td>{comparison.source.readDocuments.join('、') || '未记录读取'}</td>
+                    <td>{comparison.branch.readDocuments.join('、') || '未记录读取'}</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -172,11 +184,15 @@ export default function ComparisonPanel({
             <aside className="experiment-explanation" aria-label="实验讲解">
               <h3>这份证据说明什么</h3>
               <p>
-                {comparison.retryObserved
-                  ? '两次运行的首次工具尝试均发生相同注入超时；B 的第二次尝试取得材料。新增重试由执行器负责，不能据此称模型学会了恢复。'
-                  : comparison.sameFirstFault
-                    ? '两次运行已记录相同首次故障，请继续检查后续尝试与最终状态。'
-                    : '当前证据尚不足以验证同一首次超时后的修复；未触发故障时不纳入超时结论。'}
+                {comparison.documentCase
+                  ? comparison.singleFactor && comparison.sameCall
+                    ? '两次运行保留原查询与工具调用身份，仅修改执行器 top_k。分别核对文档返回、正文读取、引用来源与人工答案评价；单次结果仅是个例。'
+                    : '先核对版本、配置差异与原查询/调用身份；当前证据不足以把结果变化归因于 top_k。'
+                  : comparison.retryObserved
+                    ? '两次运行的首次工具尝试均发生相同注入超时；B 的第二次尝试取得材料。新增重试由执行器负责，不能据此称模型学会了恢复。'
+                    : comparison.sameFirstFault
+                      ? '两次运行已记录相同首次故障，请继续检查后续尝试与最终状态。'
+                      : '当前证据尚不足以验证同一首次超时后的修复；未触发故障时不纳入超时结论。'}
               </p>
               <p>
                 分支沿用原模型查询与调用身份：

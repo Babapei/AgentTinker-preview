@@ -60,3 +60,31 @@ it('retains observed zero and unknown interrupted timing without inventing evalu
   view.spans[0].duration_ms = null;
   expect(runEvidence(view).callTime).toBeNull();
 });
+
+it('recognizes the derived document Variant while comparing only the actual top_k change', () => {
+  const result = compareRuns(examples.document.view, examples.document_forked.view);
+  expect(result).toMatchObject({
+    singleFactor: true,
+    documentCase: true,
+    derivedVariant: true,
+    sameCall: true,
+    retryObserved: false,
+  });
+  expect(result.changed.map((change) => change.path).sort()).toEqual([
+    'tool_policy.top_k',
+    'variant.id',
+  ]);
+  expect(result.source.readDocuments).toEqual(['release-v1', 'release-v2']);
+  expect(result.branch.readDocuments).toEqual(['release-v1', 'release-v2', 'release-v2-fix']);
+});
+
+it.each(['variant', 'case', 'task'] as const)(
+  'refuses document attribution with a mismatched %s',
+  (field) => {
+    const branch = structuredClone(examples.document_forked.view);
+    if (field === 'variant') branch.run.config.variant!.id = 'document-top2';
+    if (field === 'case') branch.run.config.case!.version = '2';
+    if (field === 'task') branch.run.config.task = 'changed';
+    expect(compareRuns(examples.document.view, branch).singleFactor).toBe(false);
+  },
+);

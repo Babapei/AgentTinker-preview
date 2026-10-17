@@ -69,7 +69,6 @@ export default function EventTimeline({
                   setSelected(event.event_id);
                   choose(event);
                 }}
-                aria-label={`事件 ${event.seq} ${eventTitle(event)}`}
               >
                 <code>#{event.seq}</code>
                 <span>

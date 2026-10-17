@@ -1,5 +1,13 @@
 import equal from 'fast-deep-equal';
-import { parseProtocol, type ForkRequest, type RunRequest } from './protocol';
+import {
+  parseProtocol,
+  type DocumentRunRequest,
+  type EvaluationRequest,
+  type ForkRequest,
+  type ReviewRequest,
+  type RunRequest,
+  type Scenario,
+} from './protocol';
 
 const errorCodes = new Set([
   'provider_not_configured',
@@ -12,6 +20,13 @@ const errorCodes = new Set([
   'checkpoint_unreadable',
   'idempotency_key_payload_conflict',
   'invalid_request',
+  'scenario_not_found',
+  'assessment_not_found',
+  'evaluation_run_active',
+  'evaluation_context_mismatch',
+  'evaluator_unsupported',
+  'review_evidence_mismatch',
+  'review_evaluation_failed',
 ]);
 
 export class ApiError extends Error {
@@ -23,7 +38,7 @@ export class ApiError extends Error {
   }
 }
 
-async function write(path: string, body?: unknown, key?: string) {
+async function post(path: string, body?: unknown, key?: string): Promise<unknown> {
   const response = await fetch(`/api/v1${path}`, {
     method: 'POST',
     headers: {
@@ -41,7 +56,11 @@ async function write(path: string, body?: unknown, key?: string) {
         : undefined;
     throw new ApiError(response.status, code);
   }
-  return parseProtocol('run_view', await response.json());
+  return response.json();
+}
+
+async function write(path: string, body?: unknown, key?: string) {
+  return parseProtocol('run_view', await post(path, body, key));
 }
 
 export async function createRun(body: RunRequest, key: string) {
@@ -102,4 +121,83 @@ export async function getRun(runId: string, signal?: AbortSignal) {
   const view = parseProtocol('run_view', await get(`/runs/${encodeURIComponent(runId)}`, signal));
   if (view.run.run_id !== runId) throw new Error('protocol_invalid');
   return view;
+}
+
+export async function getScenarios(signal?: AbortSignal) {
+  return parseProtocol('scenarios', await get('/scenarios', signal));
+}
+
+export async function createDocumentRun(body: DocumentRunRequest, scenario: Scenario, key: string) {
+  const view = await write(
+    `/scenarios/${encodeURIComponent(scenario.definition.ref.id)}/runs`,
+    body,
+    key,
+  );
+  const variant =
+    body.variant === 'baseline' ? scenario.definition.baseline : scenario.definition.candidate;
+  if (
+    view.run.mode !== body.mode ||
+    view.run.parent_run_id !== null ||
+    view.run.config.provider !== (body.provider ?? 'synthetic') ||
+    (body.model !== null && view.run.config.requested_model !== body.model) ||
+    !equal(view.run.config.experiment, scenario.definition.ref) ||
+    !equal(view.run.config.case, scenario.case.ref) ||
+    !equal(view.run.config.agent, scenario.agent.ref) ||
+    !equal(view.run.config.variant, variant.ref) ||
+    !equal(view.run.config.tool_policy, variant.policy) ||
+    view.run.config.task !== scenario.case.task ||
+    view.run.config.fixture_hash !== scenario.case.fixture_hash ||
+    view.run.config.fault_parameters.inject_timeout !== false
+  )
+    throw new Error('protocol_invalid');
+  return view;
+}
+
+const runPath = (runId: string) => `/runs/${encodeURIComponent(runId)}`;
+
+export async function getEvaluations(runId: string, offset = 0, signal?: AbortSignal) {
+  const page = parseProtocol(
+    'evaluation_page',
+    await get(`${runPath(runId)}/evaluations?offset=${offset}&limit=50`, signal),
+  );
+  if (page.items.some((item) => item.run_id !== runId)) throw new Error('protocol_invalid');
+  return page;
+}
+
+export async function getEvaluation(runId: string, id: string, signal?: AbortSignal) {
+  const result = parseProtocol(
+    'evaluation',
+    await get(`${runPath(runId)}/evaluations/${encodeURIComponent(id)}`, signal),
+  );
+  if (result.run_id !== runId || result.evaluation_id !== id) throw new Error('protocol_invalid');
+  return result;
+}
+
+export async function getReviews(runId: string, offset = 0, signal?: AbortSignal) {
+  const page = parseProtocol(
+    'review_page',
+    await get(`${runPath(runId)}/reviews?offset=${offset}&limit=50`, signal),
+  );
+  if (page.items.some((item) => item.run_id !== runId)) throw new Error('protocol_invalid');
+  return page;
+}
+
+export async function evaluateRun(runId: string, body: EvaluationRequest, key: string) {
+  const result = parseProtocol(
+    'evaluation',
+    await post(`${runPath(runId)}/evaluations`, body, key),
+  );
+  if (result.run_id !== runId || !equal(result.evaluator, body.evaluator))
+    throw new Error('protocol_invalid');
+  return result;
+}
+
+export async function reviewRun(runId: string, body: ReviewRequest, key: string) {
+  const result = parseProtocol('human_review', await post(`${runPath(runId)}/reviews`, body, key));
+  if (
+    result.run_id !== runId ||
+    Object.entries(body).some(([key, value]) => !equal(result[key as keyof typeof result], value))
+  )
+    throw new Error('protocol_invalid');
+  return result;
 }

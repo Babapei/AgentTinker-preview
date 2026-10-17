@@ -1,8 +1,9 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Play, X } from 'lucide-react';
 import { createRun } from './api';
 import { actionError, forgetIntent, pendingIntent, rememberIntent } from './mutations';
 import { parseProtocol, type RunRequest, type RunView } from './protocol';
+import DocumentComposer from './DocumentComposer';
 
 const task = '比较虚构发布说明中的版本差异，检索 release，并在回答中标注返回的文档 ID。';
 
@@ -15,12 +16,14 @@ function restored(): RunRequest | null {
   }
 }
 
-export default function RunComposer({
+function TimeoutComposer({
   created,
   close,
+  busyChanged,
 }: {
   created: (view: RunView) => void;
   close: () => void;
+  busyChanged: (busy: boolean) => void;
 }) {
   const [initial] = useState(restored);
   const [mode, setMode] = useState<RunRequest['mode'] | ''>(initial?.mode ?? '');
@@ -33,6 +36,7 @@ export default function RunComposer({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const submitting = useRef(false);
+  useEffect(() => busyChanged(busy), [busy, busyChanged]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -172,5 +176,37 @@ export default function RunComposer({
         </button>
       </form>
     </section>
+  );
+}
+
+export default function RunComposer(props: {
+  created: (view: RunView) => void;
+  close: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [scenario, setScenario] = useState(() => {
+    try {
+      return pendingIntent('create-document') ? 'document' : 'timeout';
+    } catch {
+      return 'timeout';
+    }
+  });
+  return (
+    <>
+      <div className="experiment-panel scenario-picker">
+        <label className="form-field">
+          实验场景
+          <select disabled={busy} value={scenario} onChange={(e) => setScenario(e.target.value)}>
+            <option value="timeout">工具超时以后发生了什么</option>
+            <option value="document">没有检索到，还是没有正确使用</option>
+          </select>
+        </label>
+      </div>
+      {scenario === 'document' ? (
+        <DocumentComposer {...props} busyChanged={setBusy} />
+      ) : (
+        <TimeoutComposer {...props} busyChanged={setBusy} />
+      )}
+    </>
   );
 }

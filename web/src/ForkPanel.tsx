@@ -10,6 +10,7 @@ import {
 } from './protocol';
 import { shortId } from './observations';
 import { terminal } from './event-log';
+import { isDocumentRun } from './document-experiment';
 
 function restored(runId: string) {
   try {
@@ -36,10 +37,14 @@ export default function ForkPanel({
     initial?.source_checkpoint_id ?? view.checkpoints[0]?.checkpoint_id ?? '',
   );
   const [field, setField] = useState<'tool_retry_limit' | 'top_k'>(
-    initial?.patch.top_k !== undefined ? 'top_k' : 'tool_retry_limit',
+    initial?.patch.top_k !== undefined || isDocumentRun(view.run) ? 'top_k' : 'tool_retry_limit',
   );
   const before = Number(view.run.config.tool_policy[field]);
-  const [value, setValue] = useState(Number(initial?.patch[field] ?? (before === 0 ? 1 : 0)));
+  const [value, setValue] = useState(
+    Number(
+      initial?.patch[field] ?? (field === 'top_k' ? (before === 3 ? 2 : 3) : before === 0 ? 1 : 0),
+    ),
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const sending = useRef(false);
@@ -170,8 +175,11 @@ export default function ForkPanel({
                         setValue(next === 'top_k' ? (old === 3 ? 2 : 3) : old === 0 ? 1 : 0);
                       }}
                     >
-                      <option value="tool_retry_limit">工具重试上限</option>
-                      <option value="top_k">检索文档数 top_k</option>
+                      {selected.allowed_patch_fields.map((name) => (
+                        <option key={name} value={name}>
+                          {name === 'top_k' ? '检索文档数 top_k' : '工具重试上限'}
+                        </option>
+                      ))}
                     </select>
                   </label>
                   <label className="form-field">
@@ -191,7 +199,11 @@ export default function ForkPanel({
                 <code>{field}</code>：{before} → {value}；任务、模型查询与调用
                 ID、数据及故障计划保持相同。
               </p>
-              <p className="form-note">每个分支的首次尝试仍按原故障规则执行。重试由执行器负责。</p>
+              <p className="form-note">
+                {isDocumentRun(view.run)
+                  ? '文档实验无超时注入。只改变检索配置，原模型查询与调用身份保留；读取与答案质量另行评价。'
+                  : '每个分支的首次尝试仍按原故障规则执行。重试由执行器负责。'}
+              </p>
               <button
                 className="button primary-button"
                 type="submit"

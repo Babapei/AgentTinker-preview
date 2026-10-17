@@ -28,6 +28,7 @@ import JsonBlock from './JsonBlock';
 import EventWorkspace from './EventWorkspace';
 import RunComposer from './RunComposer';
 import RunControl from './RunControl';
+import { isDocumentRun } from './document-experiment';
 import {
   dateTime,
   duration,
@@ -42,6 +43,7 @@ import {
 const ExecutionGraph = lazy(() => import('./ExecutionGraph'));
 const ForkPanel = lazy(() => import('./ForkPanel'));
 const ComparisonPanel = lazy(() => import('./ComparisonPanel'));
+const EvaluationPanel = lazy(() => import('./EvaluationPanel'));
 
 function readSelection() {
   const query = new URLSearchParams(window.location.search);
@@ -275,12 +277,14 @@ function StepDetails({ span, view }: { span: Span | null; view: RunView }) {
 
 function RunInspector({
   view,
+  latest,
   selectedSpan,
   selectSpan,
   created,
   openRun,
 }: {
   view: RunView;
+  latest: RunView;
   selectedSpan: string | null;
   selectSpan: (id: string) => void;
   created: (view: RunView) => void;
@@ -436,7 +440,7 @@ function RunInspector({
               <div>
                 <FileText size={16} />
                 <h3>{view.run.mode === 'synthetic' ? '模拟模型输出' : '模型输出'}</h3>
-                <span>尚未评价</span>
+                <span>{isDocumentRun(view.run) ? '评价见下方独立记录' : '尚未评价'}</span>
               </div>
               <p>{answer}</p>
             </section>
@@ -467,6 +471,9 @@ function RunInspector({
         <ForkPanel key={`fork:${view.run.run_id}`} view={view} created={created} />
         {view.run.parent_run_id && (
           <ComparisonPanel key={`comparison:${view.run.run_id}`} view={view} navigate={openRun} />
+        )}
+        {isDocumentRun(view.run) && (
+          <EvaluationPanel key={`evaluation:${view.run.run_id}`} view={view} latest={latest} />
         )}
       </Suspense>
     </>
@@ -674,6 +681,7 @@ export default function App() {
               {(view) => (
                 <RunInspector
                   view={view}
+                  latest={current.view!}
                   selectedSpan={selection.span}
                   selectSpan={(span) => navigate(current.view!.run.run_id, span)}
                   created={(branch) => {

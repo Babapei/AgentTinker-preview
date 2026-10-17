@@ -1661,6 +1661,58 @@ h1 {
   line-height: 1.8;
   overflow-wrap: anywhere;
 }
+.evaluation-panel h2 {
+  font-size: 15px;
+}
+.evaluation-panel h3 {
+  font-size: 13px;
+}
+.evaluation-panel p,
+.evaluation-panel li {
+  line-height: 1.8;
+}
+.assessment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 16px 0;
+}
+.assessment-result {
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+.assessment-result code,
+.human-review code,
+.scenario-task {
+  overflow-wrap: anywhere;
+}
+.evidence-documents {
+  display: grid;
+  grid-template-columns: minmax(75px, auto) minmax(0, 1fr);
+  gap: 10px;
+}
+.evidence-documents dt {
+  font-weight: 600;
+}
+.evidence-documents dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.evidence-checks {
+  padding-left: 20px;
+}
+.human-review {
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+.human-review-form {
+  margin: 18px 0;
+}
+.evaluation-panel select {
+  max-width: 100%;
+}
 @media (max-width: 900px) {
   .timeline-grid {
     grid-template-columns: 1fr;

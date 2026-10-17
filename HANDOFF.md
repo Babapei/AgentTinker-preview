@@ -2,7 +2,7 @@
 
 更新时间：2026-10-17（Asia/Shanghai）。面向新对话、新环境及中断后的接续开发。
 
-**M0–M3 已完成，M4 进行中。** 原生超时实验已贯通运行/取消、持久化旧点分支、A/B 对比与讲解。165 项 Python、55 项 Vitest、27 项实际 Chromium 通过；原生真实 DeepSeek A/B 的 12 项检查和独立浏览器只读核对通过。两次实际模型请求共 624 Token，费用/实际扣费未知。见 [M3 验收](docs/m3-acceptance.md)；实际账单按用户确认独立待办，不重复询问。
+**M0–M3 已完成，M4 进行中。** 最新 M4：196 Python、65 Vitest、35 项独立 Chromium 用例通过，文档场景/规则评价/人工复核界面已接入；实验包与真实文档参考待完成。 原生超时实验已贯通运行/取消、持久化旧点分支、A/B 对比与讲解。165 项 Python、55 项 Vitest、27 项实际 Chromium 通过；原生真实 DeepSeek A/B 的 12 项检查和独立浏览器只读核对通过。两次实际模型请求共 624 Token，费用/实际扣费未知。见 [M3 验收](docs/m3-acceptance.md)；实际账单按用户确认独立待办，不重复询问。
 
 ## 1. 接手先确认这几件事
 
@@ -73,7 +73,7 @@ Git 保存了源码、锁文件、设计、日志和 examples 中的示例。本
 | [runtime](src/agenttinker/runtime) | 单 owner/幂等/取消；官方 SQLite saver、版本/可用性检查、单变量 fork、前缀继承和重启中断恢复 |
 | [web](web) | React/Vite 实验表单、运行/取消/单变量分支、父子配置/过程/输出/新增量对比、讲解；事件检查/回放和图/详情 |
 | [api](src/agenttinker/api) | 创建/读取/取消/fork、checkpoint 当前可用性、分页、SSE 心跳/补发、协议 schema |
-| [tests](tests) | 196 项 Python；此前 57 项 Vitest、28 项实际 Chromium；模型侧为模拟/离线 SDK |
+| [tests](tests) | 196 项 Python、65 项 Vitest、35 项独立 Chromium；模型侧为模拟/离线 SDK |
 
 本次实际安装版本：LangGraph 1.2.14、langgraph-checkpoint 4.3.0、langgraph-checkpoint-sqlite 3.1.2、OpenAI SDK 2.54.0、Pydantic 2.13.5、FastAPI 0.143.2、Uvicorn 0.54.0。SQLite saver 要求 checkpoint >=4.3.0，依赖以锁文件为准；原 M0 真实证据的版本不改写。
 
@@ -104,7 +104,7 @@ M0 实验语义：
 | M1 | 已完成：核心协议、存储、串行运行服务及 HTTP/SSE；失败/重试/取消、刷新、断线续传去重已验证 |
 | M2 | 已完成：实际事件驱动的列表/图、节点详情、时间线、只读播放；未知值与缺失事件降级已验证 |
 | M3 | 已完成：超时实验、单变量分支、A/B 对比/讲解、P01–P05/P09 和当前协议真实参考 |
-| M4 | 进行中：文档实验定义/工具/独立 ReAct 运行与分支/场景 HTTP/纯规则评价已实现；评价/复核存储与 API 已实现；场景/评价界面、实验包与真实文档参考待完成 |
+| M4 | 进行中：文档实验定义/工具/独立 ReAct 运行与分支/场景 HTTP/纯规则评价已实现；评价/复核存储/API 与场景/评价界面已实现；实验包与真实文档参考待完成 |
 | M5 | 未开始：实际工具对照与用户使用验证 |
 
 本地 FastAPI 与 React/Vite 已接任务/模式/策略配置、运行取消、历史检查及事件回放，尚未公开部署。服务的 LangGraph checkpoint 已由独立 SQLite saver 持久化；M0 CLI 的内存状态仍不能跨进程恢复。运行服务已验证在途模型/工具取消与队列取消；HTTP/SSE 已通过真实本机 TCP 断线续传与取消集成验证。
@@ -112,6 +112,9 @@ M0 实验语义：
 首版技术路线仍为 React/TypeScript/Vite + React Flow、Python/FastAPI/Pydantic、LangGraph、SQLite + 文件存储、HTTP + SSE。公开托管、域名、额外模型和外部工具服务尚未确定；当前不需要额外托管数据库或搜索服务账号。
 
 ## 6. 环境验证与快照
+
+2026-10-17 M4 评价与界面：环境重查 running、修订 118，网络 unrestricted/enforced、配置 ready。196 Python、65 Vitest；33 项浏览器全量通过后补充边界，7 项文档定向通过，共 35 项独立用例。全为模拟/离线 SDK；无新增付费调用。实际账单独立未知。
+
 
 2026-10-16 M3 验收：环境 running、修订 80，网络 unrestricted/enforced，DeepSeek 密钥/模型 ready，实际 SDK 两次成功。165 Python、55 Vitest、27 Chromium 与真实参考只读核对通过。本轮真实用量 624 Token；未选价格表，费用与扣费未知，旧阶段快照保留如下。
 
@@ -142,8 +145,8 @@ uv 命令在本环境使用 `UV_CACHE_DIR=/tmp/agenttinker-uv-cache`。继续保
 ## 7. 下一步：M4 可用首版
 
 1. **M0–M3 已完成。** 当前条件和证据见 [M3 验收](docs/m3-acceptance.md)。165 Python、55 Vitest、27 Chromium，以及真实参考只读浏览器核对通过；不要把后者混入模拟集成测试数量。
-2. **接入文档场景与评价界面。** 版本化实验/Agent/Case/Variant、本地检索/读取工具、纯记录规则评价和人工复核契约已实现，见 [文档实验](docs/document-experiment.md)。独立 document-react:1 已接运行/持久化首检索分支和场景 HTTP，187 Python、57 Vitest、28 Chromium 通过。评价/复核存储与 API 已接 SQLite v3，196 Python 通过；结果/账本不可变、事务幂等、评价错误独立保留，Run/SSE 不变。下一步场景表单/规则与人工复核界面；旧比较器的 Variant 差异判定尚待扩展。按产品第 5 节固定材料排序，top_k=2 缺少必需的第三份材料，top_k=3 才返回。后续继续分开记录材料可用性、引用/事实检查和答案评价；不能把执行成功当评价通过。扩展模板时升级兼容版本，不静默恢复旧状态。
-3. **再接实验包与无密钥回看。** 导入/导出采用明确版本和来源，普通 trace 只有检查/可得回放能力；不能凭 locator 或导入的能力声明获得执行。默认不导出私有 saver 状态/凭据，M3 原生真实 JSON 是证据，还不是完整实验包。按 P06–P10 完成 M4，用户使用对照仍属 M5。
+2. **文档闭环已接后端与界面。** document-react:1/固定 Case/Variant、固定排序 search 与白名单 read、首检索前持久化分支已实现。规则/复核在 SQLite v3 独立不可变保存，事务幂等，评价错误保留；场景表单/逐项规则/人工标签/分页与历史隐藏未来评价已接。最新 196 Python、65 Vitest、35 项独立 Chromium、协议/类型/构建/格式/ruff 通过。单例不作统计结论；材料缺失不自动算编造。详见 [文档实验](docs/document-experiment.md)。
+3. **下一步实验包与无密钥回看。** 数据包需明确格式/版本/来源、Case/Agent/Variant/材料/评价器与哈希，保留原观测来源；导入可检查/可得回放，不凭 locator 或外部能力声明授予执行。默认不导出私有 saver 状态或凭据；原 M3 JSON 仍不是完整实验包。先完成往返/降级与无密钥阅读，再录制必要的真实文档参考，按 P06–P10 核对 M4；用户使用对照仍属 M5。
 4. **保留分支与数据规则。** 旧 serial-checkpoint:2 仍是 bounded model→tool→model，一次只读逻辑工具调用，不是完整 ReAct；新增 document-react:1 为最多 8 次模型调用的串行 ReAct，仅首检索点允许 top_k 分支。每次只改 tool_retry_limit/top_k 中一个非原值字段，源 Run 须终态；动态检查状态/版本/价格与 live 配置。Intervention 随 run.created 原子保存，前缀只引用，A 的原事件/checkpoint/pending writes 不变。
 5. **真实参考与费用。** [当前协议案例](examples/m3/deepseek-timeout-live.json) A/B 各 1 次模型请求，374/250 Token，共 624；同首次超时，B 第 2 次尝试成功，12 checks 全 true。采集进程内重建 service owner；实际跨进程恢复另有子进程测试。未选价格表，费用与实际账单未知；不套用旧 M0 的 634 Token 或估算，不为账单等待重复付费。
 6. **入口和持久化。** bash scripts/setup.sh 安装；uv run agenttinker-server --database artifacts/runs.sqlite 默认 8000，npm --prefix web run dev 默认 5173。模拟预览脚本仅临时测试数据。状态在 `<database>.checkpoints.sqlite`，需保留事件库/saver 并正确处理 WAL；跨库无原子事务，未发布状态不自动恢复。Git 不备份 artifacts。公开部署尚未实现。
@@ -151,4 +154,4 @@ uv 命令在本环境使用 `UV_CACHE_DIR=/tmp/agenttinker-uv-cache`。继续保
 
 ## 8. 给新对话的最短接续提示
 
-> 请在 Babapei/AgentTinker-preview 的 work 分支接续，先读 HANDOFF.md、AGENTS.md、docs/m3-acceptance.md、产品/架构和日志，再核对 Git 与环境。M0–M3 已完成：165 后端、55 前端、27 浏览器及原生真实 A/B 参考核对通过；真实两次请求共 624 Token，费用/扣费未知。下一步 M4 第二个文档缺失实验、规则/人工评价、实验包导入导出与无密钥回看，按 P06–P10 验收。旧 serial-checkpoint:2 保留；document-react:1 已有原生运行/分支及评价/复核存储 API，下一步场景与评价界面。普通导入不获得执行能力。逐块验证、记录、提交推送，不重复询问已批准事项。
+> 请在 Babapei/AgentTinker-preview 的 work 分支接续，先读 HANDOFF.md、AGENTS.md、文档实验、产品/架构和日志，再核对 Git/环境。M0–M3 已完成；M4 文档 ReAct 运行/分支、不可变评价/人工复核及场景界面已接，196 Python、65 Vitest、35 浏览器用例通过。下一步版本化实验包导入导出、无密钥回看与真实文档参考，整体 P06–P10 尚未验收。旧 serial-checkpoint:2 保留，导入不能获得执行能力。此前真实 M3 共 624 Token，费用/账单未知；本节点无新付费调用。逐块验证、记录、提交推送，不重复询问已批准事项。

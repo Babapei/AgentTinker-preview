@@ -12,6 +12,14 @@ export type Checkpoint = RunView['checkpoints'][number];
 export type RunRequest = RuntimeProtocol['run_request'];
 export type ForkRequest = RuntimeProtocol['fork_request'];
 export type CheckpointAvailability = RuntimeProtocol['checkpoint_availability'][number];
+export type Scenario = RuntimeProtocol['scenarios'][number];
+export type DocumentRunRequest = RuntimeProtocol['document_run_request'];
+export type EvaluationRequest = RuntimeProtocol['evaluation_request'];
+export type ReviewRequest = RuntimeProtocol['review_request'];
+export type Evaluation = RuntimeProtocol['evaluation'];
+export type HumanReview = RuntimeProtocol['human_review'];
+export type EvaluationPage = RuntimeProtocol['evaluation_page'];
+export type ReviewPage = RuntimeProtocol['review_page'];
 
 const ajv = new Ajv({ strict: false, allErrors: false });
 addFormats(ajv);
