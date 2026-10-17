@@ -42,6 +42,10 @@ test('creates the selected document scenario, evaluates A, reviews honestly and 
   await composer.getByRole('button', { name: '开始运行实验', exact: true }).click();
   await expect(page.locator('.record-connection')).toContainText('事件已核对');
   const a = new URL(page.url()).searchParams.get('run')!;
+  await expect(page.locator('.run-header [title]')).toHaveAttribute('title', a);
+  await expect
+    .poll(async () => (await (await page.request.get(`/api/v1/runs/${a}`)).json()).run.status)
+    .toBe('succeeded');
   const original = await (await page.request.get(`/api/v1/runs/${a}`)).json();
   await evaluate(page);
   const panel = page.getByLabel('文档证据与答案评价');

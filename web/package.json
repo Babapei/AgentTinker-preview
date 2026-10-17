@@ -14,6 +14,7 @@
     "build": "npm run schema:check && npm run typecheck && vite build",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "check:references": "node scripts/check-reference-packages.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

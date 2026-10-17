@@ -35,9 +35,9 @@
 
 **命名约定：**产品、文档和界面统一使用 **AgentTinker**。当前仓库为 [AgentTinker-preview](https://github.com/Babapei/AgentTinker-preview)，`-preview` 标记开发预览阶段；完成后仓库更名为 `AgentTinker`。
 
-**M0–M3 已完成，M4 进行中。** 超时实验已贯通任务/模式/策略、实际运行与取消、持久化检查点的单变量分支、A/B 配置/过程/输出/新增量对比与讲解。当前 231 项后端、70 项前端单元和 40 项独立 Chromium 用例通过（模型为模拟/离线 SDK）。
+**M0–M3 已完成，M4 进行中。** 超时实验已贯通任务/模式/策略、实际运行与取消、持久化检查点的单变量分支、A/B 配置/过程/输出/新增量对比与讲解。当前 248 项后端、70 项前端单元和 41 项独立 Chromium 用例通过（模型为模拟/离线 SDK）。
 
-[当前协议的真实参考](examples/m3/deepseek-timeout-live.json)通过 12 项检查：A/B 各一次真实 DeepSeek 模型请求，374/250 Token，共 624；B 引用前缀，A 不变。另有真实参考浏览器只读核对。未选价格表，费用与实际扣费未知，见 [M3 验收](docs/m3-acceptance.md)。M4 已建立[文档实验](docs/document-experiment.md)的版本化定义、本地工具、独立 ReAct 运行/分支与场景 HTTP 接口、纯规则评价；评价/人工复核已接不可变存储、HTTP 和场景/评价界面；[实验包 v1](docs/experiment-packages.md)已有契约、原生导出、事务导入/来源接口与强制只读能力；文件界面和无密钥浏览器往返/来源阅读已接入，参考包整理、真实文档参考和完整 M4 验收尚未完成。
+[当前协议的真实参考](examples/m3/deepseek-timeout-live.json)通过 12 项检查：A/B 各一次真实 DeepSeek 模型请求，374/250 Token，共 624；B 引用前缀，A 不变。另有真实参考浏览器只读核对。未选价格表，费用与实际扣费未知，见 [M3 验收](docs/m3-acceptance.md)。M4 已建立[文档实验](docs/document-experiment.md)的版本化定义、本地工具、独立 ReAct 运行/分支与场景 HTTP 接口、纯规则评价；评价/人工复核已接不可变存储、HTTP 和场景/评价界面；[实验包 v1](docs/experiment-packages.md)已有契约、原生导出、事务导入/来源接口与强制只读能力；文件界面和无密钥浏览器往返/来源阅读已接入，[两份参考包](examples/m4/README.md)与真实文档观测、无密钥生产浏览器核对已保存。真实文档候选因多工具意图被串行协议拒绝，失败/用量保留；M4 仍进行中，见[退出条件核对](docs/m4-acceptance.md)。
 
 本地后端入口（启动不调用模型）：
 

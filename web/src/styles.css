@@ -1626,12 +1626,12 @@ h1 {
   display: block;
   font-size: 9px;
   margin-top: 5px;
-  color: #687a6d;
+  color: #53685c;
 }
 .event-list time {
   margin-left: auto;
   font-size: 9px;
-  color: #64776a;
+  color: #53685c;
   white-space: nowrap;
 }
 .event-evidence {

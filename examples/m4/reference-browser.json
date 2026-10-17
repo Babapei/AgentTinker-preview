@@ -1,0 +1,79 @@
+{
+  "schema_version": "m4-reference-browser-1",
+  "checked_at": "2026-10-17T14:21:37.488Z",
+  "passed": true,
+  "browser": "154.0.8037.57",
+  "production_build": true,
+  "provider_credentials_removed": true,
+  "model_constructions": 0,
+  "import_posts": 2,
+  "playback_api_requests": 0,
+  "unconfigured_live_status": 503,
+  "preserved_run_count": 4,
+  "references": [
+    {
+      "file": "tool-timeout.json",
+      "package_sha256": "56bf96c2532e228fb92ed22bdd5fead415f0c0c576ac158b8abba3f6127c6121",
+      "import_id": "import_7971db5ca14f4a64b68402a53b06dfdd",
+      "root_run_id": "imported_b888aec6e20d4bad901c2665e2280aee",
+      "measurements": {
+        "run_39fe9ed03b7f419cba42fdcb5a6087e6": {
+          "execution_status": "failed",
+          "new_model_calls": 1,
+          "new_total_tokens": 374,
+          "rule_verdicts": []
+        },
+        "run_876b45c27c2843ecb8ea935c929e8cb3": {
+          "execution_status": "succeeded",
+          "new_model_calls": 1,
+          "new_total_tokens": 250,
+          "rule_verdicts": []
+        }
+      },
+      "before_sha256": "23713e80700c3890cf91d75a28e0f8362781729b3ebc93e12a0a68e1c6939f37",
+      "after_sha256": "23713e80700c3890cf91d75a28e0f8362781729b3ebc93e12a0a68e1c6939f37",
+      "record_playback_verified": true,
+      "unknown_costs_preserved": true
+    },
+    {
+      "file": "document-missing.json",
+      "package_sha256": "eb9af2283f0ccf72e06315050b3cce0d6d663bf7eb378aeeacfd322717e60715",
+      "import_id": "import_76587be089eb485482250bbc4a79c908",
+      "root_run_id": "imported_3ac8928585934734b66c6efd333ab6cb",
+      "measurements": {
+        "run_9b49d967a96940c4a781ef459fa27152": {
+          "execution_status": "succeeded",
+          "new_model_calls": 4,
+          "new_total_tokens": 2925,
+          "rule_verdicts": [
+            {
+              "required_documents_returned": "fail",
+              "required_documents_read": "fail",
+              "citation_sources_read": "pass"
+            }
+          ]
+        },
+        "run_a7841a7883924406883ee5adfa74322a": {
+          "execution_status": "failed",
+          "new_model_calls": 1,
+          "new_total_tokens": 695,
+          "rule_verdicts": [
+            {
+              "required_documents_returned": "pass",
+              "required_documents_read": "fail",
+              "citation_sources_read": "unknown"
+            }
+          ]
+        }
+      },
+      "before_sha256": "1b792929a6c87ef19ef6fd3d43c143b4f3486bf1f4ad058e01ec117facb5dab4",
+      "after_sha256": "1b792929a6c87ef19ef6fd3d43c143b4f3486bf1f4ad058e01ec117facb5dab4",
+      "record_playback_verified": true,
+      "unknown_costs_preserved": true
+    }
+  ],
+  "limitations": [
+    "Imported source claims remain unverified; this check proves reading and playback only.",
+    "No new provider calls or human judgements were made."
+  ]
+}

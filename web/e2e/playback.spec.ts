@@ -151,3 +151,27 @@ test('inspects an explicitly imported summary without inventing checkpoints or e
   ).toHaveCount(4);
   await expect(page.getByText('此记录当前不支持从检查点创建分支。')).toBeVisible();
 });
+
+test('keeps a selected failure reason readable after returning from replay', async ({ page }) => {
+  const task = `失败原因对比度 ${Date.now()}`;
+  await page.request.post('http://127.0.0.1:8000/__test__/prepare', {
+    data: { task, reject_protocol: true },
+  });
+  const response = await page.request.post('/api/v1/runs', {
+    headers: { 'Idempotency-Key': `failure-contrast-${Date.now()}` },
+    data: { mode: 'synthetic', task },
+  });
+  const id = (await response.json()).run.run_id;
+  await expect
+    .poll(async () => (await (await page.request.get(`/api/v1/runs/${id}`)).json()).run.status)
+    .toBe('failed');
+  await page.goto(`/?run=${id}`);
+  await expect(page.locator('.record-connection')).toContainText('事件已核对');
+  await page.getByRole('button', { name: '回到第一个事件' }).click();
+  await page.getByRole('button', { name: /返回最新/ }).click();
+  await expect(page.locator('.event-list button[aria-pressed="true"] small')).toContainText(
+    'run.status_changed',
+  );
+  await expect(page.locator('.termination-note')).toContainText('model_protocol');
+  expect((await new AxeBuilder({ page }).include('.event-list').analyze()).violations).toEqual([]);
+});
