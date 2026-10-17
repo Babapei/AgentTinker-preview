@@ -15,6 +15,7 @@ from agenttinker.experiments.evaluation import (
     ReviewRequest,
 )
 from agenttinker.experiments.models import Scenario
+from agenttinker.packages.models import ImportProvenance, ImportResult
 from agenttinker.runtime.service import (
     CheckpointAvailability,
     DocumentRunRequest,
@@ -49,6 +50,8 @@ class RuntimeProtocol(BaseModel):
     human_review: HumanReview
     evaluation_page: EvaluationPage
     review_page: ReviewPage
+    import_result: ImportResult
+    import_provenance: ImportProvenance | None
 
 
 if __name__ == "__main__":

@@ -27,6 +27,15 @@ const errorCodes = new Set([
   'evaluator_unsupported',
   'review_evidence_mismatch',
   'review_evaluation_failed',
+  'package_invalid',
+  'package_too_large',
+  'package_run_active',
+  'package_context_unsupported',
+  'package_context_mismatch',
+  'artifact_not_exportable',
+  'artifact_contains_credentials',
+  'unsupported_package_type',
+  'imported_record_read_only',
 ]);
 
 export class ApiError extends Error {
@@ -38,7 +47,21 @@ export class ApiError extends Error {
   }
 }
 
-async function post(path: string, body?: unknown, key?: string): Promise<unknown> {
+async function responseError(response: Response): Promise<never> {
+  const payload = await response.json().catch(() => null);
+  const code =
+    typeof payload?.detail === 'string' && errorCodes.has(payload.detail)
+      ? payload.detail
+      : undefined;
+  throw new ApiError(response.status, code);
+}
+
+async function post(
+  path: string,
+  body?: unknown,
+  key?: string,
+  bytes?: Uint8Array<ArrayBuffer>,
+): Promise<unknown> {
   const response = await fetch(`/api/v1${path}`, {
     method: 'POST',
     headers: {
@@ -46,16 +69,9 @@ async function post(path: string, body?: unknown, key?: string): Promise<unknown
       'Content-Type': 'application/json',
       ...(key ? { 'Idempotency-Key': key } : {}),
     },
-    body: JSON.stringify(body ?? {}),
+    body: bytes ?? JSON.stringify(body ?? {}),
   });
-  if (!response.ok) {
-    const payload = await response.json().catch(() => null);
-    const code =
-      typeof payload?.detail === 'string' && errorCodes.has(payload.detail)
-        ? payload.detail
-        : undefined;
-    throw new ApiError(response.status, code);
-  }
+  if (!response.ok) return responseError(response);
   return response.json();
 }
 
@@ -200,4 +216,32 @@ export async function reviewRun(runId: string, body: ReviewRequest, key: string)
   )
     throw new Error('protocol_invalid');
   return result;
+}
+
+export async function importPackage(data: Uint8Array<ArrayBuffer>, key: string) {
+  const result = parseProtocol('import_result', await post('/imports', undefined, key, data));
+  if (
+    !result.runs.some((run) => run.local_run_id === result.root_run_id) ||
+    new Set(result.runs.map((run) => run.local_run_id)).size !== result.runs.length ||
+    new Set(result.runs.map((run) => run.source_run_id)).size !== result.runs.length
+  )
+    throw new Error('protocol_invalid');
+  return result;
+}
+
+export async function getProvenance(runId: string, signal?: AbortSignal) {
+  const result = parseProtocol(
+    'import_provenance',
+    await get(`${runPath(runId)}/provenance`, signal),
+  );
+  if (result !== null && result.local_run_id !== runId) throw new Error('protocol_invalid');
+  return result;
+}
+
+export async function exportPackage(runId: string) {
+  const response = await fetch(`/api/v1${runPath(runId)}/export`, {
+    headers: { Accept: 'application/json' },
+  });
+  if (!response.ok) return responseError(response);
+  return response.blob();
 }

@@ -11,7 +11,7 @@ export default function RunControl({ view, cancelled }: { view: RunView; cancell
   const [error, setError] = useState<string | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
   const sending = useRef(false);
-  if (terminal(view.run.status)) return null;
+  if (view.run.mode === 'imported' || terminal(view.run.status)) return null;
   const pending = view.run.status === 'cancel_requested' || acknowledged;
   async function cancel() {
     if (sending.current || pending) return;

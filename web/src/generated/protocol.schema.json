@@ -620,6 +620,33 @@
       "title": "DocumentRunRequest",
       "type": "object"
     },
+    "EvaluationBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "evaluation_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+          "title": "Evaluation Id",
+          "type": "string"
+        },
+        "portable_input_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Portable Input Hash",
+          "type": "string"
+        },
+        "source_input_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source Input Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "evaluation_id",
+        "source_input_hash",
+        "portable_input_hash"
+      ],
+      "title": "EvaluationBinding",
+      "type": "object"
+    },
     "EvaluationPage": {
       "additionalProperties": false,
       "properties": {
@@ -808,6 +835,42 @@
       "title": "EvaluationResult",
       "type": "object"
     },
+    "EvaluatorDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Description",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "rule",
+            "human"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "ref": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "schema_version": {
+          "const": "0.1",
+          "default": "0.1",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "ref",
+        "kind",
+        "description"
+      ],
+      "title": "EvaluatorDefinition",
+      "type": "object"
+    },
     "EvidenceCheck": {
       "additionalProperties": false,
       "properties": {
@@ -854,6 +917,118 @@
         "span_ids"
       ],
       "title": "EvidenceCheck",
+      "type": "object"
+    },
+    "ExecutionCase": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_execution": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Expected Execution",
+          "type": "string"
+        },
+        "fixture": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "fixture_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Fixture Hash",
+          "type": "string"
+        },
+        "ref": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "schema_version": {
+          "const": "0.1",
+          "default": "0.1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "task": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Task",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "ref",
+        "task",
+        "fixture",
+        "fixture_hash",
+        "expected_execution"
+      ],
+      "title": "ExecutionCase",
+      "type": "object"
+    },
+    "ExperimentContext": {
+      "additionalProperties": false,
+      "properties": {
+        "agent": {
+          "$ref": "#/$defs/AgentDefinition"
+        },
+        "case": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DatasetCase"
+            },
+            {
+              "$ref": "#/$defs/ExecutionCase"
+            }
+          ],
+          "title": "Case"
+        },
+        "evaluators": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/EvaluatorDefinition"
+          },
+          "title": "Evaluators",
+          "type": "array"
+        },
+        "experiment": {
+          "$ref": "#/$defs/ExperimentDefinition"
+        },
+        "fixture": {
+          "$ref": "#/$defs/Fixture"
+        },
+        "notes": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "pattern": "\\S",
+            "type": "string"
+          },
+          "title": "Notes",
+          "type": "array"
+        },
+        "schema_version": {
+          "const": "0.1",
+          "default": "0.1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "variants": {
+          "items": {
+            "$ref": "#/$defs/Variant"
+          },
+          "title": "Variants",
+          "type": "array"
+        }
+      },
+      "required": [
+        "schema_version",
+        "experiment",
+        "agent",
+        "case",
+        "fixture",
+        "variants",
+        "evaluators",
+        "notes"
+      ],
+      "title": "ExperimentContext",
       "type": "object"
     },
     "ExperimentDefinition": {
@@ -990,6 +1165,49 @@
       "title": "FactRequirement",
       "type": "object"
     },
+    "Fixture": {
+      "additionalProperties": false,
+      "properties": {
+        "documents": {
+          "items": {
+            "$ref": "#/$defs/Document"
+          },
+          "title": "Documents",
+          "type": "array"
+        },
+        "hash_method": {
+          "enum": [
+            "legacy-document-list-v1",
+            "document-case-v1"
+          ],
+          "title": "Hash Method",
+          "type": "string"
+        },
+        "ref": {
+          "$ref": "#/$defs/VersionRef"
+        },
+        "schema_version": {
+          "const": "0.1",
+          "default": "0.1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "ref",
+        "documents",
+        "sha256",
+        "hash_method"
+      ],
+      "title": "Fixture",
+      "type": "object"
+    },
     "ForkRequest": {
       "additionalProperties": false,
       "properties": {
@@ -1105,6 +1323,249 @@
         "explanation"
       ],
       "title": "HumanReview",
+      "type": "object"
+    },
+    "ImportProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "claim": {
+          "const": "unverified_source_record",
+          "default": "unverified_source_record",
+          "title": "Claim",
+          "type": "string"
+        },
+        "context": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExperimentContext"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evaluation_bindings": {
+          "items": {
+            "$ref": "#/$defs/EvaluationBinding"
+          },
+          "title": "Evaluation Bindings",
+          "type": "array"
+        },
+        "evaluations": {
+          "items": {
+            "$ref": "#/$defs/EvaluationResult"
+          },
+          "title": "Evaluations",
+          "type": "array"
+        },
+        "import_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+          "title": "Import Id",
+          "type": "string"
+        },
+        "imported_at": {
+          "format": "date-time",
+          "title": "Imported At",
+          "type": "string"
+        },
+        "license": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "\\S",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "License"
+        },
+        "local_run_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+          "title": "Local Run Id",
+          "type": "string"
+        },
+        "portable_package_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Portable Package Sha256",
+          "type": "string"
+        },
+        "portable_view_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Portable View Sha256",
+          "type": "string"
+        },
+        "reviews": {
+          "items": {
+            "$ref": "#/$defs/HumanReview"
+          },
+          "title": "Reviews",
+          "type": "array"
+        },
+        "schema_version": {
+          "const": "0.1",
+          "default": "0.1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "source": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Source",
+          "type": "string"
+        },
+        "source_mode": {
+          "enum": [
+            "live",
+            "recorded",
+            "synthetic",
+            "imported"
+          ],
+          "title": "Source Mode",
+          "type": "string"
+        },
+        "source_package_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source Package Sha256",
+          "type": "string"
+        },
+        "source_run_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+          "title": "Source Run Id",
+          "type": "string"
+        },
+        "source_view_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source View Sha256",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "import_id",
+        "local_run_id",
+        "source_package_sha256",
+        "portable_package_sha256",
+        "imported_at",
+        "title",
+        "source",
+        "license",
+        "source_run_id",
+        "source_mode",
+        "source_view_sha256",
+        "portable_view_sha256",
+        "claim",
+        "context",
+        "evaluations",
+        "reviews",
+        "evaluation_bindings"
+      ],
+      "title": "ImportProvenance",
+      "type": "object"
+    },
+    "ImportResult": {
+      "additionalProperties": false,
+      "properties": {
+        "import_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+          "title": "Import Id",
+          "type": "string"
+        },
+        "imported_at": {
+          "format": "date-time",
+          "title": "Imported At",
+          "type": "string"
+        },
+        "portable_package_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Portable Package Sha256",
+          "type": "string"
+        },
+        "root_run_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+          "title": "Root Run Id",
+          "type": "string"
+        },
+        "runs": {
+          "items": {
+            "$ref": "#/$defs/ImportedRunLink"
+          },
+          "title": "Runs",
+          "type": "array"
+        },
+        "schema_version": {
+          "const": "0.1",
+          "default": "0.1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "source_package_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Source Package Sha256",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "import_id",
+        "source_package_sha256",
+        "portable_package_sha256",
+        "imported_at",
+        "title",
+        "root_run_id",
+        "runs"
+      ],
+      "title": "ImportResult",
+      "type": "object"
+    },
+    "ImportedRunLink": {
+      "additionalProperties": false,
+      "properties": {
+        "local_run_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+          "title": "Local Run Id",
+          "type": "string"
+        },
+        "record_playback": {
+          "title": "Record Playback",
+          "type": "boolean"
+        },
+        "source_mode": {
+          "enum": [
+            "live",
+            "recorded",
+            "synthetic",
+            "imported"
+          ],
+          "title": "Source Mode",
+          "type": "string"
+        },
+        "source_run_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
+          "title": "Source Run Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_run_id",
+        "local_run_id",
+        "source_mode",
+        "record_playback"
+      ],
+      "title": "ImportedRunLink",
       "type": "object"
     },
     "Intervention": {
@@ -3073,6 +3534,19 @@
     "human_review": {
       "$ref": "#/$defs/HumanReview"
     },
+    "import_provenance": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ImportProvenance"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "import_result": {
+      "$ref": "#/$defs/ImportResult"
+    },
     "review_page": {
       "$ref": "#/$defs/ReviewPage"
     },
@@ -3114,7 +3588,9 @@
     "evaluation",
     "human_review",
     "evaluation_page",
-    "review_page"
+    "review_page",
+    "import_result",
+    "import_provenance"
   ],
   "title": "RuntimeProtocol",
   "type": "object"

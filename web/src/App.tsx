@@ -16,6 +16,7 @@ import {
   RefreshCw,
   Search,
   Terminal,
+  Upload,
   Workflow,
   Wrench,
 } from 'lucide-react';
@@ -28,6 +29,7 @@ import JsonBlock from './JsonBlock';
 import EventWorkspace from './EventWorkspace';
 import RunComposer from './RunComposer';
 import RunControl from './RunControl';
+import PackageExport from './PackageExport';
 import { isDocumentRun } from './document-experiment';
 import {
   dateTime,
@@ -44,6 +46,8 @@ const ExecutionGraph = lazy(() => import('./ExecutionGraph'));
 const ForkPanel = lazy(() => import('./ForkPanel'));
 const ComparisonPanel = lazy(() => import('./ComparisonPanel'));
 const EvaluationPanel = lazy(() => import('./EvaluationPanel'));
+const PackageImport = lazy(() => import('./PackageImport'));
+const ImportProvenance = lazy(() => import('./ImportProvenance'));
 
 function readSelection() {
   const query = new URLSearchParams(window.location.search);
@@ -305,6 +309,11 @@ function RunInspector({
   return (
     <>
       <div className="run-header">
+        {view.run.mode === 'imported' && (
+          <p className="notice">
+            导入的观察记录 · 原模式与评价见来源信息，未核验实际调用；当前只读。
+          </p>
+        )}
         <div className="run-heading">
           <span className="mode-tag">{modeLabels[view.run.mode]}</span>
           <span className="mono muted" title={view.run.run_id}>
@@ -439,7 +448,13 @@ function RunInspector({
             <section className="answer-block">
               <div>
                 <FileText size={16} />
-                <h3>{view.run.mode === 'synthetic' ? '模拟模型输出' : '模型输出'}</h3>
+                <h3>
+                  {view.run.mode === 'synthetic'
+                    ? '模拟模型输出'
+                    : view.run.mode === 'imported'
+                      ? '来源记录中的模型输出'
+                      : '模型输出'}
+                </h3>
                 <span>{isDocumentRun(view.run) ? '评价见下方独立记录' : '尚未评价'}</span>
               </div>
               <p>{answer}</p>
@@ -472,7 +487,10 @@ function RunInspector({
         {view.run.parent_run_id && (
           <ComparisonPanel key={`comparison:${view.run.run_id}`} view={view} navigate={openRun} />
         )}
-        {isDocumentRun(view.run) && (
+        {view.run.mode === 'imported' && (
+          <ImportProvenance key={`source:${view.run.run_id}`} view={view} />
+        )}
+        {view.run.mode !== 'imported' && isDocumentRun(view.run) && (
           <EvaluationPanel key={`evaluation:${view.run.run_id}`} view={view} latest={latest} />
         )}
       </Suspense>
@@ -482,6 +500,7 @@ function RunInspector({
 
 export default function App() {
   const [composing, setComposing] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [selection, setSelection] = useState(readSelection);
   const [revision, setRevision] = useState(0);
   const [query, setQuery] = useState('');
@@ -618,6 +637,10 @@ export default function App() {
               <p>沿着每一次调用，找到结果背后的证据。</p>
             </div>
             <div className="heading-actions">
+              <button className="button" onClick={() => setImporting(true)}>
+                <Upload size={14} />
+                导入文件
+              </button>
               <button className="button primary-button" onClick={() => setComposing(true)}>
                 <Plus size={14} />
                 新建实验
@@ -632,6 +655,18 @@ export default function App() {
               </button>
             </div>
           </div>
+          {importing && (
+            <Suspense fallback={<p role="status">正在加载文件导入…</p>}>
+              <PackageImport
+                close={() => setImporting(false)}
+                imported={(runId) => {
+                  setImporting(false);
+                  navigate(runId, null);
+                  refresh();
+                }}
+              />
+            </Suspense>
+          )}
           {composing && (
             <RunComposer
               close={() => setComposing(false)}
@@ -658,6 +693,9 @@ export default function App() {
               head={current.view.last_seq}
               retry={refresh}
             />
+          )}
+          {current.view && (
+            <PackageExport key={`export:${current.view.run.run_id}`} view={current.view} />
           )}
           {current.view && (
             <RunControl

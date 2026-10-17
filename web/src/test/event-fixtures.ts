@@ -5,7 +5,7 @@ import type { RuntimeEvent, RunView } from '../protocol';
 type Example = { events: RuntimeEvent[]; prefixes: RunView[]; view: RunView };
 
 export function eventFixtures(): Record<
-  'failed' | 'retried' | 'cancelled' | 'forked' | 'document' | 'document_forked',
+  'failed' | 'retried' | 'cancelled' | 'forked' | 'document' | 'document_forked' | 'imported',
   Example
 > {
   return JSON.parse(

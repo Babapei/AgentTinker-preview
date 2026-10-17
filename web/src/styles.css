@@ -1762,3 +1762,53 @@ h1 {
     padding-inline: 6px;
   }
 }
+.package-panel {
+  margin: 20px 0;
+  overflow-wrap: anywhere;
+}
+.package-panel p,
+.package-panel li {
+  line-height: 1.8;
+}
+.package-panel h2 {
+  font-size: 15px;
+}
+.package-panel h3 {
+  font-size: 13px;
+}
+.package-panel fieldset {
+  border: 0;
+  padding: 0;
+  margin: 15px 0;
+  min-width: 0;
+}
+.package-panel input[type='file'] {
+  width: 100%;
+  min-width: 0;
+}
+.package-panel details {
+  margin: 14px 0;
+}
+.package-panel summary {
+  cursor: pointer;
+  font-weight: 600;
+  line-height: 1.8;
+}
+.package-export {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 16px 0;
+}
+.package-export p {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.8;
+  margin: 0;
+  flex: 1 1 220px;
+}
+.package-export .action-error {
+  color: #a53d32;
+  flex-basis: 100%;
+}

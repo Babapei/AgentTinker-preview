@@ -7,7 +7,10 @@ from threading import Event
 
 from agenttinker.core.projection import project_events
 from agenttinker.m0.synthetic import SyntheticModel
+from agenttinker.packages.exporting import export_run
+from agenttinker.packages.models import canonical
 from agenttinker.runtime.service import DocumentRunRequest, ForkRequest, RunRequest, RunService
+from agenttinker.storage.packages import SQLitePackageStore
 from agenttinker.storage.sqlite import SQLiteEventStore
 
 
@@ -60,6 +63,11 @@ def main():
                 "document_forked",
             )
             result["document_forked"] = capture(service, expanded.run.run_id)
+            with SQLitePackageStore(service.database) as store:
+                imported, _ = store.import_data(
+                    canonical(export_run(service.database, expanded.run.run_id)), "imported"
+                )
+            result["imported"] = capture(service, imported.root_run_id)
         entered, release = Event(), Event()
 
         class Gated(SyntheticModel):

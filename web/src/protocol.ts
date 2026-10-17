@@ -20,6 +20,8 @@ export type Evaluation = RuntimeProtocol['evaluation'];
 export type HumanReview = RuntimeProtocol['human_review'];
 export type EvaluationPage = RuntimeProtocol['evaluation_page'];
 export type ReviewPage = RuntimeProtocol['review_page'];
+export type ImportResult = RuntimeProtocol['import_result'];
+export type ImportProvenance = NonNullable<RuntimeProtocol['import_provenance']>;
 
 const ajv = new Ajv({ strict: false, allErrors: false });
 addFormats(ajv);

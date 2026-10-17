@@ -225,32 +225,12 @@ export type ReviewId = string;
 export type Reviewer = string;
 export type RunId11 = string;
 export type SchemaVersion13 = '0.1';
-export type Items1 = HumanReview[];
-export type NextOffset1 = number | null;
-export type Total1 = number;
-export type EvaluationId2 = string;
-export type Explanation2 = string;
-export type InputHash2 = string;
-export type Judgement1 = 'supported' | 'justified_insufficiency' | 'unsupported' | 'uncertain';
-export type Reviewer1 = string;
-export type Items2 = Run[];
-export type NextOffset2 = number | null;
-export type Total2 = number;
-export type InjectTimeout = boolean;
-export type Mode2 = 'live' | 'synthetic';
-export type Model2 = string | null;
-export type ToolRetryLimit = number;
-export type TopK = number;
-export type Provider3 = ('openai' | 'deepseek') | null;
-export type Task1 = string;
-export type Checkpoints = CheckpointRef[];
-export type LastSeq = number;
-export type SchemaVersion14 = '0.1';
-export type Spans = Span[];
+export type Claim = 'unverified_source_record';
 export type MaxModelCalls = number;
 export type PromptVersion1 = string;
-export type SchemaVersion15 = '0.1';
+export type SchemaVersion14 = '0.1';
 export type SystemPrompt = string;
+export type Case = DatasetCase | ExecutionCase;
 export type FixtureHash1 = string;
 /**
  * @minItems 1
@@ -266,15 +246,25 @@ export type Description = string;
  */
 export type DocumentIds = [string, ...string[]];
 export type FactId = string;
+export type SchemaVersion15 = '0.1';
 export type SchemaVersion16 = '0.1';
+export type Task1 = string;
+export type ExpectedExecution = string;
+export type FixtureHash2 = string;
 export type SchemaVersion17 = '0.1';
 export type Task2 = string;
-export type AllowedVariables = ('tool_retry_limit' | 'top_k')[];
-export type Role = 'baseline' | 'candidate';
-export type SchemaVersion18 = '0.1';
 export type Description1 = string;
-export type License = string | null;
+export type Kind2 = 'rule' | 'human';
+export type SchemaVersion18 = '0.1';
+export type Evaluators = EvaluatorDefinition[];
+export type AllowedVariables = ('tool_retry_limit' | 'top_k')[];
+export type ToolRetryLimit = number;
+export type TopK = number;
+export type Role = 'baseline' | 'candidate';
 export type SchemaVersion19 = '0.1';
+export type Description2 = string;
+export type License = string | null;
+export type SchemaVersion20 = '0.1';
 export type Source = string;
 /**
  * @minItems 1
@@ -282,11 +272,69 @@ export type Source = string;
 export type SuccessCriteria = [string, ...string[]];
 export type Title = string;
 export type DocumentId = string;
-export type SchemaVersion20 = '0.1';
+export type SchemaVersion21 = '0.1';
 export type Text = string;
 export type Title1 = string;
 export type Documents = Document[];
-export type SchemaVersion21 = '0.1';
+export type HashMethod = 'legacy-document-list-v1' | 'document-case-v1';
+export type SchemaVersion22 = '0.1';
+export type Sha256 = string;
+export type Notes = string[];
+export type SchemaVersion23 = '0.1';
+export type Variants = Variant1[];
+export type EvaluationId2 = string;
+export type PortableInputHash = string;
+export type SourceInputHash = string;
+export type EvaluationBindings = EvaluationBinding[];
+export type Evaluations = EvaluationResult[];
+export type ImportId = string;
+export type ImportedAt = string;
+export type License1 = string | null;
+export type LocalRunId = string;
+export type PortablePackageSha256 = string;
+export type PortableViewSha256 = string;
+export type Reviews = HumanReview[];
+export type SchemaVersion24 = '0.1';
+export type Source1 = string;
+export type SourceMode = 'live' | 'recorded' | 'synthetic' | 'imported';
+export type SourcePackageSha256 = string;
+export type SourceRunId = string;
+export type SourceViewSha256 = string;
+export type Title2 = string;
+export type ImportId1 = string;
+export type ImportedAt1 = string;
+export type PortablePackageSha2561 = string;
+export type RootRunId = string;
+export type LocalRunId1 = string;
+export type RecordPlayback1 = boolean;
+export type SourceMode1 = 'live' | 'recorded' | 'synthetic' | 'imported';
+export type SourceRunId1 = string;
+export type Runs = ImportedRunLink[];
+export type SchemaVersion25 = '0.1';
+export type SourcePackageSha2561 = string;
+export type Title3 = string;
+export type Items1 = HumanReview[];
+export type NextOffset1 = number | null;
+export type Total1 = number;
+export type EvaluationId3 = string;
+export type Explanation2 = string;
+export type InputHash2 = string;
+export type Judgement1 = 'supported' | 'justified_insufficiency' | 'unsupported' | 'uncertain';
+export type Reviewer1 = string;
+export type Items2 = Run[];
+export type NextOffset2 = number | null;
+export type Total2 = number;
+export type InjectTimeout = boolean;
+export type Mode2 = 'live' | 'synthetic';
+export type Model2 = string | null;
+export type Provider3 = ('openai' | 'deepseek') | null;
+export type Task3 = string;
+export type Checkpoints = CheckpointRef[];
+export type LastSeq = number;
+export type SchemaVersion26 = '0.1';
+export type Spans = Span[];
+export type Documents1 = Document[];
+export type SchemaVersion27 = '0.1';
 export type Scenarios = Scenario[];
 export type Items3 = Span[];
 export type NextOffset3 = number | null;
@@ -301,6 +349,8 @@ export interface RuntimeProtocol {
   event: Event;
   fork_request: ForkRequest;
   human_review: HumanReview;
+  import_provenance: ImportProvenance | null;
+  import_result: ImportResult;
   review_page: ReviewPage;
   review_request: ReviewRequest;
   run_page: RunPage;
@@ -664,62 +714,41 @@ export interface FactCoverage {
    */
   [k: string]: 'covered' | 'missing' | 'uncertain';
 }
-export interface ReviewPage {
-  items: Items1;
-  next_offset: NextOffset1;
-  total: Total1;
+export interface ImportProvenance {
+  claim: Claim;
+  context: ExperimentContext | null;
+  evaluation_bindings: EvaluationBindings;
+  evaluations: Evaluations;
+  import_id: ImportId;
+  imported_at: ImportedAt;
+  license: License1;
+  local_run_id: LocalRunId;
+  portable_package_sha256: PortablePackageSha256;
+  portable_view_sha256: PortableViewSha256;
+  reviews: Reviews;
+  schema_version: SchemaVersion24;
+  source: Source1;
+  source_mode: SourceMode;
+  source_package_sha256: SourcePackageSha256;
+  source_run_id: SourceRunId;
+  source_view_sha256: SourceViewSha256;
+  title: Title2;
 }
-export interface ReviewRequest {
-  evaluation_id: EvaluationId2;
-  explanation: Explanation2;
-  fact_coverage: FactCoverage1;
-  input_hash: InputHash2;
-  judgement: Judgement1;
-  reviewer: Reviewer1;
-}
-export interface FactCoverage1 {
-  /**
-   * This interface was referenced by `FactCoverage1`'s JSON-Schema definition
-   * via the `patternProperty` "^[A-Za-z0-9][A-Za-z0-9_.:-]*$".
-   */
-  [k: string]: 'covered' | 'missing' | 'uncertain';
-}
-export interface RunPage {
-  items: Items2;
-  next_offset: NextOffset2;
-  total: Total2;
-}
-export interface RunRequest {
-  inject_timeout: InjectTimeout;
-  mode: Mode2;
-  model: Model2;
-  policy: ToolPolicy1;
-  provider: Provider3;
-  task: Task1;
-}
-export interface ToolPolicy1 {
-  tool_retry_limit: ToolRetryLimit;
-  top_k: TopK;
-}
-export interface RunView {
-  checkpoints: Checkpoints;
-  last_seq: LastSeq;
-  run: Run;
-  schema_version: SchemaVersion14;
-  spans: Spans;
-}
-export interface Scenario {
+export interface ExperimentContext {
   agent: AgentDefinition;
-  case: DatasetCase;
-  definition: ExperimentDefinition;
-  documents: Documents;
-  schema_version: SchemaVersion21;
+  case: Case;
+  evaluators: Evaluators;
+  experiment: ExperimentDefinition;
+  fixture: Fixture;
+  notes: Notes;
+  schema_version: SchemaVersion23;
+  variants: Variants;
 }
 export interface AgentDefinition {
   max_model_calls: MaxModelCalls;
   prompt_version: PromptVersion1;
   ref: VersionRef;
-  schema_version: SchemaVersion15;
+  schema_version: SchemaVersion14;
   system_prompt: SystemPrompt;
   tool_schemas: ToolSchemas;
   tool_versions: ToolVersions2;
@@ -746,14 +775,28 @@ export interface DatasetCase {
   ref: VersionRef;
   required_document_ids: RequiredDocumentIds;
   required_facts: RequiredFacts;
-  schema_version: SchemaVersion17;
-  task: Task2;
+  schema_version: SchemaVersion16;
+  task: Task1;
 }
 export interface FactRequirement {
   description: Description;
   document_ids: DocumentIds;
   fact_id: FactId;
-  schema_version: SchemaVersion16;
+  schema_version: SchemaVersion15;
+}
+export interface ExecutionCase {
+  expected_execution: ExpectedExecution;
+  fixture: VersionRef;
+  fixture_hash: FixtureHash2;
+  ref: VersionRef;
+  schema_version: SchemaVersion17;
+  task: Task2;
+}
+export interface EvaluatorDefinition {
+  description: Description1;
+  kind: Kind2;
+  ref: VersionRef;
+  schema_version: SchemaVersion18;
 }
 export interface ExperimentDefinition {
   agent: VersionRef;
@@ -761,10 +804,10 @@ export interface ExperimentDefinition {
   baseline: Variant1;
   candidate: Variant1;
   case: VersionRef;
-  description: Description1;
+  description: Description2;
   license: License;
   ref: VersionRef;
-  schema_version: SchemaVersion19;
+  schema_version: SchemaVersion20;
   source: Source;
   success_criteria: SuccessCriteria;
   title: Title;
@@ -773,13 +816,92 @@ export interface Variant1 {
   policy: ToolPolicy1;
   ref: VersionRef;
   role: Role;
-  schema_version: SchemaVersion18;
+  schema_version: SchemaVersion19;
+}
+export interface ToolPolicy1 {
+  tool_retry_limit: ToolRetryLimit;
+  top_k: TopK;
+}
+export interface Fixture {
+  documents: Documents;
+  hash_method: HashMethod;
+  ref: VersionRef;
+  schema_version: SchemaVersion22;
+  sha256: Sha256;
 }
 export interface Document {
   document_id: DocumentId;
-  schema_version: SchemaVersion20;
+  schema_version: SchemaVersion21;
   text: Text;
   title: Title1;
+}
+export interface EvaluationBinding {
+  evaluation_id: EvaluationId2;
+  portable_input_hash: PortableInputHash;
+  source_input_hash: SourceInputHash;
+}
+export interface ImportResult {
+  import_id: ImportId1;
+  imported_at: ImportedAt1;
+  portable_package_sha256: PortablePackageSha2561;
+  root_run_id: RootRunId;
+  runs: Runs;
+  schema_version: SchemaVersion25;
+  source_package_sha256: SourcePackageSha2561;
+  title: Title3;
+}
+export interface ImportedRunLink {
+  local_run_id: LocalRunId1;
+  record_playback: RecordPlayback1;
+  source_mode: SourceMode1;
+  source_run_id: SourceRunId1;
+}
+export interface ReviewPage {
+  items: Items1;
+  next_offset: NextOffset1;
+  total: Total1;
+}
+export interface ReviewRequest {
+  evaluation_id: EvaluationId3;
+  explanation: Explanation2;
+  fact_coverage: FactCoverage1;
+  input_hash: InputHash2;
+  judgement: Judgement1;
+  reviewer: Reviewer1;
+}
+export interface FactCoverage1 {
+  /**
+   * This interface was referenced by `FactCoverage1`'s JSON-Schema definition
+   * via the `patternProperty` "^[A-Za-z0-9][A-Za-z0-9_.:-]*$".
+   */
+  [k: string]: 'covered' | 'missing' | 'uncertain';
+}
+export interface RunPage {
+  items: Items2;
+  next_offset: NextOffset2;
+  total: Total2;
+}
+export interface RunRequest {
+  inject_timeout: InjectTimeout;
+  mode: Mode2;
+  model: Model2;
+  policy: ToolPolicy1;
+  provider: Provider3;
+  task: Task3;
+}
+export interface RunView {
+  checkpoints: Checkpoints;
+  last_seq: LastSeq;
+  run: Run;
+  schema_version: SchemaVersion26;
+  spans: Spans;
+}
+export interface Scenario {
+  agent: AgentDefinition;
+  case: DatasetCase;
+  definition: ExperimentDefinition;
+  documents: Documents1;
+  schema_version: SchemaVersion27;
 }
 export interface SpanPage {
   items: Items3;

@@ -108,4 +108,4 @@ POST `/api/v1/imports` 接收原始 JSON 文件字节（不是 multipart），�
 
 GET `/api/v1/imports/{import_id}` 读取导入结果，未知为 404 import_not_found。GET `/api/v1/runs/{id}/provenance` 读取原来源/许可/上下文/评价和双摘要，原生 Run 为 null，未知 Run 404。源评价保持原 ID/摘要，不加入本地评价列表；向 imported Run 新增评价/复核 409 imported_record_read_only，cancel/fork 为 409 unsupported_capability。摘要 trace 无完整事件时 SSE 同样 409，不补造事件。
 
-导入类型不符 415 unsupported_package_type，超限 413 package_too_large，JSON/版本/哈希/引用非法 422 package_invalid，凭据 artifact 422 artifact_contains_credentials；异常不返回输入正文。GET protocol 增加实验包、导入结果和来源 schema。文件界面与无密钥浏览器流程尚待接入。
+导入类型不符 415 unsupported_package_type，超限 413 package_too_large，JSON/版本/哈希/引用非法 422 package_invalid，凭据 artifact 422 artifact_contains_credentials；异常不返回输入正文。GET protocol 增加实验包、导入结果和来源 schema。文件界面与无密钥浏览器往返已接入，详见[界面说明](web-inspector.md)。

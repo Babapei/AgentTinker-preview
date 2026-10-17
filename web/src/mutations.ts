@@ -79,6 +79,15 @@ export function actionError(error: unknown): string {
     evaluator_unsupported: '当前服务不支持该评价器版本。',
     review_evidence_mismatch: '复核依据的输入摘要不匹配，请重新读取评价。',
     review_evaluation_failed: '规则评价尚未成功完成，请先新增一份规则评价。',
+    package_invalid: '文件格式、版本、哈希或引用未通过校验，请选择完整的 AgentTinker JSON 包。',
+    package_too_large: '文件超过实验包大小上限（8 MiB）。',
+    package_run_active: '请等待实际运行结束后导出。',
+    package_context_unsupported: '此运行的模板或上下文尚不支持导出实验包。',
+    package_context_mismatch: '运行与实验定义不一致，无法导出。',
+    artifact_not_exportable: '费用凭据尚未标记为可分发，无法导出。',
+    artifact_contains_credentials: '费用凭据含已识别的密钥字段，请先处理源文件。',
+    unsupported_package_type: '请选择 AgentTinker JSON 实验包。',
+    imported_record_read_only: '导入记录只供检查，原评价保存在来源中。',
   };
   return (
     known[code] ??

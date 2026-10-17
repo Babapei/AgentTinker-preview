@@ -54,7 +54,7 @@ export default function EventWorkspace({
                 : '最新记录'}
             </span>
             <span>
-              实际运行：
+              {latest.run.mode === 'imported' ? '来源记录状态：' : '实际运行：'}
               <Status status={latest.run.status} />
             </span>
           </div>
@@ -109,7 +109,11 @@ export default function EventWorkspace({
             onChange={(event) => seek(Number(event.target.value))}
           />
           <output aria-label="已应用事件位置">
-            {available ? `${position} / ${boundary}` : '待补齐'}
+            {available
+              ? `${position} / ${boundary}`
+              : !latest.run.capabilities.record_playback
+                ? '仅摘要'
+                : '待补齐'}
           </output>
           <select
             aria-label="历史播放速度"

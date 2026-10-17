@@ -7,19 +7,24 @@ beforeAll(() => {
   examples = eventFixtures();
 });
 
-it.each(['failed', 'retried', 'cancelled', 'forked', 'document', 'document_forked'] as const)(
-  'matches every Python projection prefix for a native %s run',
-  (name) => {
-    const { events, prefixes, view } = examples[name];
-    const log = new EventLog(view.run.run_id);
-    for (const [index, event] of events.entries()) {
-      expect(log.append(event)).toBe(true);
-      expect(log.view).toEqual(prefixes[index]);
-    }
-    expect(log.view).toEqual(view);
-    expect(projectEvents([])).toBeNull();
-  },
-);
+it.each([
+  'failed',
+  'retried',
+  'cancelled',
+  'forked',
+  'document',
+  'document_forked',
+  'imported',
+] as const)('matches every Python projection prefix for a native %s run', (name) => {
+  const { events, prefixes, view } = examples[name];
+  const log = new EventLog(view.run.run_id);
+  for (const [index, event] of events.entries()) {
+    expect(log.append(event)).toBe(true);
+    expect(log.view).toEqual(prefixes[index]);
+  }
+  expect(log.view).toEqual(view);
+  expect(projectEvents([])).toBeNull();
+});
 
 it('deduplicates only identical facts and does not mutate old prefixes', () => {
   const { events, view } = examples.retried;
