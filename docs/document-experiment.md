@@ -1,6 +1,6 @@
 # 文档缺失实验与评价
 
-M4 进行中。当前已实现版本化定义、本地工具、独立 LangGraph ReAct 执行器/分支、场景 HTTP 接口与纯记录规则评价；场景表单/评价界面、持久化评价和实验包尚待接入。以下内容不代表 P06–P10 已验收。
+M4 进行中。当前已实现版本化定义、本地工具、独立 LangGraph ReAct 执行器/分支、场景 HTTP 接口与纯记录规则评价；评价/人工复核已持久化并接 HTTP；场景表单/评价界面和实验包尚待接入。以下内容不代表 P06–P10 已验收。
 
 ## 固定材料与版本
 
@@ -49,10 +49,20 @@ with RunService("artifacts/runs.sqlite") as service:
 
 规则分别检查必需文档是否返回、正文是否实际读取、显式 `[document-id]` 是否来自已读文档。正文读取需要和夹具内容相符；只有标题不算读到事实。引用检查只证明来源 ID 可用，不证明句子正确，也不通过字符串命中评价语义。没有答案或引用时相应结果为 unknown。取消、中断和材料缺失不会被隐藏。
 
-事实覆盖与答案判断保持 `unreviewed`。HumanReview 单独记录每项事实的 covered/missing/uncertain、人工署名、说明、输入摘要及 judgement；其中 `justified_insufficiency` 可表达缺少材料时如实说明，不能由规则的材料 fail 自动推成“编造”。人工复核持久化与接口尚未实现。
+事实覆盖与答案判断保持 `unreviewed`。HumanReview 单独记录每项事实的 covered/missing/uncertain、人工署名、说明、输入摘要及 judgement；其中 `justified_insufficiency` 可表达缺少材料时如实说明，不能由规则的材料 fail 自动推成“编造”。人工复核已接不可变存储与 HTTP。复核者为本地用户填写的署名，不代表经过身份认证；测试标签也不代表真实用户评价。
+
+## 不可变评价存储与接口
+
+SQLite schema v3 在原事件库增加 evaluations、reviews 与独立 assessment_requests 账本，升级不改 Run/事件或旧请求指纹。评价不向终态执行流追加事件；评价/复核及幂等账本均由数据库触发器禁止更新和删除。结果与请求标识在同一事务提交；同 key 同请求返回同一结果，换 key 明确追加一份新评价/意见。该账本与运行创建账本独立，各自命名空间内跨运行/操作冲突均拒绝。
+
+服务只运行内置 document-evidence:1，绑定 Case、版本和包含继承前缀的输入摘要。前置条件不符拒绝并且不消费 key；运行中的记录不能评分。不需要凭据、SDK 或 saver，连续分支从祖先的只读观测记录解析前缀。规则程序异常单独保存 status=failed 与异常类型，checks 为空，不显示成零分，也不改变 Run 执行状态。相同 key 保留此失败，新 key 可以重新评价。
+
+人工复核请求必须指定 evaluation_id 和匹配的 input_hash，并显式填写两项 fact_coverage、judgement、说明和署名。拒绝错属运行、摘要不符或失败评价；不从材料 fail 推导“编造”，也不覆盖旧意见。每次复核保留自己的 ID/时间/评价版本。规则结果仍保留 answer_review=unreviewed，人工意见单独显示来源。
+
+接口：POST/GET `/api/v1/runs/{id}/evaluations` 与 `/reviews`，单条可按 ID 读取；POST 需要 Idempotency-Key，新建 201/重读 200，返回 Location。列表以追加顺序倒序分页，含 total/next_offset；offset≥0、limit 1–100。见 [API](runtime-api.md)。
 
 ## 当前验证与下一步
 
-187 项 Python、57 项 Vitest 与 28 项实际 Chromium 通过。新增文档运行覆盖持久化重启、A 原事件/checkpoint/pending writes 不变、连续及并发分支、不重复前缀、同调用/查询、取消保留用量、协议拒绝、调用上限、直接回答、未返回文档拒读、进程意外退出与幂等重读。离线 SDK 验证 auto 选择、双工具、DeepSeek 参数、响应/用量与无密钥回看；跨语言验证 A/B 每个事件前缀，实际浏览器检查/回放文档循环无写请求、记录不变。本节点没有新增真实提供商调用。
+评价存储/API 节点：196 项 Python（新增 9 项）与 ruff 通过；覆盖并发幂等、失败回滚、不可变触发器、旧库升级、继承前缀、评价错误/重评、意见绑定/追加、分页与无密钥 HTTP 重启，Run/SSE 不变。此前 M4-02 的 57 项 Vitest 与 28 项实际 Chromium 通过。新增文档运行覆盖持久化重启、A 原事件/checkpoint/pending writes 不变、连续及并发分支、不重复前缀、同调用/查询、取消保留用量、协议拒绝、调用上限、直接回答、未返回文档拒读、进程意外退出与幂等重读。离线 SDK 验证 auto 选择、双工具、DeepSeek 参数、响应/用量与无密钥回看；跨语言验证 A/B 每个事件前缀，实际浏览器检查/回放文档循环无写请求、记录不变。本节点没有新增真实提供商调用。
 
-下一节点接评价不可变存储/HTTP、规则结果与人工复核界面及场景表单；M4 仍需实验包、真实文档参考和 P06–P10 证据。
+下一节点接规则结果与人工复核界面及场景表单；M4 仍需实验包、真实文档参考和 P06–P10 证据。

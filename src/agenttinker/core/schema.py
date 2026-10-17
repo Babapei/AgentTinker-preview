@@ -3,7 +3,12 @@
 from agenttinker.core.events import EVENT_ADAPTER
 from agenttinker.core.projection import RunView
 from agenttinker.core.records import Artifact, CheckpointRef, Intervention, Run, Span
-from agenttinker.experiments.evaluation import EvaluationResult, HumanReview
+from agenttinker.experiments.evaluation import (
+    EvaluationRequest,
+    EvaluationResult,
+    HumanReview,
+    ReviewRequest,
+)
 from agenttinker.experiments.models import (
     AgentDefinition,
     DatasetCase,
@@ -30,6 +35,8 @@ def protocol_schemas() -> dict:
                 Scenario,
                 EvaluationResult,
                 HumanReview,
+                EvaluationRequest,
+                ReviewRequest,
             )
         },
         "Event": EVENT_ADAPTER.json_schema(),

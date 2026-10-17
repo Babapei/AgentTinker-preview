@@ -11,10 +11,10 @@ from datetime import UTC, datetime
 from typing import Literal
 from uuid import uuid4
 
-from pydantic import AwareDatetime, model_validator
+from pydantic import AwareDatetime, Field, model_validator
 
 from agenttinker.core.projection import RunView
-from agenttinker.core.records import SHA256, Identifier, Record, Span, Text, VersionRef
+from agenttinker.core.records import SHA256, Identifier, Record, Span, Text, ValueModel, VersionRef
 from agenttinker.core.states import TERMINAL_STATUSES
 from agenttinker.experiments import documents as corpus
 
@@ -41,6 +41,43 @@ class EvaluationResult(Record):
     answer_review: Literal["unreviewed"] = "unreviewed"
     sample_size: Literal[1] = 1
     statistical_conclusion: Literal[False] = False
+    status: Literal["completed", "failed"] = "completed"
+    failure_code: Identifier | None = None
+
+    @model_validator(mode="after")
+    def failure_is_not_a_score(self):
+        if self.status == "completed" and self.failure_code is not None:
+            raise ValueError("completed_evaluation_has_failure")
+        if self.status == "failed" and (
+            self.failure_code is None
+            or self.checks
+            or self.returned_document_ids
+            or self.read_document_ids
+            or self.cited_document_ids
+        ):
+            raise ValueError("failed_evaluation_cannot_invent_checks")
+        return self
+
+
+class EvaluationRequest(ValueModel):
+    evaluator: VersionRef = VersionRef(id="document-evidence", version="1")
+
+
+class ReviewRequest(ValueModel):
+    evaluation_id: Identifier
+    input_hash: SHA256
+    reviewer: Text = Field(max_length=160)
+    fact_coverage: dict[Identifier, Literal["covered", "missing", "uncertain"]]
+    judgement: Literal["supported", "justified_insufficiency", "unsupported", "uncertain"]
+    explanation: Text = Field(max_length=8000)
+
+    @model_validator(mode="after")
+    def all_facts_explicit(self):
+        if set(self.fact_coverage) != {
+            fact.fact_id for fact in corpus.dataset_case().required_facts
+        }:
+            raise ValueError("review_fact_set_mismatch")
+        return self
 
 
 class HumanReview(Record):
@@ -76,7 +113,7 @@ def evidence_hash(view: RunView, inherited: tuple[Span, ...] = ()) -> str:
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
 
-def evaluate_documents(view: RunView, inherited: tuple[Span, ...] = ()) -> EvaluationResult:
+def validate_document_context(view: RunView, inherited: tuple[Span, ...] = ()):
     # Snapshot/revalidate shallow-frozen nested values at the evidence boundary.
     view = RunView.model_validate_json(view.model_dump_json())
     inherited = tuple(Span.model_validate_json(span.model_dump_json()) for span in inherited)
@@ -95,6 +132,30 @@ def evaluate_documents(view: RunView, inherited: tuple[Span, ...] = ()) -> Evalu
         or any(span.run_id == view.run.run_id for span in inherited)
     ):
         raise ValueError("evaluation_context_mismatch")
+    return view, inherited
+
+
+def evaluation_failure(view: RunView, inherited: tuple[Span, ...], failure_code: str):
+    return EvaluationResult(
+        evaluation_id=f"eval_{uuid4().hex}",
+        run_id=view.run.run_id,
+        case=corpus.dataset_case().ref,
+        evaluator=corpus.EVALUATOR,
+        input_hash=evidence_hash(view, inherited),
+        created_at=datetime.now(UTC),
+        execution_status=view.run.status,
+        returned_document_ids=(),
+        read_document_ids=(),
+        cited_document_ids=(),
+        checks=(),
+        status="failed",
+        failure_code=failure_code,
+    )
+
+
+def evaluate_documents(view: RunView, inherited: tuple[Span, ...] = ()) -> EvaluationResult:
+    view, inherited = validate_document_context(view, inherited)
+    case = corpus.dataset_case()
     spans = (*inherited, *view.spans)
     known = {doc.document_id: doc for doc in corpus.documents()}
     returned, read, evidence = set(), set(), []

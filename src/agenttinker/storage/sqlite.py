@@ -70,7 +70,33 @@ class SQLiteEventStore:
                         "fingerprint TEXT NOT NULL, run_id TEXT NOT NULL REFERENCES runs(run_id))"
                     )
                     self._connection.execute("PRAGMA user_version=2")
-                elif version != 2:
+                    version = 2
+                if version == 2:
+                    for statement in (
+                        "CREATE TABLE evaluations (evaluation_id TEXT PRIMARY KEY, "
+                        "run_id TEXT NOT NULL REFERENCES runs(run_id), body TEXT NOT NULL)",
+                        "CREATE INDEX evaluations_by_run ON evaluations(run_id)",
+                        "CREATE TABLE reviews (review_id TEXT PRIMARY KEY, "
+                        "run_id TEXT NOT NULL REFERENCES runs(run_id), "
+                        "evaluation_id TEXT NOT NULL REFERENCES evaluations(evaluation_id), "
+                        "body TEXT NOT NULL)",
+                        "CREATE INDEX reviews_by_run ON reviews(run_id)",
+                        "CREATE TABLE assessment_requests (request_key TEXT PRIMARY KEY, "
+                        "fingerprint TEXT NOT NULL, "
+                        "evaluation_id TEXT REFERENCES evaluations(evaluation_id), "
+                        "review_id TEXT REFERENCES reviews(review_id), "
+                        "CHECK ((evaluation_id IS NULL) != (review_id IS NULL)))",
+                        "PRAGMA user_version=3",
+                    ):
+                        self._connection.execute(statement)
+                    for table in ("evaluations", "reviews", "assessment_requests"):
+                        for operation in ("UPDATE", "DELETE"):
+                            self._connection.execute(
+                                f"CREATE TRIGGER {table}_no_{operation.lower()} "
+                                f"BEFORE {operation} ON {table} "
+                                "BEGIN SELECT RAISE(ABORT, 'assessments_append_only'); END"
+                            )
+                elif version != 3:
                     raise ValueError("unsupported_database_schema_version")
         except Exception:
             self.close()

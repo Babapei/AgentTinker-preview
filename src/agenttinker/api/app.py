@@ -14,6 +14,12 @@ from agenttinker.core.records import CheckpointRef, Count, Identifier, Run, Span
 from agenttinker.core.schema import protocol_schemas
 from agenttinker.core.states import TERMINAL_STATUSES, RunStatus
 from agenttinker.experiments import documents as corpus
+from agenttinker.experiments.evaluation import (
+    EvaluationRequest,
+    EvaluationResult,
+    HumanReview,
+    ReviewRequest,
+)
 from agenttinker.experiments.models import Scenario
 from agenttinker.m0.openai_model import ProviderNotConfigured
 from agenttinker.runtime.checkpoints import ForkRejected
@@ -23,6 +29,12 @@ from agenttinker.runtime.service import (
     ForkRequest,
     RunRequest,
     RunService,
+)
+from agenttinker.storage.evaluations import (
+    AssessmentRejected,
+    EvaluationPage,
+    ReviewPage,
+    SQLiteEvaluationStore,
 )
 from agenttinker.storage.sqlite import EventConflict, SQLiteEventStore
 
@@ -119,6 +131,17 @@ def create_app(
     @app.exception_handler(EventConflict)
     async def conflict(_request, _error):
         return JSONResponse(status_code=409, content={"detail": "idempotency_key_payload_conflict"})
+
+    @app.exception_handler(AssessmentRejected)
+    async def rejected_assessment(_request, error):
+        status = (
+            404
+            if error.code == "assessment_not_found"
+            else 422
+            if error.code == "evaluator_unsupported"
+            else 409
+        )
+        return JSONResponse(status_code=status, content={"detail": error.code})
 
     @app.exception_handler(ForkRejected)
     async def rejected_fork(_request, error):
@@ -220,6 +243,64 @@ def create_app(
             total=len(spans),
             next_offset=next_offset if next_offset < len(spans) else None,
         )
+
+    @app.post("/api/v1/runs/{run_id}/evaluations", response_model=EvaluationResult, status_code=201)
+    def evaluate_run(
+        run_id: Identifier,
+        body: EvaluationRequest,
+        request: Request,
+        response: Response,
+        idempotency_key: Annotated[str, Header(min_length=1, max_length=128)],
+    ):
+        with SQLiteEvaluationStore(request.app.state.service.database) as store:
+            result, created = store.create_evaluation(run_id, body, idempotency_key)
+        response.status_code = 201 if created else 200
+        response.headers["Location"] = f"/api/v1/runs/{run_id}/evaluations/{result.evaluation_id}"
+        return result
+
+    @app.get("/api/v1/runs/{run_id}/evaluations", response_model=EvaluationPage)
+    def list_evaluations(
+        run_id: Identifier,
+        request: Request,
+        offset: Annotated[int, Query(ge=0)] = 0,
+        limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    ):
+        with SQLiteEvaluationStore(request.app.state.service.database) as store:
+            return store.evaluations(run_id, offset=offset, limit=limit)
+
+    @app.get("/api/v1/runs/{run_id}/evaluations/{evaluation_id}", response_model=EvaluationResult)
+    def get_evaluation(run_id: Identifier, evaluation_id: Identifier, request: Request):
+        with SQLiteEvaluationStore(request.app.state.service.database) as store:
+            return store.get_evaluation(run_id, evaluation_id)
+
+    @app.post("/api/v1/runs/{run_id}/reviews", response_model=HumanReview, status_code=201)
+    def review_run(
+        run_id: Identifier,
+        body: ReviewRequest,
+        request: Request,
+        response: Response,
+        idempotency_key: Annotated[str, Header(min_length=1, max_length=128)],
+    ):
+        with SQLiteEvaluationStore(request.app.state.service.database) as store:
+            result, created = store.create_review(run_id, body, idempotency_key)
+        response.status_code = 201 if created else 200
+        response.headers["Location"] = f"/api/v1/runs/{run_id}/reviews/{result.review_id}"
+        return result
+
+    @app.get("/api/v1/runs/{run_id}/reviews", response_model=ReviewPage)
+    def list_reviews(
+        run_id: Identifier,
+        request: Request,
+        offset: Annotated[int, Query(ge=0)] = 0,
+        limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    ):
+        with SQLiteEvaluationStore(request.app.state.service.database) as store:
+            return store.reviews(run_id, offset=offset, limit=limit)
+
+    @app.get("/api/v1/runs/{run_id}/reviews/{review_id}", response_model=HumanReview)
+    def get_review(run_id: Identifier, review_id: Identifier, request: Request):
+        with SQLiteEvaluationStore(request.app.state.service.database) as store:
+            return store.get_review(run_id, review_id)
 
     @app.get("/api/v1/runs/{run_id}/checkpoints", response_model=tuple[CheckpointRef, ...])
     def get_checkpoints(run_id: Identifier, request: Request):

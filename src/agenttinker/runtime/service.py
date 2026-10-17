@@ -1,7 +1,5 @@
 """One local owner dispatches native runs; durable identity precedes external work."""
 
-import hashlib
-import json
 import os
 import sqlite3
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -26,6 +24,7 @@ from agenttinker.core.records import (
     ValueModel,
     VersionRef,
 )
+from agenttinker.core.requests import request_identity
 from agenttinker.core.states import TERMINAL_STATUSES, RunStatus
 from agenttinker.experiments import documents as corpus
 from agenttinker.experiments.document_model import document_model
@@ -102,16 +101,6 @@ class CheckpointAvailability(ValueModel):
         | None
     )
     allowed_patch_fields: tuple[Literal["tool_retry_limit", "top_k"], ...]
-
-
-def request_identity(request_key, body):
-    if (
-        not isinstance(request_key, str)
-        or not 1 <= len(request_key) <= 128
-        or not request_key.isprintable()
-    ):
-        raise ValueError("invalid_idempotency_key")
-    return hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()
 
 
 def default_model(request: RunRequest):

@@ -27,6 +27,10 @@ uv run agenttinker-server --database artifacts/runs.sqlite
 | `GET /api/v1/runs/{run_id}/checkpoint-availability` | 每项含 checkpoint、available、reason、当前允许字段；只读实时检测 |
 | `POST /api/v1/runs/{run_id}/forks` | ForkRequest + Idempotency-Key；201 新分支 / 200 原分支，响应 RunView 与 Location |
 | `POST /api/v1/runs/{run_id}/cancel` | cancel_requested 返回 202；已取消或其他终态返回 200；响应 RunView，重复请求幂等 |
+| `POST /api/v1/runs/{run_id}/evaluations` | 内置规则评价 + Idempotency-Key；独立不可变结果，新建 201/重复 200 |
+| `GET /api/v1/runs/{run_id}/evaluations` | 评价倒序分页，offset/limit/total/next_offset |
+| `POST /api/v1/runs/{run_id}/reviews` | 绑定评价与输入摘要的人工复核 + Idempotency-Key；201/200 |
+| `GET /api/v1/runs/{run_id}/reviews` | 人工复核倒序分页；单条评价/复核均可再按各自 ID GET |
 | `GET /api/v1/runs/{run_id}/events` | 已提交事件 SSE，支持游标补发；终态且追平后结束响应 |
 | `GET /api/v1/protocol` | 核心 Pydantic JSON Schema，包括类型化 Event |
 
@@ -84,4 +88,12 @@ M3 的后端 fork 已接入；界面已接任务配置、运行取消、分支�
 
 `GET /api/v1/scenarios` 当前返回 document-missing:1，不构造 SDK。`POST /api/v1/scenarios/document-missing/runs` 接受 `{ "mode": "synthetic", "variant": "baseline" }`，也可显式 live/provider/model。baseline 为 top_k=2，candidate 为 3；不接受任意脚本、工具代码或状态。缺少 provider 配置明确 503；未知场景 404 scenario_not_found。既有 POST runs 的请求规范化/指纹保持原样，不因新增场景字段破坏旧幂等重试。
 
-文档 Run 记录独立 Agent/prompt/工具/材料/Case/Variant/评价器版本，无超时注入；首个检索前 checkpoint 仅允许 top_k，其他工具点只可观察。复用 GET Run/SSE/cancel/forks 和稳定拒绝码；详情见[文档实验](document-experiment.md)。评价仍是纯 Python 计算，尚无持久化评价接口或前端场景表单。
+文档 Run 记录独立 Agent/prompt/工具/材料/Case/Variant/评价器版本，无超时注入；首个检索前 checkpoint 仅允许 top_k，其他工具点只可观察。复用 GET Run/SSE/cancel/forks 和稳定拒绝码；详情见[文档实验](document-experiment.md)。评价为独立的纯规则计算并已持久化；前端场景/评价表单尚待接入。
+
+## M4 评价与人工复核
+
+评价 POST body 为 `{}`（默认 document-evidence:1），或显式 evaluator ID/version；仅终态文档用例可评价。结果有独立 evaluation_id、input_hash、status、checks 和执行状态，不向 SSE 追加事实。评价器异常保存 failed/异常类型和空 checks，不是答案零分。没有模型或工具调用。GET 列表每页最多 100，按追加顺序倒序，明确总数和下页。
+
+复核 POST body 含 evaluation_id、input_hash、reviewer（最多 160 字符）、fact_coverage（configurable-retries/citation-fix 各为 covered/missing/uncertain）、judgement（supported/justified_insufficiency/unsupported/uncertain）、explanation（最多 8000 字符）。它是本地用户意见，不代表已认证身份。新意见用新 key 追加，旧意见不可覆盖；材料不足的诚实回答可标 justified_insufficiency，规则不自动判定语义。
+
+两类 POST 必须有 Idempotency-Key，同 key 重试返回原结果及 Location；评价/复核使用独立于运行创建的同一份账本。冲突 409 idempotency_key_payload_conflict；活动运行 409 evaluation_run_active，版本/用例不符 409 evaluation_context_mismatch，不支持评价器 422 evaluator_unsupported，记录不存在/错属运行 404 assessment_not_found，摘要不符 409 review_evidence_mismatch，锚定失败评价 409 review_evaluation_failed。前置拒绝不消费 key；无效字段仍为 422。
