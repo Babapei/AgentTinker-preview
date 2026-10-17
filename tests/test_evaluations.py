@@ -240,7 +240,20 @@ def test_v2_database_migration_preserves_old_run_events_and_request_fingerprint(
         original = store.events(legacy.run.run_id)
     # Exact v2 table set: remove only empty assessment tables before reopening.
     with sqlite3.connect(database) as connection:
-        for table in ("assessment_requests", "reviews", "evaluations"):
+        for trigger in (
+            "imported_runs_no_update",
+            "imported_runs_no_delete",
+            "imported_events_no_insert",
+        ):
+            connection.execute(f"DROP TRIGGER {trigger}")
+        for table in (
+            "import_requests",
+            "import_runs",
+            "imports",
+            "assessment_requests",
+            "reviews",
+            "evaluations",
+        ):
             connection.execute(f"DROP TABLE {table}")
         connection.execute("PRAGMA user_version=2")
     with SQLiteEvaluationStore(database) as store:
@@ -252,7 +265,7 @@ def test_v2_database_migration_preserves_old_run_events_and_request_fingerprint(
         assert store.get_view(view.run.run_id) == view
         store.create_evaluation(view.run.run_id, EvaluationRequest(), "post-migration")
     with sqlite3.connect(database) as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
 
 
 def test_http_evaluation_review_idempotency_errors_and_no_key_restart(document, monkeypatch):

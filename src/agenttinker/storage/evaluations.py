@@ -128,6 +128,8 @@ class SQLiteEvaluationStore(SQLiteEventStore):
             if (existing := self._existing_request(request_key, fingerprint)) is not None:
                 return existing, False
             view = self.get_view(run_id)
+            if view.run.mode == "imported":
+                raise AssessmentRejected("imported_record_read_only")
             if view.run.status not in TERMINAL_STATUSES:
                 raise AssessmentRejected("evaluation_run_active")
             if request.evaluator != corpus.EVALUATOR:
@@ -158,6 +160,12 @@ class SQLiteEvaluationStore(SQLiteEventStore):
         with self._transaction():
             if (existing := self._existing_request(request_key, fingerprint)) is not None:
                 return existing, False
+            try:
+                view = self.get_view(run_id)
+            except KeyError:
+                raise AssessmentRejected("assessment_not_found") from None
+            if view.run.mode == "imported":
+                raise AssessmentRejected("imported_record_read_only")
             evaluation = self.get_evaluation(run_id, request.evaluation_id)
             if evaluation.input_hash != request.input_hash:
                 raise AssessmentRejected("review_evidence_mismatch")

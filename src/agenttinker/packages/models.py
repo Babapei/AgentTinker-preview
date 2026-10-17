@@ -117,6 +117,9 @@ class ExperimentContext(Record):
             or variants.get(self.experiment.baseline.ref.id) != self.experiment.baseline
             or variants.get(self.experiment.candidate.ref.id) != self.experiment.candidate
             or len({e.ref.id for e in self.evaluators}) != len(self.evaluators)
+            or isinstance(self.case, DatasetCase)
+            and not set(self.case.required_document_ids)
+            <= {d.document_id for d in self.fixture.documents}
         ):
             raise ValueError("package_context_mismatch")
         return self
@@ -200,7 +203,7 @@ class PortableArtifact(Record):
 
 
 class ManifestEntry(ValueModel):
-    path: Text
+    path: Text = Field(max_length=256)
     sha256: SHA256
     size_bytes: Count = Field(le=MAX_ENTRY_BYTES)
     media_type: Literal["application/json"] = "application/json"
@@ -248,6 +251,43 @@ class ExperimentPackage(ValueModel):
         if len(canonical(self)) > MAX_PACKAGE_BYTES:
             raise ValueError("package_too_large")
         return self
+
+
+class ImportedRunLink(ValueModel):
+    source_run_id: Identifier
+    local_run_id: Identifier
+    source_mode: Literal["live", "recorded", "synthetic", "imported"]
+    record_playback: bool
+
+
+class ImportResult(Record):
+    import_id: Identifier
+    source_package_sha256: SHA256
+    portable_package_sha256: SHA256
+    imported_at: AwareDatetime
+    title: Text
+    root_run_id: Identifier
+    runs: tuple[ImportedRunLink, ...]
+
+
+class ImportProvenance(Record):
+    import_id: Identifier
+    local_run_id: Identifier
+    source_package_sha256: SHA256
+    portable_package_sha256: SHA256
+    imported_at: AwareDatetime
+    title: Text
+    source: Text
+    license: Text | None
+    source_run_id: Identifier
+    source_mode: Literal["live", "recorded", "synthetic", "imported"]
+    source_view_sha256: SHA256
+    portable_view_sha256: SHA256
+    claim: Literal["unverified_source_record"] = "unverified_source_record"
+    context: ExperimentContext | None
+    evaluations: tuple[EvaluationResult, ...]
+    reviews: tuple[HumanReview, ...]
+    evaluation_bindings: tuple[EvaluationBinding, ...]
 
 
 def strict_json(data: bytes):

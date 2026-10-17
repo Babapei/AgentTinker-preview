@@ -82,7 +82,7 @@ data 是完整、单行 JSON Event；上述仅省略展示。`id` 为 `<run_id>:
 - 断线只结束订阅；不会取消、重启或重发运行。HTTP cancel 才请求取消。运行进入终态且所有事件已送出后响应结束；浏览器消费者应在应用终态事件后主动关闭 EventSource。
 - 消费者按 event_id 去重，仅在事件已成功应用后推进游标；seq 应连续，发现缺口则从最后已应用位置重新补读。刷新也可以重新 GET RunView，再从其 last_seq 订阅增量。不要将时间戳用作游标。
 
-M3 的后端 fork 已接入；界面已接任务配置、运行取消、分支及基于 RunView 的父子对比。文档场景定义/创建已在 M4 接入；独立比较服务和导入导出按后续节点实现，见 [前端说明](web-inspector.md)。20 项 API 测试包含原有 HTTP/SSE、重启分支、幂等、可用性降级及离线 SDK 后缀请求/用量/估算；没有新付费调用。
+M3 的后端 fork 已接入；界面已接任务配置、运行取消、分支及基于 RunView 的父子对比。文档场景定义/创建已在 M4 接入；独立比较服务按后续节点实现，实验包导入导出已接 HTTP，见 [前端说明](web-inspector.md)。20 项 API 测试包含原有 HTTP/SSE、重启分支、幂等、可用性降级及离线 SDK 后缀请求/用量/估算；没有新付费调用。
 
 ## M4 文档场景接口
 
@@ -98,8 +98,14 @@ M3 的后端 fork 已接入；界面已接任务配置、运行取消、分支�
 
 两类 POST 必须有 Idempotency-Key，同 key 重试返回原结果及 Location；评价/复核使用独立于运行创建的同一份账本。冲突 409 idempotency_key_payload_conflict；活动运行 409 evaluation_run_active，版本/用例不符 409 evaluation_context_mismatch，不支持评价器 422 evaluator_unsupported，记录不存在/错属运行 404 assessment_not_found，摘要不符 409 review_evidence_mismatch，锚定失败评价 409 review_evaluation_failed。前置拒绝不消费 key；无效字段仍为 422。
 
-## M4 实验包导出
+## M4 实验包导入导出
 
 GET `/api/v1/runs/{id}/export` 返回所选终态 Run 与所需祖先的 JSON 附件；GET `/api/v1/experiments/{experiment_id}/export?run_id=...` 同时核对场景 ID。它只读标准记录，不调用 SDK/工具/saver。包内去除私有定位和已识别凭据字段，源事实不变；摘要 trace 不补事件，评价保留原摘要及另算的可分发摘要。格式、限额和来源口径见[实验包 v1](experiment-packages.md)。
 
-活动 Run 返回 409 package_run_active；不支持的模板/上下文或不可分发凭据返回 422（稳定 package_context_unsupported/package_context_mismatch/artifact_not_exportable 等码）。未知 Run 为 404，实验 ID 不匹配为 404 experiment_not_found。导入接口尚未实现。
+活动 Run 返回 409 package_run_active；不支持的模板/上下文或不可分发凭据返回 422（稳定 package_context_unsupported/package_context_mismatch/artifact_not_exportable 等码）。未知 Run 为 404，实验 ID 不匹配为 404 experiment_not_found。导入 Run 再导出时返回其完整规范化来源包。
+
+POST `/api/v1/imports` 接收原始 JSON 文件字节（不是 multipart），要求 Content-Type: application/json、Idempotency-Key（1–128 字符）。8 MiB 流式输入上限在 JSON 解析前检查。新包 201，重复内容或同 key 重试 200，Location 指向 `/api/v1/imports/{import_id}`；结果含源/可分发包摘要、原 ID→本地 ID、root_run_id 和回放能力。原子保存，强制 imported/只读；同 key 异包 409 idempotency_key_payload_conflict。无 SDK/工具/saver。
+
+GET `/api/v1/imports/{import_id}` 读取导入结果，未知为 404 import_not_found。GET `/api/v1/runs/{id}/provenance` 读取原来源/许可/上下文/评价和双摘要，原生 Run 为 null，未知 Run 404。源评价保持原 ID/摘要，不加入本地评价列表；向 imported Run 新增评价/复核 409 imported_record_read_only，cancel/fork 为 409 unsupported_capability。摘要 trace 无完整事件时 SSE 同样 409，不补造事件。
+
+导入类型不符 415 unsupported_package_type，超限 413 package_too_large，JSON/版本/哈希/引用非法 422 package_invalid，凭据 artifact 422 artifact_contains_credentials；异常不返回输入正文。GET protocol 增加实验包、导入结果和来源 schema。文件界面与无密钥浏览器流程尚待接入。

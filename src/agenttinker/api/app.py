@@ -23,7 +23,14 @@ from agenttinker.experiments.evaluation import (
 from agenttinker.experiments.models import Scenario
 from agenttinker.m0.openai_model import ProviderNotConfigured
 from agenttinker.packages.exporting import export_run
-from agenttinker.packages.models import ExperimentPackage, PackageRejected, canonical
+from agenttinker.packages.models import (
+    MAX_PACKAGE_BYTES,
+    ExperimentPackage,
+    ImportProvenance,
+    ImportResult,
+    PackageRejected,
+    canonical,
+)
 from agenttinker.runtime.checkpoints import ForkRejected
 from agenttinker.runtime.service import (
     CheckpointAvailability,
@@ -38,6 +45,7 @@ from agenttinker.storage.evaluations import (
     ReviewPage,
     SQLiteEvaluationStore,
 )
+from agenttinker.storage.packages import SQLitePackageStore
 from agenttinker.storage.sqlite import EventConflict, SQLiteEventStore
 
 
@@ -133,11 +141,15 @@ def create_app(
     @app.exception_handler(PackageRejected)
     async def rejected_package(_request, error):
         status = (
-            413
-            if error.code == "package_too_large"
-            else 409
-            if error.code == "package_run_active"
-            else 422
+            404
+            if error.code == "import_not_found"
+            else (
+                413
+                if error.code == "package_too_large"
+                else 409
+                if error.code == "package_run_active"
+                else 422
+            )
         )
         return JSONResponse(status_code=status, content={"detail": error.code})
 
@@ -236,9 +248,9 @@ def create_app(
 
     def package_response(request, run_id, experiment_id=None):
         package = export_run(request.app.state.service.database, run_id)
-        if (
-            experiment_id is not None
-            and package.files["context.json"]["experiment"]["ref"]["id"] != experiment_id
+        context = package.files.get("context.json")
+        if experiment_id is not None and (
+            not isinstance(context, dict) or context["experiment"]["ref"]["id"] != experiment_id
         ):
             raise HTTPException(404, "experiment_not_found")
         return Response(
@@ -256,6 +268,41 @@ def create_app(
     @app.get("/api/v1/experiments/{experiment_id}/export", response_model=ExperimentPackage)
     def export_experiment_package(experiment_id: Identifier, run_id: Identifier, request: Request):
         return package_response(request, run_id, experiment_id)
+
+    @app.post("/api/v1/imports", response_model=ImportResult, status_code=201)
+    async def import_package(
+        request: Request,
+        response: Response,
+        idempotency_key: Annotated[str, Header(min_length=1, max_length=128)],
+    ):
+        if request.headers.get("content-type", "").split(";", 1)[0] != "application/json":
+            raise HTTPException(415, "unsupported_package_type")
+        parts, total = [], 0
+        async for chunk in request.stream():
+            total += len(chunk)
+            if total > MAX_PACKAGE_BYTES:
+                raise PackageRejected("package_too_large")
+            parts.append(chunk)
+        database, data = request.app.state.service.database, b"".join(parts)
+
+        def save_import():
+            with SQLitePackageStore(database) as store:
+                return store.import_data(data, idempotency_key)
+
+        result, created = await asyncio.to_thread(save_import)
+        response.status_code = 201 if created else 200
+        response.headers["Location"] = f"/api/v1/imports/{result.import_id}"
+        return result
+
+    @app.get("/api/v1/imports/{import_id}", response_model=ImportResult)
+    def get_import(import_id: Identifier, request: Request):
+        with SQLitePackageStore(request.app.state.service.database) as store:
+            return store.get_import(import_id)
+
+    @app.get("/api/v1/runs/{run_id}/provenance", response_model=ImportProvenance | None)
+    def get_provenance(run_id: Identifier, request: Request):
+        with SQLitePackageStore(request.app.state.service.database) as store:
+            return store.provenance(run_id)
 
     @app.get("/api/v1/runs/{run_id}/spans", response_model=SpanPage)
     def get_spans(
@@ -382,6 +429,8 @@ def create_app(
         cursor = event_cursor(run_id, after_seq, last_event_id)
         database = request.app.state.service.database
         view = await asyncio.to_thread(read_view, database, run_id)
+        if not view.run.capabilities.record_playback:
+            raise HTTPException(409, "unsupported_capability")
         if cursor > view.last_seq:
             raise HTTPException(422, "event_cursor_ahead")
         return StreamingResponse(

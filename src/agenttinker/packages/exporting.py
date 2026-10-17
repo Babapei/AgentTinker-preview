@@ -25,7 +25,7 @@ from agenttinker.packages.portable import (
     observation_view,
     redact,
 )
-from agenttinker.storage.evaluations import SQLiteEvaluationStore
+from agenttinker.storage.packages import SQLitePackageStore
 
 
 def make_package(
@@ -63,7 +63,9 @@ def make_package(
 
 
 def export_run(database, run_id):
-    with SQLiteEvaluationStore(database) as store:
+    with SQLitePackageStore(database) as store:
+        if store.get_view(run_id).run.mode == "imported":
+            return store.package_for_run(run_id)
         views, visited, current = [], set(), run_id
         while current is not None:
             if current in visited or len(views) >= 32:

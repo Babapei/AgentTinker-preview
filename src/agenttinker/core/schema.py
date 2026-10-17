@@ -16,6 +16,7 @@ from agenttinker.experiments.models import (
     Scenario,
     Variant,
 )
+from agenttinker.packages.models import ExperimentPackage, ImportProvenance, ImportResult
 
 
 def protocol_schemas() -> dict:
@@ -37,6 +38,9 @@ def protocol_schemas() -> dict:
                 HumanReview,
                 EvaluationRequest,
                 ReviewRequest,
+                ExperimentPackage,
+                ImportResult,
+                ImportProvenance,
             )
         },
         "Event": EVENT_ADAPTER.json_schema(),

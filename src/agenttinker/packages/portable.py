@@ -13,9 +13,12 @@ from agenttinker.packages.models import (
     EvaluationBinding,
     ExperimentContext,
     ExperimentPackage,
+    ManifestEntry,
     PackageRejected,
     PortableArtifact,
     PortableRun,
+    canonical,
+    digest,
     strict_json,
 )
 
@@ -126,6 +129,12 @@ def inspect_package(package: ExperimentPackage):
     }
     for record in records.values():
         run = record.view.run
+        if len(run.run_id) > 128:
+            raise ValueError("package_identity_too_long")
+        if any(s.run_id != run.run_id for s in record.view.spans) or any(
+            cp.run_id != run.run_id for cp in record.view.checkpoints
+        ):
+            raise ValueError("package_observation_owner_mismatch")
         parent = records.get(run.parent_run_id)
         if run.parent_run_id is not None and (
             parent is None
@@ -152,17 +161,33 @@ def inspect_package(package: ExperimentPackage):
         ):
             for item in values:
                 identity = getattr(item, field)
+                if len(identity) > 128:
+                    raise ValueError("package_identity_too_long")
                 if identity in identities[field]:
                     raise ValueError("package_duplicate_record_identity")
                 identities[field].add(identity)
         available = {s.span_id for s in record.view.spans} | set(run.inherited_span_ids)
         if any(
+            (e.span_id is not None and e.span_id not in available)
+            or (e.parent_span_id is not None and e.parent_span_id not in available)
+            for e in record.events or ()
+        ):
+            raise ValueError("package_event_reference_missing")
+        if any(
             s.parent_span_id is not None and s.parent_span_id not in available
             for s in record.view.spans
         ):
             raise ValueError("package_span_parent_missing")
+        parents = {s.span_id: s.parent_span_id for s in record.view.spans}
+        for identity in parents:
+            visited = set()
+            while identity in parents:
+                if identity in visited:
+                    raise ValueError("package_span_parent_cycle")
+                visited.add(identity)
+                identity = parents[identity]
         if any(
-            s.cost.kind == "actual" and s.cost.evidence_artifact_id not in artifacts
+            s.cost.evidence_artifact_id is not None and s.cost.evidence_artifact_id not in artifacts
             for s in record.view.spans
         ):
             raise ValueError("package_cost_evidence_missing")
@@ -178,6 +203,11 @@ def inspect_package(package: ExperimentPackage):
                 or context.agent.ref != corpus.AGENT
                 or context.case != corpus.dataset_case()
                 or record.evaluation_bindings != bind_evaluations(record, records)
+                or any(
+                    not set(check.span_ids) <= available
+                    for result in record.evaluations
+                    for check in result.checks
+                )
             ):
                 raise ValueError("package_evidence_binding_mismatch")
             declared = {e.ref.id: e.ref.version for e in context.evaluators}
@@ -187,6 +217,48 @@ def inspect_package(package: ExperimentPackage):
             ):
                 raise ValueError("package_evaluator_missing")
     return context, records, artifacts
+
+
+def normalize_package(package: ExperimentPackage):
+    context, records, artifacts = inspect_package(package)
+    normalized = {}
+    for key, record in records.items():
+        normalized[key] = record.model_copy(
+            update={
+                "view": observation_view(record.view, playback=record.events is not None),
+                "events": observation_events(record.events) if record.events is not None else None,
+            }
+        )
+    for key, record in normalized.items():
+        normalized[key] = record.model_copy(
+            update={"evaluation_bindings": bind_evaluations(record, normalized)}
+        )
+    files = {f"runs/{key}.json": value.model_dump(mode="json") for key, value in normalized.items()}
+    if context is not None:
+        files["context.json"] = redact(context.model_dump(mode="json"))
+    for key, artifact in artifacts.items():
+        if artifact.metadata.media_type == "application/json":
+            content = strict_json(artifact.content.encode())
+            if redact(content) != content:
+                raise PackageRejected("artifact_contains_credentials")
+        files[f"artifacts/{key}.json"] = artifact.model_dump(mode="json")
+    entries = tuple(
+        ManifestEntry(path=path, sha256=digest(value), size_bytes=len(canonical(value)))
+        for path, value in sorted(files.items())
+    )
+    manifest = package.manifest.model_copy(
+        update={
+            "entries": entries,
+            "transformations": (
+                "execution_disabled",
+                "checkpoint_locators_removed",
+                "credential_fields_redacted",
+            ),
+        }
+    )
+    result = ExperimentPackage(manifest=manifest, files=files)
+    inspect_package(result)
+    return result
 
 
 def parse_package(data: bytes) -> ExperimentPackage:

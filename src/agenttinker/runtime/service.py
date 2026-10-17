@@ -136,7 +136,8 @@ class RunService:
                 for run_id in store.run_ids():
                     run = store.get_view(run_id).run
                     if (
-                        run.config.agent.id in {AGENT_ID, corpus.AGENT.id}
+                        run.mode in {"live", "synthetic"}
+                        and run.config.agent.id in {AGENT_ID, corpus.AGENT.id}
                         and run.status not in TERMINAL_STATUSES
                     ):
                         self._status(run_id, RunStatus.INTERRUPTED, "previous_owner_stopped")
@@ -463,7 +464,10 @@ class RunService:
         with self._lock:
             if self._closed:
                 raise RuntimeError("runtime_closed")
-            status = self.get(run_id).run.status
+            run = self.get(run_id).run
+            if run.mode == "imported":
+                raise ForkRejected("unsupported_capability")
+            status = run.status
             if status not in TERMINAL_STATUSES:
                 self._status(run_id, RunStatus.CANCEL_REQUESTED, "user_requested")
                 if status == RunStatus.QUEUED:

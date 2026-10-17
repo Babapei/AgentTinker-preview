@@ -237,7 +237,20 @@ def test_v1_database_migration_keeps_facts_and_adds_durable_request_table(
         store.append(make_event(1, "run.created", run_record))
         original = store.events(run_record.run_id)
     with sqlite3.connect(path) as connection:
-        for table in ("assessment_requests", "reviews", "evaluations"):
+        for trigger in (
+            "imported_runs_no_update",
+            "imported_runs_no_delete",
+            "imported_events_no_insert",
+        ):
+            connection.execute(f"DROP TRIGGER {trigger}")
+        for table in (
+            "import_requests",
+            "import_runs",
+            "imports",
+            "assessment_requests",
+            "reviews",
+            "evaluations",
+        ):
             connection.execute(f"DROP TABLE {table}")
         connection.execute("DROP TABLE run_requests")
         connection.execute("PRAGMA user_version=1")
@@ -245,7 +258,7 @@ def test_v1_database_migration_keeps_facts_and_adds_durable_request_table(
         assert migrated.events(run_record.run_id) == original
         assert migrated.request_run("not-created", "fingerprint") is None
     with sqlite3.connect(path) as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
 
 
 def test_dispatch_failure_is_recorded_and_retry_does_not_start_again(tmp_path, monkeypatch):

@@ -96,7 +96,43 @@ class SQLiteEventStore:
                                 f"BEFORE {operation} ON {table} "
                                 "BEGIN SELECT RAISE(ABORT, 'assessments_append_only'); END"
                             )
-                elif version != 3:
+                    version = 3
+                if version == 3:
+                    for statement in (
+                        "CREATE TABLE imports (import_id TEXT PRIMARY KEY, "
+                        "source_sha256 TEXT NOT NULL UNIQUE, "
+                        "package_json TEXT NOT NULL, result_json TEXT NOT NULL)",
+                        "CREATE TABLE import_runs (run_id TEXT PRIMARY KEY "
+                        "REFERENCES runs(run_id), import_id TEXT NOT NULL "
+                        "REFERENCES imports(import_id), "
+                        "source_run_id TEXT NOT NULL, "
+                        "UNIQUE(import_id, source_run_id))",
+                        "CREATE TABLE import_requests (request_key TEXT PRIMARY KEY, "
+                        "fingerprint TEXT NOT NULL, "
+                        "import_id TEXT NOT NULL REFERENCES imports(import_id))",
+                        "PRAGMA user_version=4",
+                    ):
+                        self._connection.execute(statement)
+                    for table in ("imports", "import_runs", "import_requests"):
+                        for operation in ("UPDATE", "DELETE"):
+                            self._connection.execute(
+                                f"CREATE TRIGGER {table}_no_{operation.lower()} "
+                                f"BEFORE {operation} ON {table} "
+                                "BEGIN SELECT RAISE(ABORT, 'imports_append_only'); END"
+                            )
+                    for operation in ("UPDATE", "DELETE"):
+                        self._connection.execute(
+                            f"CREATE TRIGGER imported_runs_no_{operation.lower()} "
+                            f"BEFORE {operation} ON runs "
+                            "WHEN OLD.run_id IN (SELECT run_id FROM import_runs) "
+                            "BEGIN SELECT RAISE(ABORT, 'imported_record_read_only'); END"
+                        )
+                    self._connection.execute(
+                        "CREATE TRIGGER imported_events_no_insert BEFORE INSERT ON events "
+                        "WHEN NEW.run_id IN (SELECT run_id FROM import_runs) "
+                        "BEGIN SELECT RAISE(ABORT, 'imported_record_read_only'); END"
+                    )
+                elif version != 4:
                     raise ValueError("unsupported_database_schema_version")
         except Exception:
             self.close()
@@ -280,6 +316,8 @@ class SQLiteEventStore:
             if not history:
                 raise KeyError(run_id)
             view = project_events(history)
+            if view.run.mode == "imported":
+                return view
             self._connection.execute(
                 "UPDATE runs SET last_seq=?, view_json=? WHERE run_id=?",
                 (view.last_seq, encode(view), run_id),
@@ -309,6 +347,12 @@ class SQLiteEventStore:
             source=source,
             exportable=exportable,
         )
+        with self._transaction():
+            self._put_artifact(artifact, content)
+        return artifact
+
+    def _put_artifact(self, artifact: Artifact, content: bytes):
+        """Content addressing may leave an unreachable blob if a metadata transaction fails."""
         path = self.artifact_root / artifact.sha256[:2] / artifact.sha256[2:]
         path.parent.mkdir(parents=True, exist_ok=True)
         if path.exists():
@@ -325,12 +369,10 @@ class SQLiteEventStore:
                 temporary.replace(path)
             finally:
                 temporary.unlink(missing_ok=True)
-        with self._transaction():
-            self._connection.execute(
-                "INSERT INTO artifacts(artifact_id, metadata_json) VALUES (?, ?)",
-                (artifact.artifact_id, encode(artifact)),
-            )
-        return artifact
+        self._connection.execute(
+            "INSERT INTO artifacts(artifact_id, metadata_json) VALUES (?, ?)",
+            (artifact.artifact_id, encode(artifact)),
+        )
 
     def get_artifact(self, artifact_id: str) -> Artifact:
         row = self._connection.execute(
