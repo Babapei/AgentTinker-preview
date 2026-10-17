@@ -15,6 +15,7 @@ from agenttinker.experiments.models import (
     Document,
     ExperimentDefinition,
     FactRequirement,
+    Scenario,
     Variant,
 )
 from agenttinker.m0.models import ToolPolicy
@@ -40,6 +41,12 @@ TASK = (
     "根据虚构发布说明，说明 Version 2 新增的可配置能力，以及修复的引用问题。"
     "请先读取材料，为每项结论引用 [document-id]；如果材料不足，请明确说明。"
 )
+
+
+class DocumentAccessError(ValueError):
+    def __init__(self, code):
+        self.code = code
+        super().__init__(code)
 
 
 def documents() -> tuple[Document, ...]:
@@ -77,11 +84,11 @@ def search_documents(query: str, top_k: int) -> list[dict[str, str]]:
 
 def read_document(document_id: str, available_ids: tuple[str, ...]) -> dict[str, str]:
     if document_id not in available_ids:
-        raise ValueError("document_not_available")
+        raise DocumentAccessError("document_not_available")
     for doc in documents():
         if doc.document_id == document_id:
             return {"id": doc.document_id, "title": doc.title, "text": doc.text}
-    raise ValueError("document_not_found")
+    raise DocumentAccessError("document_not_found")
 
 
 def tool_schemas() -> dict[str, dict]:
@@ -167,4 +174,13 @@ def experiment_definition() -> ExperimentDefinition:
             role="candidate",
         ),
         source="AgentTinker built-in fictional teaching corpus; no external documents",
+    )
+
+
+def scenario() -> Scenario:
+    return Scenario(
+        definition=experiment_definition(),
+        agent=agent_definition(),
+        case=dataset_case(),
+        documents=documents(),
     )

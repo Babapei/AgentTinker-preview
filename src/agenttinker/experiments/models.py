@@ -90,3 +90,22 @@ class ExperimentDefinition(Record):
         ):
             raise ValueError("invalid_experiment_variants")
         return self
+
+
+class Scenario(Record):
+    definition: ExperimentDefinition
+    agent: AgentDefinition
+    case: DatasetCase
+    documents: tuple[Document, ...]
+
+    @model_validator(mode="after")
+    def consistent_references(self):
+        ids = {doc.document_id for doc in self.documents}
+        if (
+            self.definition.agent != self.agent.ref
+            or self.definition.case != self.case.ref
+            or len(ids) != len(self.documents)
+            or not set(self.case.required_document_ids) <= ids
+        ):
+            raise ValueError("scenario_reference_mismatch")
+        return self

@@ -17,6 +17,8 @@ uv run agenttinker-server --database artifacts/runs.sqlite
 
 | 方法与路径 | 行为 |
 | --- | --- |
+| `GET /api/v1/scenarios` | 已接入的版本化场景定义、Agent/Case 与虚构材料；当前文档实验 |
+| `POST /api/v1/scenarios/{scenario_id}/runs` | 文档实验 DocumentRunRequest + Idempotency-Key，201/200；固定 Case，baseline/candidate |
 | `POST /api/v1/runs` | RunRequest；必须有 Idempotency-Key；新建 201，重复同请求 200，响应 RunView 和 Location |
 | `GET /api/v1/runs` | 历史 Run 配置/状态分页；offset ≥ 0、limit 1–100，默认 50；按 Run ID 排序 |
 | `GET /api/v1/runs/{run_id}` | RunView，包含当前 Run、spans、checkpoints、last_seq |
@@ -76,4 +78,10 @@ data 是完整、单行 JSON Event；上述仅省略展示。`id` 为 `<run_id>:
 - 断线只结束订阅；不会取消、重启或重发运行。HTTP cancel 才请求取消。运行进入终态且所有事件已送出后响应结束；浏览器消费者应在应用终态事件后主动关闭 EventSource。
 - 消费者按 event_id 去重，仅在事件已成功应用后推进游标；seq 应连续，发现缺口则从最后已应用位置重新补读。刷新也可以重新 GET RunView，再从其 last_seq 订阅增量。不要将时间戳用作游标。
 
-M3 的后端 fork 已接入；界面已接任务配置、运行取消、分支及基于 RunView 的父子对比。场景/实验定义、比较服务和导入导出按后续节点实现，见 [前端说明](web-inspector.md)。20 项 API 测试包含原有 HTTP/SSE、重启分支、幂等、可用性降级及离线 SDK 后缀请求/用量/估算；没有新付费调用。
+M3 的后端 fork 已接入；界面已接任务配置、运行取消、分支及基于 RunView 的父子对比。文档场景定义/创建已在 M4 接入；独立比较服务和导入导出按后续节点实现，见 [前端说明](web-inspector.md)。20 项 API 测试包含原有 HTTP/SSE、重启分支、幂等、可用性降级及离线 SDK 后缀请求/用量/估算；没有新付费调用。
+
+## M4 文档场景接口
+
+`GET /api/v1/scenarios` 当前返回 document-missing:1，不构造 SDK。`POST /api/v1/scenarios/document-missing/runs` 接受 `{ "mode": "synthetic", "variant": "baseline" }`，也可显式 live/provider/model。baseline 为 top_k=2，candidate 为 3；不接受任意脚本、工具代码或状态。缺少 provider 配置明确 503；未知场景 404 scenario_not_found。既有 POST runs 的请求规范化/指纹保持原样，不因新增场景字段破坏旧幂等重试。
+
+文档 Run 记录独立 Agent/prompt/工具/材料/Case/Variant/评价器版本，无超时注入；首个检索前 checkpoint 仅允许 top_k，其他工具点只可观察。复用 GET Run/SSE/cancel/forks 和稳定拒绝码；详情见[文档实验](document-experiment.md)。评价仍是纯 Python 计算，尚无持久化评价接口或前端场景表单。

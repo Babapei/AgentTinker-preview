@@ -7,7 +7,7 @@ beforeAll(() => {
   examples = eventFixtures();
 });
 
-it.each(['failed', 'retried', 'cancelled', 'forked'] as const)(
+it.each(['failed', 'retried', 'cancelled', 'forked', 'document', 'document_forked'] as const)(
   'matches every Python projection prefix for a native %s run',
   (name) => {
     const { events, prefixes, view } = examples[name];

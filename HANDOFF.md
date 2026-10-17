@@ -104,7 +104,7 @@ M0 实验语义：
 | M1 | 已完成：核心协议、存储、串行运行服务及 HTTP/SSE；失败/重试/取消、刷新、断线续传去重已验证 |
 | M2 | 已完成：实际事件驱动的列表/图、节点详情、时间线、只读播放；未知值与缺失事件降级已验证 |
 | M3 | 已完成：超时实验、单变量分支、A/B 对比/讲解、P01–P05/P09 和当前协议真实参考 |
-| M4 | 进行中：文档实验定义/工具/纯规则评价已实现；运行接入、评价持久化/界面、实验包与真实文档参考待完成 |
+| M4 | 进行中：文档实验定义/工具/独立 ReAct 运行与分支/场景 HTTP/纯规则评价已实现；场景表单与评价持久化/界面、实验包与真实文档参考待完成 |
 | M5 | 未开始：实际工具对照与用户使用验证 |
 
 本地 FastAPI 与 React/Vite 已接任务/模式/策略配置、运行取消、历史检查及事件回放，尚未公开部署。服务的 LangGraph checkpoint 已由独立 SQLite saver 持久化；M0 CLI 的内存状态仍不能跨进程恢复。运行服务已验证在途模型/工具取消与队列取消；HTTP/SSE 已通过真实本机 TCP 断线续传与取消集成验证。
@@ -142,9 +142,9 @@ uv 命令在本环境使用 `UV_CACHE_DIR=/tmp/agenttinker-uv-cache`。继续保
 ## 7. 下一步：M4 可用首版
 
 1. **M0–M3 已完成。** 当前条件和证据见 [M3 验收](docs/m3-acceptance.md)。165 Python、55 Vitest、27 Chromium，以及真实参考只读浏览器核对通过；不要把后者混入模拟集成测试数量。
-2. **接入第二个文档缺失实验执行。** 版本化实验/Agent/Case/Variant、本地检索/读取工具、纯记录规则评价和人工复核契约已实现，见 [文档实验](docs/document-experiment.md)。下一步独立版本 ReAct 执行器与分支，随后评价持久化/界面。按产品第 5 节固定材料排序，top_k=2 缺少必需的第三份材料，top_k=3 才返回。后续继续分开记录材料可用性、引用/事实检查和答案评价；不能把执行成功当评价通过。扩展模板时升级兼容版本，不静默恢复旧状态。
+2. **接入文档评价存储与界面。** 版本化实验/Agent/Case/Variant、本地检索/读取工具、纯记录规则评价和人工复核契约已实现，见 [文档实验](docs/document-experiment.md)。独立 document-react:1 已接运行/持久化首检索分支和场景 HTTP，187 Python、57 Vitest、28 Chromium 通过。下一步不可变评价存储/API，再场景表单/规则与人工复核界面；旧比较器的 Variant 差异判定尚待扩展。按产品第 5 节固定材料排序，top_k=2 缺少必需的第三份材料，top_k=3 才返回。后续继续分开记录材料可用性、引用/事实检查和答案评价；不能把执行成功当评价通过。扩展模板时升级兼容版本，不静默恢复旧状态。
 3. **再接实验包与无密钥回看。** 导入/导出采用明确版本和来源，普通 trace 只有检查/可得回放能力；不能凭 locator 或导入的能力声明获得执行。默认不导出私有 saver 状态/凭据，M3 原生真实 JSON 是证据，还不是完整实验包。按 P06–P10 完成 M4，用户使用对照仍属 M5。
-4. **保留分支与数据规则。** 当前 Agent v2 仍是 bounded model→tool→model，一次只读逻辑工具调用，不是完整 ReAct。每次只改 tool_retry_limit/top_k 中一个非原值字段，源 Run 须终态；动态检查状态/版本/价格与 live 配置。Intervention 随 run.created 原子保存，前缀只引用，A 的原事件/checkpoint/pending writes 不变。
+4. **保留分支与数据规则。** 旧 serial-checkpoint:2 仍是 bounded model→tool→model，一次只读逻辑工具调用，不是完整 ReAct；新增 document-react:1 为最多 8 次模型调用的串行 ReAct，仅首检索点允许 top_k 分支。每次只改 tool_retry_limit/top_k 中一个非原值字段，源 Run 须终态；动态检查状态/版本/价格与 live 配置。Intervention 随 run.created 原子保存，前缀只引用，A 的原事件/checkpoint/pending writes 不变。
 5. **真实参考与费用。** [当前协议案例](examples/m3/deepseek-timeout-live.json) A/B 各 1 次模型请求，374/250 Token，共 624；同首次超时，B 第 2 次尝试成功，12 checks 全 true。采集进程内重建 service owner；实际跨进程恢复另有子进程测试。未选价格表，费用与实际账单未知；不套用旧 M0 的 634 Token 或估算，不为账单等待重复付费。
 6. **入口和持久化。** bash scripts/setup.sh 安装；uv run agenttinker-server --database artifacts/runs.sqlite 默认 8000，npm --prefix web run dev 默认 5173。模拟预览脚本仅临时测试数据。状态在 `<database>.checkpoints.sqlite`，需保留事件库/saver 并正确处理 WAL；跨库无原子事务，未发布状态不自动恢复。Git 不备份 artifacts。公开部署尚未实现。
 7. **继续逐节点完成。** 验证、更新日志/受影响文档、提交并推送 work，核对远程。日常实现与既定账单口径已授权，关键范围变化先讨论。实际账单待有可对应的证据时再核对，余额不是逐笔凭证。

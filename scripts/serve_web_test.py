@@ -8,6 +8,8 @@ from uuid import uuid4
 import uvicorn
 
 from agenttinker.api.app import create_app
+from agenttinker.experiments import documents as corpus
+from agenttinker.experiments.document_model import DocumentSyntheticModel
 from agenttinker.m0.synthetic import SyntheticModel
 from agenttinker.runtime.service import RunRequest, RunService
 from agenttinker.storage.sqlite import SQLiteEventStore
@@ -40,6 +42,8 @@ def test_app(database):
     def factory(request):
         if request.mode != "synthetic":
             return no_execution(request)
+        if request.task == corpus.TASK:
+            return DocumentSyntheticModel()
         if request.task in rejected:
             return Rejected()
         return Gated(*gates[request.task]) if request.task in gates else SyntheticModel()

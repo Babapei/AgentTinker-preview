@@ -27,6 +27,8 @@ from agenttinker.core.records import (
     VersionRef,
 )
 from agenttinker.core.states import TERMINAL_STATUSES, RunStatus
+from agenttinker.experiments import documents as corpus
+from agenttinker.experiments.document_model import document_model
 from agenttinker.m0.deepseek_model import DeepSeekModel
 from agenttinker.m0.fixtures import fixture_hash, search_documents
 from agenttinker.m0.models import ToolPolicy
@@ -44,6 +46,7 @@ from agenttinker.runtime.checkpoints import (
     open_checkpoints,
     runtime_versions,
 )
+from agenttinker.runtime.document import DocumentExecutor
 from agenttinker.runtime.journal import ExecutionFailed, RunCancelled, RunJournal
 from agenttinker.runtime.serial import SerialExecutor
 from agenttinker.storage.sqlite import SQLiteEventStore
@@ -69,6 +72,19 @@ class RunRequest(ValueModel):
 class ForkRequest(ValueModel):
     source_checkpoint_id: Identifier
     patch: JSONData
+
+
+class DocumentRunRequest(ValueModel):
+    mode: Literal["live", "synthetic"]
+    provider: Literal["openai", "deepseek"] | None = None
+    model: Text | None = None
+    variant: Literal["baseline", "candidate"] = "baseline"
+
+    @model_validator(mode="after")
+    def explicit_provider(self):
+        # Keep the original RunRequest wire shape and idempotency fingerprint unchanged.
+        RunRequest(mode=self.mode, provider=self.provider, model=self.model)
+        return self
 
 
 class CheckpointAvailability(ValueModel):
@@ -130,7 +146,10 @@ class RunService:
             with SQLiteEventStore(self.database) as store:
                 for run_id in store.run_ids():
                     run = store.get_view(run_id).run
-                    if run.config.agent.id == AGENT_ID and run.status not in TERMINAL_STATUSES:
+                    if (
+                        run.config.agent.id in {AGENT_ID, corpus.AGENT.id}
+                        and run.status not in TERMINAL_STATUSES
+                    ):
                         self._status(run_id, RunStatus.INTERRUPTED, "previous_owner_stopped")
             self._pool = ThreadPoolExecutor(
                 max_workers=max_workers, thread_name_prefix="agenttinker"
@@ -152,6 +171,19 @@ class RunService:
         with SQLiteEventStore(self.database) as store:
             return store.get_view(run_id)
 
+    def _model(self, request, agent):
+        if self.model_factory is default_model and agent == corpus.AGENT:
+            return document_model(request)
+        return self.model_factory(request)
+
+    @staticmethod
+    def _executor(agent):
+        if agent == corpus.AGENT:
+            return DocumentExecutor
+        if agent == VersionRef(id=AGENT_ID, version=AGENT_VERSION):
+            return SerialExecutor
+        raise CheckpointUnavailable("runtime_incompatible")
+
     def resolve_checkpoint(self, run_id, checkpoint_id):
         view = self.get(run_id)
         reference = next(
@@ -161,7 +193,7 @@ class RunService:
             raise CheckpointUnavailable("checkpoint_missing")
         try:
             with open_checkpoints(self.database) as saver:
-                return SerialExecutor.load_checkpoint(saver, view, reference)
+                return self._executor(view.run.config.agent).load_checkpoint(saver, view, reference)
         except (sqlite3.Error, ValueError, TypeError, KeyError):
             raise CheckpointUnavailable("checkpoint_unreadable") from None
 
@@ -178,9 +210,10 @@ class RunService:
         )
         if reference is None:
             raise CheckpointUnavailable("checkpoint_missing")
-        snapshot = self.resolve_checkpoint(view.run.run_id, checkpoint_id)
-        if set(reference.allowed_patch_fields) != set(PATCH_FIELDS):
+        expected_fields = ("top_k",) if view.run.config.agent == corpus.AGENT else PATCH_FIELDS
+        if set(reference.allowed_patch_fields) != set(expected_fields):
             raise ForkRejected("unsupported_capability")
+        snapshot = self.resolve_checkpoint(view.run.run_id, checkpoint_id)
         return reference, snapshot
 
     def _compatible_context(self, config):
@@ -193,6 +226,17 @@ class RunService:
                 if config.fault_parameters.get("inject_timeout")
                 else None
             )
+        ):
+            raise ForkRejected("runtime_incompatible")
+        if config.agent == corpus.AGENT and (
+            config.fault_parameters != {"inject_timeout": False}
+            or config.experiment != corpus.EXPERIMENT
+            or config.case != corpus.dataset_case().ref
+            or config.task != corpus.TASK
+            or config.tool_policy.get("tool_retry_limit") != 0
+            or config.variant
+            != VersionRef(id=f"document-top{config.tool_policy.get('top_k')}", version="1")
+            or config.evaluator_versions != {corpus.EVALUATOR.id: corpus.EVALUATOR.version}
         ):
             raise ForkRejected("runtime_incompatible")
 
@@ -210,7 +254,7 @@ class RunService:
                     checkpoint=reference,
                     available=reason is None,
                     reason=reason,
-                    allowed_patch_fields=PATCH_FIELDS if reason is None else (),
+                    allowed_patch_fields=reference.allowed_patch_fields if reason is None else (),
                 )
             )
         return tuple(results)
@@ -231,6 +275,31 @@ class RunService:
 
     def submit(self, request: RunRequest, request_key: str):
         fingerprint = request_identity(request_key, request.model_dump(mode="json"))
+        return self._submit(request, request_key, fingerprint)
+
+    def submit_document(self, request: DocumentRunRequest, request_key: str):
+        definition = corpus.experiment_definition()
+        variant = definition.baseline if request.variant == "baseline" else definition.candidate
+        resolved = RunRequest(
+            mode=request.mode,
+            provider=request.provider,
+            model=request.model,
+            task=corpus.TASK,
+            policy=variant.policy,
+            inject_timeout=False,
+        )
+        fingerprint = request_identity(
+            request_key,
+            {
+                "operation": "document-experiment",
+                "experiment": definition.ref.model_dump(),
+                "request": request.model_dump(mode="json"),
+            },
+        )
+        return self._submit(resolved, request_key, fingerprint, variant=variant.ref)
+
+    def _submit(self, request, request_key, fingerprint, *, variant=None):
+        agent = corpus.AGENT if variant else VersionRef(id=AGENT_ID, version=AGENT_VERSION)
         with self._lock, SQLiteEventStore(self.database) as store:
             if self._closing:
                 raise RuntimeError("runtime_closed")
@@ -247,7 +316,7 @@ class RunService:
                     raise ProviderNotConfigured("provider_not_configured: model ID required")
                 resolved = request.model_copy(update={"model": model_id})
                 if self.model_factory is default_model:
-                    configured = default_model(resolved)  # Configuration only; no provider call.
+                    configured = self._model(resolved, agent)  # Configuration only; no HTTP call.
                     try:
                         prepared = configured._request([{"role": "user", "content": resolved.task}])
                         model_parameters = {
@@ -267,16 +336,22 @@ class RunService:
                     run_from_start=True, fork_from_checkpoint=True, patch_tool_policy=True
                 ),
                 config=RunConfig(
-                    agent=VersionRef(id=AGENT_ID, version=AGENT_VERSION),
+                    agent=agent,
                     task=resolved.task,
                     tool_policy=resolved.policy.model_dump(),
                     price_version=self.pricing.version if self.pricing else None,
                     provider=resolved.provider or "synthetic",
                     requested_model=resolved.model,
                     model_parameters=model_parameters,
-                    prompt_version="single-tool-v1",
-                    tool_versions=TOOL_VERSIONS,
-                    fixture_hash=fixture_hash(),
+                    prompt_version=corpus.PROMPT_VERSION if variant else "single-tool-v1",
+                    tool_versions=corpus.TOOL_VERSIONS if variant else TOOL_VERSIONS,
+                    fixture_hash=corpus.fixture_hash() if variant else fixture_hash(),
+                    experiment=corpus.EXPERIMENT if variant else None,
+                    case=corpus.dataset_case().ref if variant else None,
+                    variant=variant,
+                    evaluator_versions={corpus.EVALUATOR.id: corpus.EVALUATOR.version}
+                    if variant
+                    else {},
                     fault_plan=VersionRef(id="first-search-timeout", version="1")
                     if resolved.inject_timeout
                     else None,
@@ -335,7 +410,9 @@ class RunService:
                 inject_timeout=config.fault_parameters["inject_timeout"],
             )
             if resolved.mode == "live" and self.model_factory is default_model:
-                configured = default_model(resolved)  # Validate configuration, no HTTP call.
+                configured = self._model(
+                    resolved, config.agent
+                )  # Configuration only; no HTTP call.
                 try:
                     prepared = configured._request([{"role": "user", "content": resolved.task}])
                     parameters = {
@@ -359,7 +436,16 @@ class RunService:
             run = Run(
                 run_id=f"run_{uuid4().hex}",
                 mode=source.run.mode,
-                config=config.model_copy(update={"tool_policy": policy.model_dump()}),
+                config=config.model_copy(
+                    update={
+                        "tool_policy": policy.model_dump(),
+                        **(
+                            {"variant": VersionRef(id=f"document-top{policy.top_k}", version="1")}
+                            if config.agent == corpus.AGENT
+                            else {}
+                        ),
+                    }
+                ),
                 created_at=now,
                 updated_at=now,
                 capabilities=source.run.capabilities,
@@ -402,11 +488,12 @@ class RunService:
                 if self.get(run_id).run.status != RunStatus.QUEUED:
                     return
                 self._status(run_id, RunStatus.RUNNING)
-            model = self.model_factory(request)
+            agent = self.get(run_id).run.config.agent
+            model = self._model(request, agent)
             if model.mode != request.mode or model.provider != (request.provider or "synthetic"):
                 raise ExecutionFailed("adapter_provenance_mismatch")
             with open_checkpoints(self.database) as saver:
-                executor = SerialExecutor(self.journal(run_id), request, model, self.tool)
+                executor = self._executor(agent)(self.journal(run_id), request, model, self.tool)
                 if source is None:
                     executor.execute(saver)
                 else:

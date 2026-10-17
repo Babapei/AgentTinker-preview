@@ -123,6 +123,8 @@ def evaluate_documents(view: RunView, inherited: tuple[Span, ...] = ()) -> Evalu
             if span.kind == "model"
             and span.status == "succeeded"
             and span.output
+            and span.output.get("choice_count") == 1
+            and span.output.get("finish_reason") in {None, "stop"}
             and isinstance(span.output.get("message"), dict)
             and not span.output["message"].get("tool_calls")
             and isinstance(span.output["message"].get("content"), str)

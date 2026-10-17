@@ -45,7 +45,7 @@ def recorded_view(top_k=2, answer=None, status="succeeded"):
                 started_at=now,
                 ended_at=now,
                 status="succeeded",
-                output={"message": {"role": "assistant", "content": answer}},
+                output={"message": {"role": "assistant", "content": answer}, "choice_count": 1},
             )
         )
     return RunView(

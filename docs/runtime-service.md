@@ -1,4 +1,4 @@
-# M1–M3：原生串行运行与分支服务
+# M1–M4：原生串行运行与分支服务
 
 实现位于 [runtime](../src/agenttinker/runtime)，依赖 [运行记录协议与 SQLite](runtime-records.md)。Python 入口与 HTTP/SSE 均已提供，网络接口见 [API 说明](runtime-api.md)。
 
@@ -46,3 +46,9 @@ M3 已接入官方 SqliteSaver，真实状态保存在事件库旁的 `<database
 B 通过 inherited_span_ids 引用旧模型步骤，新增 spans、Token、估算只包含分支后调用。可从 B 再次分支，仍保留原模型前缀引用。模型仍可能返回不同答案。幂等 key 包含源运行、checkpoint 和规范化 patch；同 key 同请求即使 saver 后来丢失也返回原 B，冲突不创建新运行。取消、调度和服务退出沿用原有生命周期。
 
 165 项后端、41 项 Vitest 与 15 项实际 Chromium 回归通过，包括子进程重启/意外退出、A 原始状态不变、连续分支、同故障、只执行后缀、幂等与排队取消。离线 SDK MockTransport 验证重启后只新增一次回答请求、保留 usage/价格版本及凭据缺失拒绝。上述回归为模拟/离线 SDK；界面运行控制、分支、A/B 对比和讲解已接入，55 项前端单元与 27 项浏览器回归通过；当前协议真实 DeepSeek 参考已通过 12 项检查，另有生产构建只读浏览器核对；M3 完成，见 [验收证据](m3-acceptance.md)。
+
+## M4：独立文档 ReAct 模板
+
+新增 `submit_document(DocumentRunRequest(...), request_key)`，使用 document-react:1 的独立图与持久化状态；旧 serial-checkpoint:2 保持兼容。新图允许模型逐次自主选择检索/读取或回答，SDK 使用 auto 而非强制工具；每次工具前均保存观察点，但只有首个检索前允许 top_k 分支。分支后用 Variant 引用记录相应策略，不重复执行前缀。
+
+新图跟随本次 checkpoint stream 的明确配置继续，不能使用同 thread 的最新 head 代替当前分支。已有生命周期、取消、未知用量、幂等和重启中断规则同样适用。当前文档实验的规则评价/复核契约见[文档实验](document-experiment.md)；评价持久化与界面待接入，M4 未验收。

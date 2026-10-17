@@ -12,7 +12,7 @@
 | [projection.py](../src/agenttinker/core/projection.py) | 从原生事件流重建 Run、spans、checkpoints，校验流的完整性 |
 | [schema.py](../src/agenttinker/core/schema.py) | 从上述 Pydantic 模型生成 JSON Schema |
 
-Experiment、DatasetCase、Variant、Agent 和 FaultPlan 当前通过明确的 ID + version 引用连接运行配置；文档实验已在 experiments 中补齐 Experiment/Agent/Case/Variant 定义及独立评价契约，见[文档实验](document-experiment.md)；运行服务接入和评价持久化仍待实现。STORE-01 已加入 SQLite 事件存储及 artifact 内容存储，见第 6 节。原生串行执行器和运行服务已接入，见 [运行服务](runtime-service.md)。HTTP/SSE 已实现，见 [API 说明](runtime-api.md)；M1 完成证据见 [验收记录](m1-acceptance.md)。
+Experiment、DatasetCase、Variant、Agent 和 FaultPlan 当前通过明确的 ID + version 引用连接运行配置；文档实验已在 experiments 中补齐 Experiment/Agent/Case/Variant 定义及独立评价契约，见[文档实验](document-experiment.md)；文档独立 ReAct 运行/分支已接入，评价持久化仍待实现。STORE-01 已加入 SQLite 事件存储及 artifact 内容存储，见第 6 节。原生串行执行器和运行服务已接入，见 [运行服务](runtime-service.md)。HTTP/SSE 已实现，见 [API 说明](runtime-api.md)；M1 完成证据见 [验收记录](m1-acceptance.md)。
 
 ## 2. 数据规则
 

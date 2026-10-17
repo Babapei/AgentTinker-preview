@@ -37,7 +37,7 @@
 
 **M0–M3 已完成，M4 进行中。** 超时实验已贯通任务/模式/策略、实际运行与取消、持久化检查点的单变量分支、A/B 配置/过程/输出/新增量对比与讲解。165 项后端、55 项前端单元和 27 项实际 Chromium 回归通过。
 
-[当前协议的真实参考](examples/m3/deepseek-timeout-live.json)通过 12 项检查：A/B 各一次真实 DeepSeek 模型请求，374/250 Token，共 624；B 引用前缀，A 不变。另有真实参考浏览器只读核对。未选价格表，费用与实际扣费未知，见 [M3 验收](docs/m3-acceptance.md)。M4 已建立[文档实验](docs/document-experiment.md)的版本化定义、本地工具与纯规则评价；运行接入、评价持久化/界面、实验包与无密钥回看尚未完成。
+[当前协议的真实参考](examples/m3/deepseek-timeout-live.json)通过 12 项检查：A/B 各一次真实 DeepSeek 模型请求，374/250 Token，共 624；B 引用前缀，A 不变。另有真实参考浏览器只读核对。未选价格表，费用与实际扣费未知，见 [M3 验收](docs/m3-acceptance.md)。M4 已建立[文档实验](docs/document-experiment.md)的版本化定义、本地工具、独立 ReAct 运行/分支与场景 HTTP 接口、纯规则评价；场景表单与评价持久化/界面、实验包与无密钥回看尚未完成。
 
 本地后端入口（启动不调用模型）：
 

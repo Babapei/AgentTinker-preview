@@ -13,9 +13,17 @@ from agenttinker.core.projection import RunView
 from agenttinker.core.records import CheckpointRef, Count, Identifier, Run, Span, ValueModel
 from agenttinker.core.schema import protocol_schemas
 from agenttinker.core.states import TERMINAL_STATUSES, RunStatus
+from agenttinker.experiments import documents as corpus
+from agenttinker.experiments.models import Scenario
 from agenttinker.m0.openai_model import ProviderNotConfigured
 from agenttinker.runtime.checkpoints import ForkRejected
-from agenttinker.runtime.service import CheckpointAvailability, ForkRequest, RunRequest, RunService
+from agenttinker.runtime.service import (
+    CheckpointAvailability,
+    DocumentRunRequest,
+    ForkRequest,
+    RunRequest,
+    RunService,
+)
 from agenttinker.storage.sqlite import EventConflict, SQLiteEventStore
 
 
@@ -138,6 +146,25 @@ def create_app(
     @app.get("/api/v1/protocol")
     def protocol():
         return protocol_schemas()
+
+    @app.get("/api/v1/scenarios", response_model=tuple[Scenario, ...])
+    def list_scenarios():
+        return (corpus.scenario(),)
+
+    @app.post("/api/v1/scenarios/{scenario_id}/runs", response_model=RunView, status_code=201)
+    def create_document_run(
+        scenario_id: Identifier,
+        body: DocumentRunRequest,
+        request: Request,
+        response: Response,
+        idempotency_key: Annotated[str, Header(min_length=1, max_length=128)],
+    ):
+        if scenario_id != corpus.EXPERIMENT.id:
+            raise HTTPException(404, "scenario_not_found")
+        view, created = request.app.state.service.submit_document(body, idempotency_key)
+        response.status_code = 201 if created else 200
+        response.headers["Location"] = f"/api/v1/runs/{view.run.run_id}"
+        return view
 
     @app.post("/api/v1/runs", response_model=RunView, status_code=201)
     def create_run(

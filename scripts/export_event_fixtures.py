@@ -7,7 +7,7 @@ from threading import Event
 
 from agenttinker.core.projection import project_events
 from agenttinker.m0.synthetic import SyntheticModel
-from agenttinker.runtime.service import ForkRequest, RunRequest, RunService
+from agenttinker.runtime.service import DocumentRunRequest, ForkRequest, RunRequest, RunService
 from agenttinker.storage.sqlite import SQLiteEventStore
 
 
@@ -49,6 +49,17 @@ def main():
                 "forked",
             )
             result["forked"] = capture(service, forked.run.run_id)
+            document, _ = service.submit_document(DocumentRunRequest(mode="synthetic"), "document")
+            result["document"] = capture(service, document.run.run_id)
+            document = service.get(document.run.run_id)
+            expanded, _ = service.fork(
+                document.run.run_id,
+                ForkRequest(
+                    source_checkpoint_id=document.checkpoints[0].checkpoint_id, patch={"top_k": 3}
+                ),
+                "document_forked",
+            )
+            result["document_forked"] = capture(service, expanded.run.run_id)
         entered, release = Event(), Event()
 
         class Gated(SyntheticModel):

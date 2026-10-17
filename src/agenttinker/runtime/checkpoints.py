@@ -6,6 +6,7 @@ from pathlib import Path
 
 from langgraph.checkpoint.sqlite import SqliteSaver
 
+from agenttinker.core.records import VersionRef
 from agenttinker.m0.fixtures import fixture_hash
 
 AGENT_ID = "serial-checkpoint"
@@ -44,22 +45,33 @@ class CheckpointUnavailable(ForkRejected):
     pass
 
 
-def checkpoint_config(view, reference):
+def checkpoint_config(
+    view,
+    reference,
+    *,
+    agent=None,
+    prompt_version="single-tool-v1",
+    tool_versions=None,
+    expected_fixture_hash=None,
+    recursion_limit=6,
+):
     run = view.run
+    agent = agent or VersionRef(id=AGENT_ID, version=AGENT_VERSION)
+    tool_versions = TOOL_VERSIONS if tool_versions is None else tool_versions
+    expected_fixture_hash = expected_fixture_hash or fixture_hash()
     if reference not in view.checkpoints or reference.run_id != run.run_id:
         raise CheckpointUnavailable("checkpoint_missing")
     if (
         run.mode not in {"live", "synthetic"}
-        or run.config.agent.id != AGENT_ID
-        or run.config.agent.version != AGENT_VERSION
+        or run.config.agent != agent
         or reference.adapter != "langgraph"
-        or reference.agent_version != AGENT_VERSION
+        or reference.agent_version != agent.version
         or reference.runtime_version != version("langgraph")
-        or reference.tool_versions != TOOL_VERSIONS
-        or run.config.tool_versions != TOOL_VERSIONS
-        or run.config.prompt_version != "single-tool-v1"
+        or reference.tool_versions != tool_versions
+        or run.config.tool_versions != tool_versions
+        or run.config.prompt_version != prompt_version
         or run.config.runtime_versions != runtime_versions()
-        or run.config.fixture_hash != fixture_hash()
+        or run.config.fixture_hash != expected_fixture_hash
         or reference.locator.get("store") != SAVER_ID
     ):
         raise CheckpointUnavailable("runtime_incompatible")
@@ -77,5 +89,5 @@ def checkpoint_config(view, reference):
         "configurable": {
             key: locator[key] for key in ("thread_id", "checkpoint_ns", "checkpoint_id")
         },
-        "recursion_limit": 6,
+        "recursion_limit": recursion_limit,
     }

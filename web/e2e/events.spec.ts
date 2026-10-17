@@ -69,3 +69,31 @@ test('switching away disconnects the subscriber without cancelling the underlyin
     await page.request.post(`http://127.0.0.1:8000/__test__/runs/${id}/release`);
   }
 });
+
+test('inspects and replays the native document loop without executing it again', async ({
+  page,
+}) => {
+  const response = await page.request.post('/api/v1/scenarios/document-missing/runs', {
+    headers: { 'Idempotency-Key': `document-browser-${Date.now()}` },
+    data: { mode: 'synthetic' },
+  });
+  expect(response.status()).toBe(201);
+  const id = (await response.json()).run.run_id;
+  await expect
+    .poll(async () => (await (await page.request.get(`/api/v1/runs/${id}`)).json()).run.status)
+    .toBe('succeeded');
+  const original = await (await page.request.get(`/api/v1/runs/${id}`)).json();
+  const writes: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/api/') && request.method() !== 'GET') writes.push(request.url());
+  });
+  await page.goto(`/?run=${id}`);
+  await expect(page.locator('.record-connection')).toContainText('事件已核对');
+  await expect(page.locator('.step-row')).toHaveCount(7);
+  await page.getByRole('button', { name: '回到第一个事件' }).click();
+  await expect(page.locator('.step-row')).toHaveCount(0);
+  await page.getByRole('button', { name: /返回最新/ }).click();
+  await expect(page.locator('.step-row')).toHaveCount(7);
+  expect(writes).toEqual([]);
+  expect(await (await page.request.get(`/api/v1/runs/${id}`)).json()).toEqual(original);
+});
