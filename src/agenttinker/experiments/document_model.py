@@ -15,6 +15,9 @@ from agenttinker.m0.openai_model import OpenAIModel
 class DocumentRequest:
     def _request(self, messages):
         request = super()._request(messages)
+        for message in request["messages"]:
+            for call in message.get("tool_calls", []):
+                call.pop("index", None)  # Preserve observations; send only request-schema fields.
         request["tools"] = list(corpus.tool_schemas().values())
         request["tool_choice"] = "auto"
         if self.provider == "deepseek":
@@ -48,6 +51,9 @@ class ToolCall(ValueModel):
     id: Identifier
     type: Literal["function"]
     function: FunctionCall
+    # Some Chat Completions providers retain a stream index on the final call.
+    # It is observed metadata, never an execution argument or call identity.
+    index: int | None = Field(default=None, strict=True, ge=0)
 
 
 def validate_reply(reply: ModelOutput, used_call_ids: set[str]) -> dict | None:
@@ -66,7 +72,7 @@ def validate_reply(reply: ModelOutput, used_call_ids: set[str]) -> dict | None:
             raise ValueError("duplicate_tool_call_id")
         arguments = SearchArguments if call.function.name == "search_documents" else ReadArguments
         arguments.model_validate_json(call.function.arguments)
-        return call.model_dump()
+        return call.model_dump(exclude_none=True)
     if reply.finish_reason == "tool_calls":
         raise ValueError("missing_tool_call")
     content = reply.message.get("content")

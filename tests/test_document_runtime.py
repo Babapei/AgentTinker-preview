@@ -263,7 +263,10 @@ service.wait(view.run.run_id)
         assert service.checkpoint_availability(after.run.run_id)[0].available
 
 
-def test_document_http_sdk_auto_tools_versions_sse_and_no_key_history(tmp_path, monkeypatch):
+@pytest.mark.parametrize("indexed_calls", [False, True])
+def test_document_http_sdk_auto_tools_versions_sse_and_no_key_history(
+    tmp_path, monkeypatch, indexed_calls
+):
     requests, clients = [], []
     driver = DocumentSyntheticModel()
     monkeypatch.setenv("DEEPSEEK_API_KEY", "offline-fixture-key")
@@ -273,6 +276,9 @@ def test_document_http_sdk_auto_tools_versions_sse_and_no_key_history(tmp_path, 
         body = json.loads(request.content)
         requests.append(body)
         reply = driver.complete(body["messages"])
+        if indexed_calls:
+            for call in reply.message.get("tool_calls", []):
+                call["index"] = 0
         return httpx.Response(
             200,
             json={
@@ -329,6 +335,22 @@ def test_document_http_sdk_auto_tools_versions_sse_and_no_key_history(tmp_path, 
         )
         assert all("strict" not in tool["function"] for body in requests for tool in body["tools"])
         assert all(body["thinking"] == {"type": "disabled"} for body in requests)
+        assert all(
+            "index" not in call
+            for body in requests
+            for message in body["messages"]
+            for call in message.get("tool_calls", [])
+        )
+        if indexed_calls:
+            first_model = next(span for span in a.spans if span.kind == "model")
+            assert (
+                first_model.output["raw_response"]["choices"][0]["message"]["tool_calls"][0][
+                    "index"
+                ]
+                == 0
+            )
+            assert b.spans[0].input["tool_call"] == a.spans[1].input["tool_call"]
+            assert b.spans[0].input["tool_call"]["index"] == 0
         monkeypatch.delenv("DEEPSEEK_API_KEY")
         assert (
             client.post(

@@ -1,0 +1,912 @@
+{
+  "schema_version": "m4-document-reference-1",
+  "captured_at": "2026-10-17T14:05:09.977268+00:00",
+  "mode": "live",
+  "runtime_state_included": false,
+  "portable_execution": false,
+  "real_reference_verified": false,
+  "created_now": {
+    "A": true,
+    "B": false
+  },
+  "runs": {
+    "A": {
+      "schema_version": "0.1",
+      "run": {
+        "schema_version": "0.1",
+        "run_id": "run_7452a090148b4c0283c6d1428f7df891",
+        "mode": "live",
+        "status": "failed",
+        "config": {
+          "agent": {
+            "id": "document-react",
+            "version": "1"
+          },
+          "task": "根据虚构发布说明，说明 Version 2 新增的可配置能力，以及修复的引用问题。请先读取材料，为每项结论引用 [document-id]；如果材料不足，请明确说明。",
+          "tool_policy": {
+            "tool_retry_limit": 0,
+            "top_k": 2
+          },
+          "price_version": null,
+          "experiment": {
+            "id": "document-missing",
+            "version": "1"
+          },
+          "case": {
+            "id": "release-v2-evidence",
+            "version": "1"
+          },
+          "variant": {
+            "id": "document-top2",
+            "version": "1"
+          },
+          "provider": "deepseek",
+          "requested_model": "deepseek-flash",
+          "model_parameters": {
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "max_tokens": 1024
+          },
+          "prompt_version": "document-react-v1",
+          "tool_versions": {
+            "read_document": "1",
+            "search_documents": "2"
+          },
+          "fixture_hash": "18133778351c8164748ebcde9ca66e8d894bdb0300ca0c9a8a350f8d14b4ff39",
+          "fault_plan": null,
+          "fault_parameters": {
+            "inject_timeout": false
+          },
+          "evaluator_versions": {
+            "document-evidence": "1"
+          },
+          "runtime_versions": {
+            "langgraph": "1.2.14",
+            "langgraph-checkpoint": "4.3.0",
+            "langgraph-checkpoint-sqlite": "3.1.2",
+            "openai": "2.54.0"
+          }
+        },
+        "created_at": "2026-10-17T14:05:10.013686Z",
+        "updated_at": "2026-10-17T14:05:12.053858Z",
+        "capabilities": {
+          "trace_view": true,
+          "record_playback": true,
+          "run_from_start": true,
+          "fork_from_checkpoint": true,
+          "patch_tool_policy": true,
+          "patch_arbitrary_state": false,
+          "pause_live_execution": false,
+          "parallel_fork": false
+        },
+        "parent_run_id": null,
+        "source_checkpoint_id": null,
+        "inherited_span_ids": [],
+        "intervention": null
+      },
+      "last_seq": 5,
+      "spans": [
+        {
+          "schema_version": "0.1",
+          "span_id": "span_3e913375edab45048a9818913bef68c7",
+          "run_id": "run_7452a090148b4c0283c6d1428f7df891",
+          "kind": "model",
+          "logical_node_id": "model",
+          "call_index": 1,
+          "parent_span_id": null,
+          "logical_call_id": null,
+          "attempt": null,
+          "status": "succeeded",
+          "started_at": "2026-10-17T14:05:10.053005Z",
+          "ended_at": "2026-10-17T14:05:12.044518Z",
+          "duration_ms": 1987.4703639979998,
+          "input": {
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "max_tokens": 1024,
+            "messages": [
+              {
+                "content": "You investigate a fixed fictional release-note corpus. Use the read-only tools as needed. Search results are metadata, not document bodies. Read a document before using its facts. Search ranking is fixed; query text is recorded but does not change the ranking. The executor controls top_k; do not invent a top_k argument. Only read IDs returned by search. Answer using only bodies actually read, citing each source as [document-id]. If the returned material is insufficient, say which information is missing honestly. Make at most one tool call per response. Finish within seven tool calls.",
+                "role": "system"
+              },
+              {
+                "content": "根据虚构发布说明，说明 Version 2 新增的可配置能力，以及修复的引用问题。请先读取材料，为每项结论引用 [document-id]；如果材料不足，请明确说明。",
+                "role": "user"
+              }
+            ],
+            "model": "deepseek-flash",
+            "tool_choice": "auto",
+            "tools": [
+              {
+                "function": {
+                  "description": "Get metadata in fixed corpus order; executor sets top_k.",
+                  "name": "search_documents",
+                  "parameters": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "query": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "query"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "type": "function"
+              },
+              {
+                "function": {
+                  "description": "Read the body of an ID previously returned by search.",
+                  "name": "read_document",
+                  "parameters": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "document_id": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "document_id"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "type": "function"
+              }
+            ]
+          },
+          "output": {
+            "choice_count": 1,
+            "finish_reason": "tool_calls",
+            "message": {
+              "content": "我将先搜索相关发布说明材料。",
+              "role": "assistant",
+              "tool_calls": [
+                {
+                  "function": {
+                    "arguments": "{\"query\": \"Version 2 新增可配置能力 修复引用问题 发布说明\"}",
+                    "name": "search_documents"
+                  },
+                  "id": "call_00_LSEgeKugsFOShb8y6Ab74799",
+                  "index": 0,
+                  "type": "function"
+                }
+              ]
+            },
+            "model": "deepseek-flash",
+            "provider": "deepseek",
+            "raw_response": {
+              "choices": [
+                {
+                  "finish_reason": "tool_calls",
+                  "index": 0,
+                  "logprobs": null,
+                  "message": {
+                    "annotations": null,
+                    "audio": null,
+                    "content": "我将先搜索相关发布说明材料。",
+                    "function_call": null,
+                    "refusal": null,
+                    "role": "assistant",
+                    "tool_calls": [
+                      {
+                        "function": {
+                          "arguments": "{\"query\": \"Version 2 新增可配置能力 修复引用问题 发布说明\"}",
+                          "name": "search_documents"
+                        },
+                        "id": "call_00_LSEgeKugsFOShb8y6Ab74799",
+                        "index": 0,
+                        "type": "function"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "created": 1792245910,
+              "id": "6a0e85d0-e345-463d-aff7-6c5e9cf6f6e0",
+              "model": "deepseek-flash",
+              "moderation": null,
+              "object": "chat.completion",
+              "service_tier": null,
+              "system_fingerprint": "e72d3c7f663d3e1383b00b3884cb4501",
+              "usage": {
+                "completion_tokens": 59,
+                "completion_tokens_details": null,
+                "prompt_cache_hit_tokens": 0,
+                "prompt_cache_miss_tokens": 493,
+                "prompt_tokens": 493,
+                "prompt_tokens_details": {
+                  "audio_tokens": null,
+                  "cache_write_tokens": null,
+                  "cached_tokens": 0
+                },
+                "total_tokens": 552
+              }
+            },
+            "request": {
+              "extra_body": {
+                "thinking": {
+                  "type": "disabled"
+                }
+              },
+              "max_tokens": 1024,
+              "messages": [
+                {
+                  "content": "You investigate a fixed fictional release-note corpus. Use the read-only tools as needed. Search results are metadata, not document bodies. Read a document before using its facts. Search ranking is fixed; query text is recorded but does not change the ranking. The executor controls top_k; do not invent a top_k argument. Only read IDs returned by search. Answer using only bodies actually read, citing each source as [document-id]. If the returned material is insufficient, say which information is missing honestly. Make at most one tool call per response. Finish within seven tool calls.",
+                  "role": "system"
+                },
+                {
+                  "content": "根据虚构发布说明，说明 Version 2 新增的可配置能力，以及修复的引用问题。请先读取材料，为每项结论引用 [document-id]；如果材料不足，请明确说明。",
+                  "role": "user"
+                }
+              ],
+              "model": "deepseek-flash",
+              "tool_choice": "auto",
+              "tools": [
+                {
+                  "function": {
+                    "description": "Get metadata in fixed corpus order; executor sets top_k.",
+                    "name": "search_documents",
+                    "parameters": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "query": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "query"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "type": "function"
+                },
+                {
+                  "function": {
+                    "description": "Read the body of an ID previously returned by search.",
+                    "name": "read_document",
+                    "parameters": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "document_id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "document_id"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "type": "function"
+                }
+              ]
+            },
+            "response_id": "6a0e85d0-e345-463d-aff7-6c5e9cf6f6e0",
+            "usage": {
+              "completion_tokens": 59,
+              "completion_tokens_details": null,
+              "prompt_cache_hit_tokens": 0,
+              "prompt_cache_miss_tokens": 493,
+              "prompt_tokens": 493,
+              "prompt_tokens_details": {
+                "audio_tokens": null,
+                "cache_write_tokens": null,
+                "cached_tokens": 0
+              },
+              "total_tokens": 552
+            }
+          },
+          "provider": "deepseek",
+          "model": "deepseek-flash",
+          "usage": {
+            "prompt_tokens": 493,
+            "completion_tokens": 59,
+            "total_tokens": 552,
+            "cached_input_tokens": 0,
+            "uncached_input_tokens": 493,
+            "raw": {
+              "completion_tokens": 59,
+              "completion_tokens_details": null,
+              "prompt_cache_hit_tokens": 0,
+              "prompt_cache_miss_tokens": 493,
+              "prompt_tokens": 493,
+              "prompt_tokens_details": {
+                "audio_tokens": null,
+                "cache_write_tokens": null,
+                "cached_tokens": 0
+              },
+              "total_tokens": 552
+            }
+          },
+          "cost": {
+            "kind": "unknown",
+            "amount": null,
+            "currency": null,
+            "price_version": null,
+            "evidence_artifact_id": null
+          }
+        }
+      ],
+      "checkpoints": []
+    }
+  },
+  "events": {
+    "A": [
+      {
+        "schema_version": "0.1",
+        "event_id": "evt_31ac9e1e717047b49ff137447dd2fbf2",
+        "run_id": "run_7452a090148b4c0283c6d1428f7df891",
+        "seq": 1,
+        "occurred_at": "2026-10-17T14:05:10.013686Z",
+        "received_at": "2026-10-17T14:05:10.013686Z",
+        "span_id": null,
+        "parent_span_id": null,
+        "logical_node_id": null,
+        "logical_call_id": null,
+        "attempt": null,
+        "type": "run.created",
+        "data": {
+          "schema_version": "0.1",
+          "run_id": "run_7452a090148b4c0283c6d1428f7df891",
+          "mode": "live",
+          "status": "queued",
+          "config": {
+            "agent": {
+              "id": "document-react",
+              "version": "1"
+            },
+            "task": "根据虚构发布说明，说明 Version 2 新增的可配置能力，以及修复的引用问题。请先读取材料，为每项结论引用 [document-id]；如果材料不足，请明确说明。",
+            "tool_policy": {
+              "tool_retry_limit": 0,
+              "top_k": 2
+            },
+            "price_version": null,
+            "experiment": {
+              "id": "document-missing",
+              "version": "1"
+            },
+            "case": {
+              "id": "release-v2-evidence",
+              "version": "1"
+            },
+            "variant": {
+              "id": "document-top2",
+              "version": "1"
+            },
+            "provider": "deepseek",
+            "requested_model": "deepseek-flash",
+            "model_parameters": {
+              "extra_body": {
+                "thinking": {
+                  "type": "disabled"
+                }
+              },
+              "max_tokens": 1024
+            },
+            "prompt_version": "document-react-v1",
+            "tool_versions": {
+              "read_document": "1",
+              "search_documents": "2"
+            },
+            "fixture_hash": "18133778351c8164748ebcde9ca66e8d894bdb0300ca0c9a8a350f8d14b4ff39",
+            "fault_plan": null,
+            "fault_parameters": {
+              "inject_timeout": false
+            },
+            "evaluator_versions": {
+              "document-evidence": "1"
+            },
+            "runtime_versions": {
+              "langgraph": "1.2.14",
+              "langgraph-checkpoint": "4.3.0",
+              "langgraph-checkpoint-sqlite": "3.1.2",
+              "openai": "2.54.0"
+            }
+          },
+          "created_at": "2026-10-17T14:05:10.013686Z",
+          "updated_at": "2026-10-17T14:05:10.013686Z",
+          "capabilities": {
+            "trace_view": true,
+            "record_playback": true,
+            "run_from_start": true,
+            "fork_from_checkpoint": true,
+            "patch_tool_policy": true,
+            "patch_arbitrary_state": false,
+            "pause_live_execution": false,
+            "parallel_fork": false
+          },
+          "parent_run_id": null,
+          "source_checkpoint_id": null,
+          "inherited_span_ids": [],
+          "intervention": null
+        }
+      },
+      {
+        "schema_version": "0.1",
+        "event_id": "evt_d0ee6fe0d38f487dbb50dff48efb7f9e",
+        "run_id": "run_7452a090148b4c0283c6d1428f7df891",
+        "seq": 2,
+        "occurred_at": "2026-10-17T14:05:10.022755Z",
+        "received_at": "2026-10-17T14:05:10.022783Z",
+        "span_id": null,
+        "parent_span_id": null,
+        "logical_node_id": null,
+        "logical_call_id": null,
+        "attempt": null,
+        "type": "run.status_changed",
+        "data": {
+          "before": "queued",
+          "after": "running",
+          "reason": null
+        }
+      },
+      {
+        "schema_version": "0.1",
+        "event_id": "evt_e1d59c9820224abda1f6def9f4f47cdf",
+        "run_id": "run_7452a090148b4c0283c6d1428f7df891",
+        "seq": 3,
+        "occurred_at": "2026-10-17T14:05:10.053503Z",
+        "received_at": "2026-10-17T14:05:10.053617Z",
+        "span_id": "span_3e913375edab45048a9818913bef68c7",
+        "parent_span_id": null,
+        "logical_node_id": null,
+        "logical_call_id": null,
+        "attempt": null,
+        "data": {
+          "schema_version": "0.1",
+          "span_id": "span_3e913375edab45048a9818913bef68c7",
+          "run_id": "run_7452a090148b4c0283c6d1428f7df891",
+          "kind": "model",
+          "logical_node_id": "model",
+          "call_index": 1,
+          "parent_span_id": null,
+          "logical_call_id": null,
+          "attempt": null,
+          "status": "running",
+          "started_at": "2026-10-17T14:05:10.053005Z",
+          "ended_at": null,
+          "duration_ms": null,
+          "input": {
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "max_tokens": 1024,
+            "messages": [
+              {
+                "content": "You investigate a fixed fictional release-note corpus. Use the read-only tools as needed. Search results are metadata, not document bodies. Read a document before using its facts. Search ranking is fixed; query text is recorded but does not change the ranking. The executor controls top_k; do not invent a top_k argument. Only read IDs returned by search. Answer using only bodies actually read, citing each source as [document-id]. If the returned material is insufficient, say which information is missing honestly. Make at most one tool call per response. Finish within seven tool calls.",
+                "role": "system"
+              },
+              {
+                "content": "根据虚构发布说明，说明 Version 2 新增的可配置能力，以及修复的引用问题。请先读取材料，为每项结论引用 [document-id]；如果材料不足，请明确说明。",
+                "role": "user"
+              }
+            ],
+            "model": "deepseek-flash",
+            "tool_choice": "auto",
+            "tools": [
+              {
+                "function": {
+                  "description": "Get metadata in fixed corpus order; executor sets top_k.",
+                  "name": "search_documents",
+                  "parameters": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "query": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "query"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "type": "function"
+              },
+              {
+                "function": {
+                  "description": "Read the body of an ID previously returned by search.",
+                  "name": "read_document",
+                  "parameters": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "document_id": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "document_id"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "type": "function"
+              }
+            ]
+          },
+          "output": null,
+          "provider": "deepseek",
+          "model": null,
+          "usage": {
+            "prompt_tokens": null,
+            "completion_tokens": null,
+            "total_tokens": null,
+            "cached_input_tokens": null,
+            "uncached_input_tokens": null,
+            "raw": null
+          },
+          "cost": {
+            "kind": "unknown",
+            "amount": null,
+            "currency": null,
+            "price_version": null,
+            "evidence_artifact_id": null
+          }
+        },
+        "type": "span.started"
+      },
+      {
+        "schema_version": "0.1",
+        "event_id": "evt_cfc9e0d2cf5e42198eed79e0ea15fe05",
+        "run_id": "run_7452a090148b4c0283c6d1428f7df891",
+        "seq": 4,
+        "occurred_at": "2026-10-17T14:05:12.045466Z",
+        "received_at": "2026-10-17T14:05:12.045497Z",
+        "span_id": "span_3e913375edab45048a9818913bef68c7",
+        "parent_span_id": null,
+        "logical_node_id": null,
+        "logical_call_id": null,
+        "attempt": null,
+        "data": {
+          "schema_version": "0.1",
+          "span_id": "span_3e913375edab45048a9818913bef68c7",
+          "run_id": "run_7452a090148b4c0283c6d1428f7df891",
+          "kind": "model",
+          "logical_node_id": "model",
+          "call_index": 1,
+          "parent_span_id": null,
+          "logical_call_id": null,
+          "attempt": null,
+          "status": "succeeded",
+          "started_at": "2026-10-17T14:05:10.053005Z",
+          "ended_at": "2026-10-17T14:05:12.044518Z",
+          "duration_ms": 1987.4703639979998,
+          "input": {
+            "extra_body": {
+              "thinking": {
+                "type": "disabled"
+              }
+            },
+            "max_tokens": 1024,
+            "messages": [
+              {
+                "content": "You investigate a fixed fictional release-note corpus. Use the read-only tools as needed. Search results are metadata, not document bodies. Read a document before using its facts. Search ranking is fixed; query text is recorded but does not change the ranking. The executor controls top_k; do not invent a top_k argument. Only read IDs returned by search. Answer using only bodies actually read, citing each source as [document-id]. If the returned material is insufficient, say which information is missing honestly. Make at most one tool call per response. Finish within seven tool calls.",
+                "role": "system"
+              },
+              {
+                "content": "根据虚构发布说明，说明 Version 2 新增的可配置能力，以及修复的引用问题。请先读取材料，为每项结论引用 [document-id]；如果材料不足，请明确说明。",
+                "role": "user"
+              }
+            ],
+            "model": "deepseek-flash",
+            "tool_choice": "auto",
+            "tools": [
+              {
+                "function": {
+                  "description": "Get metadata in fixed corpus order; executor sets top_k.",
+                  "name": "search_documents",
+                  "parameters": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "query": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "query"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "type": "function"
+              },
+              {
+                "function": {
+                  "description": "Read the body of an ID previously returned by search.",
+                  "name": "read_document",
+                  "parameters": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "document_id": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "document_id"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "type": "function"
+              }
+            ]
+          },
+          "output": {
+            "choice_count": 1,
+            "finish_reason": "tool_calls",
+            "message": {
+              "content": "我将先搜索相关发布说明材料。",
+              "role": "assistant",
+              "tool_calls": [
+                {
+                  "function": {
+                    "arguments": "{\"query\": \"Version 2 新增可配置能力 修复引用问题 发布说明\"}",
+                    "name": "search_documents"
+                  },
+                  "id": "call_00_LSEgeKugsFOShb8y6Ab74799",
+                  "index": 0,
+                  "type": "function"
+                }
+              ]
+            },
+            "model": "deepseek-flash",
+            "provider": "deepseek",
+            "raw_response": {
+              "choices": [
+                {
+                  "finish_reason": "tool_calls",
+                  "index": 0,
+                  "logprobs": null,
+                  "message": {
+                    "annotations": null,
+                    "audio": null,
+                    "content": "我将先搜索相关发布说明材料。",
+                    "function_call": null,
+                    "refusal": null,
+                    "role": "assistant",
+                    "tool_calls": [
+                      {
+                        "function": {
+                          "arguments": "{\"query\": \"Version 2 新增可配置能力 修复引用问题 发布说明\"}",
+                          "name": "search_documents"
+                        },
+                        "id": "call_00_LSEgeKugsFOShb8y6Ab74799",
+                        "index": 0,
+                        "type": "function"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "created": 1792245910,
+              "id": "6a0e85d0-e345-463d-aff7-6c5e9cf6f6e0",
+              "model": "deepseek-flash",
+              "moderation": null,
+              "object": "chat.completion",
+              "service_tier": null,
+              "system_fingerprint": "e72d3c7f663d3e1383b00b3884cb4501",
+              "usage": {
+                "completion_tokens": 59,
+                "completion_tokens_details": null,
+                "prompt_cache_hit_tokens": 0,
+                "prompt_cache_miss_tokens": 493,
+                "prompt_tokens": 493,
+                "prompt_tokens_details": {
+                  "audio_tokens": null,
+                  "cache_write_tokens": null,
+                  "cached_tokens": 0
+                },
+                "total_tokens": 552
+              }
+            },
+            "request": {
+              "extra_body": {
+                "thinking": {
+                  "type": "disabled"
+                }
+              },
+              "max_tokens": 1024,
+              "messages": [
+                {
+                  "content": "You investigate a fixed fictional release-note corpus. Use the read-only tools as needed. Search results are metadata, not document bodies. Read a document before using its facts. Search ranking is fixed; query text is recorded but does not change the ranking. The executor controls top_k; do not invent a top_k argument. Only read IDs returned by search. Answer using only bodies actually read, citing each source as [document-id]. If the returned material is insufficient, say which information is missing honestly. Make at most one tool call per response. Finish within seven tool calls.",
+                  "role": "system"
+                },
+                {
+                  "content": "根据虚构发布说明，说明 Version 2 新增的可配置能力，以及修复的引用问题。请先读取材料，为每项结论引用 [document-id]；如果材料不足，请明确说明。",
+                  "role": "user"
+                }
+              ],
+              "model": "deepseek-flash",
+              "tool_choice": "auto",
+              "tools": [
+                {
+                  "function": {
+                    "description": "Get metadata in fixed corpus order; executor sets top_k.",
+                    "name": "search_documents",
+                    "parameters": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "query": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "query"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "type": "function"
+                },
+                {
+                  "function": {
+                    "description": "Read the body of an ID previously returned by search.",
+                    "name": "read_document",
+                    "parameters": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "document_id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "document_id"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "type": "function"
+                }
+              ]
+            },
+            "response_id": "6a0e85d0-e345-463d-aff7-6c5e9cf6f6e0",
+            "usage": {
+              "completion_tokens": 59,
+              "completion_tokens_details": null,
+              "prompt_cache_hit_tokens": 0,
+              "prompt_cache_miss_tokens": 493,
+              "prompt_tokens": 493,
+              "prompt_tokens_details": {
+                "audio_tokens": null,
+                "cache_write_tokens": null,
+                "cached_tokens": 0
+              },
+              "total_tokens": 552
+            }
+          },
+          "provider": "deepseek",
+          "model": "deepseek-flash",
+          "usage": {
+            "prompt_tokens": 493,
+            "completion_tokens": 59,
+            "total_tokens": 552,
+            "cached_input_tokens": 0,
+            "uncached_input_tokens": 493,
+            "raw": {
+              "completion_tokens": 59,
+              "completion_tokens_details": null,
+              "prompt_cache_hit_tokens": 0,
+              "prompt_cache_miss_tokens": 493,
+              "prompt_tokens": 493,
+              "prompt_tokens_details": {
+                "audio_tokens": null,
+                "cache_write_tokens": null,
+                "cached_tokens": 0
+              },
+              "total_tokens": 552
+            }
+          },
+          "cost": {
+            "kind": "unknown",
+            "amount": null,
+            "currency": null,
+            "price_version": null,
+            "evidence_artifact_id": null
+          }
+        },
+        "type": "span.finished"
+      },
+      {
+        "schema_version": "0.1",
+        "event_id": "evt_b15a409d3f8d4d7bb3f84dde67c617c0",
+        "run_id": "run_7452a090148b4c0283c6d1428f7df891",
+        "seq": 5,
+        "occurred_at": "2026-10-17T14:05:12.053836Z",
+        "received_at": "2026-10-17T14:05:12.053858Z",
+        "span_id": null,
+        "parent_span_id": null,
+        "logical_node_id": null,
+        "logical_call_id": null,
+        "attempt": null,
+        "type": "run.status_changed",
+        "data": {
+          "before": "running",
+          "after": "failed",
+          "reason": "model_protocol:ValidationError"
+        }
+      }
+    ]
+  },
+  "evaluations": {
+    "A": {
+      "schema_version": "0.1",
+      "evaluation_id": "eval_2ff8784360bd4d85b7fd2610070769e2",
+      "run_id": "run_7452a090148b4c0283c6d1428f7df891",
+      "case": {
+        "id": "release-v2-evidence",
+        "version": "1"
+      },
+      "evaluator": {
+        "id": "document-evidence",
+        "version": "1"
+      },
+      "input_hash": "021d7074972de70bb8780181cdbe0c2d82d8b5c7f41d75f39ebe4e65bfbb5b05",
+      "created_at": "2026-10-17T14:05:12.061909Z",
+      "execution_status": "failed",
+      "returned_document_ids": [],
+      "read_document_ids": [],
+      "cited_document_ids": [],
+      "checks": [
+        {
+          "schema_version": "0.1",
+          "check_id": "required_documents_returned",
+          "verdict": "unknown",
+          "explanation": "只检查固定必需文档的返回记录；缺失材料不等于回答编造。",
+          "span_ids": []
+        },
+        {
+          "schema_version": "0.1",
+          "check_id": "required_documents_read",
+          "verdict": "unknown",
+          "explanation": "只检查可用文档正文的成功读取；不是事实语义评分。",
+          "span_ids": []
+        },
+        {
+          "schema_version": "0.1",
+          "check_id": "citation_sources_read",
+          "verdict": "unknown",
+          "explanation": "只解析 [document-id] 并核对已读来源；不证明来源支持该句结论。",
+          "span_ids": []
+        }
+      ],
+      "answer_review": "unreviewed",
+      "sample_size": 1,
+      "statistical_conclusion": false,
+      "status": "completed",
+      "failure_code": null
+    }
+  },
+  "measurements": {
+    "A": {
+      "new_model_calls": 1,
+      "new_tool_attempts": 0,
+      "new_total_tokens": 552,
+      "cost_kinds": [
+        "unknown"
+      ],
+      "actual_charge": null
+    }
+  },
+  "checks": {
+    "baseline_has_first_search_boundary": false
+  },
+  "limitations": [
+    "One case, shared prefix, no statistical or semantic conclusion.",
+    "No human review is fabricated; rule results retain answer_review=unreviewed.",
+    "No price book selected; actual provider charges remain unknown.",
+    "Internal checks do not independently authenticate provider observations.",
+    "Private runtime state is not included or portable."
+  ]
+}

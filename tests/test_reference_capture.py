@@ -192,3 +192,28 @@ def test_capture_cli_failure_preserves_prior_success_and_received_facts_without_
     assert set(failure["runs"]) == {view["run"]["run_id"] for view in report["runs"].values()}
     assert all(failure["events"].values())
     assert "private-error-marker" not in json.dumps(failure) + capsys.readouterr().out
+
+
+@pytest.mark.parametrize("index", [-1, True, "0"])
+def test_tool_transport_index_is_strict_and_cannot_change_execution_arguments(index):
+    from agenttinker.experiments.document_model import validate_reply
+
+    reply = DocumentSyntheticModel().complete([{"role": "user", "content": "offline"}])
+    reply.message["tool_calls"][0]["index"] = index
+    with pytest.raises(ValueError):
+        validate_reply(reply, set())
+
+
+def test_original_real_protocol_failure_is_preserved_and_its_index_is_now_accepted():
+    from agenttinker.experiments.document_model import validate_reply
+
+    report = json.loads(Path("examples/m4/deepseek-document-protocol-failure.json").read_text())
+    view = report["runs"]["A"]
+    assert view["run"]["status"] == "failed"
+    assert report["measurements"]["A"]["new_total_tokens"] == 552
+    assert report["checks"]["baseline_has_first_search_boundary"] is False
+    reply = ModelOutput.model_validate(view["spans"][0]["output"])
+    call = validate_reply(reply, set())
+    assert call == reply.message["tool_calls"][0]
+    assert call["index"] == 0 and call["function"]["name"] == "search_documents"
+    assert len(view["spans"]) == 1 and not view["checkpoints"]

@@ -96,3 +96,5 @@ uv run python scripts/package_reference.py \
 转换器纯读取 m3-reference-1 或 m4-document-reference-1，严格核对事件投影/引用；文档规则结果按相同视图和前缀重算，不只相信保存的 checks。转换输出与生产导出的记录相同，创建时间固定来自采集时间，便于重复核对哈希；不打开 saver、构造 SDK 或调用工具。M3 624 Token 真实参考可直接转换，不需重复提供商请求。来源摘要/声明仍不证明身份或独立认证真实调用。
 
 本节点新增 9 项离线测试，全量 240 Python、ruff/格式通过；覆盖幂等无模型重读、请求冲突、无检索/协议失败停止、无效引用保留失败、生产导出一致、确定性转换、旧 M3 转换、篡改评价重算拒绝、失败不覆盖/不泄露异常。尚未新增真实文档请求。
+
+首次真实文档尝试发现 DeepSeek 最终 tool call 附带 `index` 元数据；原解析器拒绝后保留了 552 Token、原响应和失败状态，没有执行工具/分支。现显式允许严格非负 index，只保留为观察元数据，不作为参数或身份，也不回传到后续模型请求；raw_response 不变。失败证据见 [原记录](../examples/m4/deepseek-document-protocol-failure.json)。245 Python 已覆盖官方 SDK 的带/不带字段往返与非法类型；成功真实 A/B 仍待新数据库录制，不篡改已失败运行。
