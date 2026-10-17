@@ -201,3 +201,18 @@ class SQLiteEvaluationStore(SQLiteEventStore):
 
     def reviews(self, run_id, *, offset=0, limit=50):
         return self._page("reviews", run_id, offset, limit)
+
+    def assessment_snapshot(self, run_id):
+        """An export never mixes a new review with an older evaluation list."""
+        with self._transaction():
+            self.get_view(run_id)
+            return tuple(
+                tuple(
+                    model.model_validate_json(row[0])
+                    for row in self._connection.execute(
+                        f"SELECT body FROM {table} WHERE run_id=? ORDER BY rowid LIMIT 1001",
+                        (run_id,),
+                    )
+                )
+                for table, model in (("evaluations", EvaluationResult), ("reviews", HumanReview))
+            )

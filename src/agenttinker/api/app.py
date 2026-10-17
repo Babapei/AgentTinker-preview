@@ -22,6 +22,8 @@ from agenttinker.experiments.evaluation import (
 )
 from agenttinker.experiments.models import Scenario
 from agenttinker.m0.openai_model import ProviderNotConfigured
+from agenttinker.packages.exporting import export_run
+from agenttinker.packages.models import ExperimentPackage, PackageRejected, canonical
 from agenttinker.runtime.checkpoints import ForkRejected
 from agenttinker.runtime.service import (
     CheckpointAvailability,
@@ -128,6 +130,17 @@ def create_app(
     async def missing_provider(_request, _error):
         return JSONResponse(status_code=503, content={"detail": "provider_not_configured"})
 
+    @app.exception_handler(PackageRejected)
+    async def rejected_package(_request, error):
+        status = (
+            413
+            if error.code == "package_too_large"
+            else 409
+            if error.code == "package_run_active"
+            else 422
+        )
+        return JSONResponse(status_code=status, content={"detail": error.code})
+
     @app.exception_handler(EventConflict)
     async def conflict(_request, _error):
         return JSONResponse(status_code=409, content={"detail": "idempotency_key_payload_conflict"})
@@ -220,6 +233,29 @@ def create_app(
     @app.get("/api/v1/runs/{run_id}", response_model=RunView)
     def get_run(run_id: Identifier, request: Request):
         return request.app.state.service.get(run_id)
+
+    def package_response(request, run_id, experiment_id=None):
+        package = export_run(request.app.state.service.database, run_id)
+        if (
+            experiment_id is not None
+            and package.files["context.json"]["experiment"]["ref"]["id"] != experiment_id
+        ):
+            raise HTTPException(404, "experiment_not_found")
+        return Response(
+            content=canonical(package),
+            media_type="application/json",
+            headers={
+                "Content-Disposition": f'attachment; filename="agenttinker-{run_id}.json"',
+            },
+        )
+
+    @app.get("/api/v1/runs/{run_id}/export", response_model=ExperimentPackage)
+    def export_run_package(run_id: Identifier, request: Request):
+        return package_response(request, run_id)
+
+    @app.get("/api/v1/experiments/{experiment_id}/export", response_model=ExperimentPackage)
+    def export_experiment_package(experiment_id: Identifier, run_id: Identifier, request: Request):
+        return package_response(request, run_id, experiment_id)
 
     @app.get("/api/v1/runs/{run_id}/spans", response_model=SpanPage)
     def get_spans(

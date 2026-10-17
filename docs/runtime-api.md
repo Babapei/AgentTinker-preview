@@ -97,3 +97,9 @@ M3 的后端 fork 已接入；界面已接任务配置、运行取消、分支�
 复核 POST body 含 evaluation_id、input_hash、reviewer（最多 160 字符）、fact_coverage（configurable-retries/citation-fix 各为 covered/missing/uncertain）、judgement（supported/justified_insufficiency/unsupported/uncertain）、explanation（最多 8000 字符）。它是本地用户意见，不代表已认证身份。新意见用新 key 追加，旧意见不可覆盖；材料不足的诚实回答可标 justified_insufficiency，规则不自动判定语义。
 
 两类 POST 必须有 Idempotency-Key，同 key 重试返回原结果及 Location；评价/复核使用独立于运行创建的同一份账本。冲突 409 idempotency_key_payload_conflict；活动运行 409 evaluation_run_active，版本/用例不符 409 evaluation_context_mismatch，不支持评价器 422 evaluator_unsupported，记录不存在/错属运行 404 assessment_not_found，摘要不符 409 review_evidence_mismatch，锚定失败评价 409 review_evaluation_failed。前置拒绝不消费 key；无效字段仍为 422。
+
+## M4 实验包导出
+
+GET `/api/v1/runs/{id}/export` 返回所选终态 Run 与所需祖先的 JSON 附件；GET `/api/v1/experiments/{experiment_id}/export?run_id=...` 同时核对场景 ID。它只读标准记录，不调用 SDK/工具/saver。包内去除私有定位和已识别凭据字段，源事实不变；摘要 trace 不补事件，评价保留原摘要及另算的可分发摘要。格式、限额和来源口径见[实验包 v1](experiment-packages.md)。
+
+活动 Run 返回 409 package_run_active；不支持的模板/上下文或不可分发凭据返回 422（稳定 package_context_unsupported/package_context_mismatch/artifact_not_exportable 等码）。未知 Run 为 404，实验 ID 不匹配为 404 experiment_not_found。导入接口尚未实现。
