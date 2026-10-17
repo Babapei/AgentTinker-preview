@@ -13,9 +13,15 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--reference", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--include-observed-failure",
+        action="store_true",
+        help="Preserve unmet document outcomes; integrity must still pass",
+    )
     args = parser.parse_args()
     try:
-        package = package_reference(json.loads(args.reference.read_text()))
+        report = json.loads(args.reference.read_text())
+        package = package_reference(report, include_observed_failure=args.include_observed_failure)
         data = canonical(package)
     except Exception as error:
         print(json.dumps({"converted": False, "error_code": type(error).__name__}))
@@ -25,7 +31,16 @@ def main():
         handle.write(data)
         temporary = Path(handle.name)
     temporary.replace(args.output)
-    print(json.dumps({"converted": True, "output": str(args.output), "size_bytes": len(data)}))
+    print(
+        json.dumps(
+            {
+                "converted": True,
+                "output": str(args.output),
+                "size_bytes": len(data),
+                "source_expectations_met": all(report["checks"].values()),
+            }
+        )
+    )
     return 0
 
 

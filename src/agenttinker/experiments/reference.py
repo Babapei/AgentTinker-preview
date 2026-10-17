@@ -205,17 +205,34 @@ def capture_document(database, request, *, service_factory=RunService, timeout=2
     return report
 
 
-def package_reference(report):
+DOCUMENT_OUTCOME_CHECKS = {
+    "both_executions_succeeded",
+    "baseline_missing_material",
+    "candidate_material_returned_and_read",
+    "candidate_citations_reference_read_sources",
+}
+
+
+def package_reference(report, *, include_observed_failure=False):
     """Convert native reference facts; never read a saver, construct SDKs or rerun tools."""
     if report.get("schema_version") not in {"m3-reference-1", "m4-document-reference-1"}:
         raise ValueError("reference_version_unsupported")
     if set(report["runs"]) != {"A", "B"} or set(report["events"]) != {"A", "B"}:
         raise ValueError("reference_pair_incomplete")
-    if not report.get("checks") or not all(report["checks"].values()):
+    if not report.get("checks"):
         raise ValueError("reference_checks_failed")
-    if report["schema_version"] == "m4-document-reference-1" and not all(
-        document_checks(report).values()
-    ):
+    checked = dict(report["checks"])
+    if report["schema_version"] == "m4-document-reference-1":
+        recomputed = document_checks(report)
+        if any(report["checks"].get(key) != value for key, value in recomputed.items()):
+            raise ValueError("reference_checks_failed")
+        checked.update(recomputed)
+    allowed_failures = (
+        DOCUMENT_OUTCOME_CHECKS
+        if include_observed_failure and report["schema_version"] == "m4-document-reference-1"
+        else set()
+    )
+    if any(not value for key, value in checked.items() if key not in allowed_failures):
         raise ValueError("reference_checks_failed")
     records = {}
     views = [RunView.model_validate(report["runs"][name]) for name in ("A", "B")]
@@ -249,6 +266,17 @@ def package_reference(report):
             update={"evaluation_bindings": bind_evaluations(record, records)}
         )
     context = context_for(views)
+    unmet = sorted(key for key, value in checked.items() if not value)
+    if unmet:
+        context = context.model_copy(
+            update={
+                "notes": (
+                    *context.notes,
+                    "录制的预期结果未全部满足，保留实际失败，不代表成功参考。未满足："
+                    + ", ".join(unmet),
+                )
+            }
+        )
     return make_package(
         {
             "context.json": context.model_dump(mode="json"),

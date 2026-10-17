@@ -115,6 +115,12 @@ def test_candidate_missing_citation_is_an_observed_failure_without_changing_exec
     assert report["checks"]["source_observations_unchanged"]
     with pytest.raises(ValueError, match="reference_checks_failed"):
         package_reference(report)
+    package = package_reference(report, include_observed_failure=True)
+    context, records, _ = inspect_package(package)
+    assert "未全部满足" in context.notes[-1]
+    child = records[report["runs"]["B"]["run"]["run_id"]]
+    assert child.evaluations[0].checks[-1].verdict == "fail"
+    assert child.view.run.status == "succeeded"
 
 
 def test_packaging_reproduces_production_export_and_imports_without_sdk_saver_or_tools(
@@ -217,3 +223,37 @@ def test_original_real_protocol_failure_is_preserved_and_its_index_is_now_accept
     assert call == reply.message["tool_calls"][0]
     assert call["index"] == 0 and call["function"]["name"] == "search_documents"
     assert len(view["spans"]) == 1 and not view["checkpoints"]
+
+
+def test_explicit_failure_packaging_keeps_unmet_outcomes_but_never_bypasses_integrity(reference):
+    _, report = reference
+    report["checks"]["source_observations_unchanged"] = False
+    with pytest.raises(ValueError, match="reference_checks_failed"):
+        package_reference(report, include_observed_failure=True)
+    report["checks"]["source_observations_unchanged"] = True
+    report["evaluations"]["B"]["input_hash"] = "0" * 64
+    with pytest.raises(ValueError, match="reference_checks_failed"):
+        package_reference(report, include_observed_failure=True)
+
+
+@pytest.mark.parametrize("filename", ["tool-timeout", "document-missing"])
+def test_distributed_reference_packages_validate_import_and_preserve_observed_failures(
+    filename, tmp_path
+):
+    data = Path(f"examples/m4/{filename}.json").read_bytes()
+    package = parse_package(data)
+    _, records, _ = inspect_package(package)
+    assert len(records) == 2 and all(r.source.mode == "live" for r in records.values())
+    target = tmp_path / "read.sqlite"
+    with SQLitePackageStore(target) as store:
+        result, _ = store.import_data(data, filename)
+        assert store.get_view(result.root_run_id).run.mode == "imported"
+        if filename == "document-missing":
+            child = records[package.manifest.root_run_id]
+            assert child.view.run.status == "failed"
+            assert [c.verdict for c in child.evaluations[0].checks] == ["pass", "fail", "unknown"]
+            assert len(child.view.spans[-1].output["message"]["tool_calls"]) == 2
+            assert child.view.spans[-1].usage.total_tokens == 695
+            assert not child.reviews
+            assert store.provenance(result.root_run_id).evaluations[0].answer_review == "unreviewed"
+    assert not checkpoint_path(target).exists()
