@@ -1,6 +1,6 @@
 # 文档缺失实验与评价
 
-M4 进行中。当前已实现版本化定义、本地工具、独立 LangGraph ReAct 执行器/分支、场景 HTTP 接口与纯记录规则评价；评价/人工复核已持久化并接 HTTP 与界面；实验包及真实文档参考尚待完成。以下内容不代表 P06–P10 已验收。
+M4 进行中。当前已实现版本化定义、本地工具、独立 LangGraph ReAct 执行器/分支、场景 HTTP 接口与纯记录规则评价；评价/人工复核已持久化并接 HTTP 与界面；实验包和无密钥文件回放已接，真实文档参考尚待完成。以下内容不代表 P06–P10 已验收。
 
 ## 固定材料与版本
 
@@ -75,4 +75,24 @@ SQLite schema v3 在原事件库增加 evaluations、reviews 与独立 assessmen
 
 界面节点：196 Python、65 Vitest、35 项独立 Chromium 用例已通过（33 项全量后，补充边界并定向重跑 7 项文档用例），协议/类型/生产构建/格式/ruff 通过。浏览器验证实际场景创建、A/B 评价/复核、三类请求丢失响应后刷新重试不重复、播放隐藏未来评价且无新请求、52 份人工意见分页、键盘/窄屏/axe。同步修正事件时间线的可访问名称与可见文字不符；测试截图在忽略的 artifacts/m4-document-evaluation-*.png。均为模拟/离线验证，无新增真实提供商调用。
 
-下一节点接版本化实验包导出/导入和无密钥阅读，再录制真实文档参考并核对 P06–P10；M4 尚未验收。
+实验包/文件界面已接；下一节点录制真实文档参考、整理参考包，并核对 P06–P10；M4 尚未验收。
+
+## 参考采集与离线转换
+
+`capture_document_reference.py` 明确选择 synthetic/live，按固定请求 key 保存 A，关闭并重开服务后从首检索前只改 top_k=3 派生 B。保留 A/B 原事件与用量、分别创建幂等规则评价，核对 A 观察记录和全部旧 checkpoint/pending writes 不变；B 只计新增后缀。逐项检查材料、正文和引用 ID，不生成 HumanReview、不把规则 pass 写成语义正确。单例、复用前缀与费用未知均保留。
+
+```bash
+uv run python scripts/capture_document_reference.py --mode synthetic \
+  --database artifacts/m4-reference-synthetic.sqlite --output artifacts/m4-reference-synthetic.json
+```
+
+真实录制需明确 `--mode live --provider deepseek`，使用独立数据库/输出，可能产生提供商费用。默认最多每路径 8 次模型调用，SDK 不自动重试；已有固定请求在同库重用，不因重新运行采集器再次调用。直接回答、协议失败或无首检索边界保留实际记录，不伪造分支。失败写 `.failed.json`，保留已收到事实/用量，只报告异常类型，不覆盖成功输出。
+
+```bash
+uv run python scripts/package_reference.py \
+  --reference artifacts/m4-reference-synthetic.json --output artifacts/m4-document-synthetic-package.json
+```
+
+转换器纯读取 m3-reference-1 或 m4-document-reference-1，严格核对事件投影/引用；文档规则结果按相同视图和前缀重算，不只相信保存的 checks。转换输出与生产导出的记录相同，创建时间固定来自采集时间，便于重复核对哈希；不打开 saver、构造 SDK 或调用工具。M3 624 Token 真实参考可直接转换，不需重复提供商请求。来源摘要/声明仍不证明身份或独立认证真实调用。
+
+本节点新增 9 项离线测试，全量 240 Python、ruff/格式通过；覆盖幂等无模型重读、请求冲突、无检索/协议失败停止、无效引用保留失败、生产导出一致、确定性转换、旧 M3 转换、篡改评价重算拒绝、失败不覆盖/不泄露异常。尚未新增真实文档请求。
