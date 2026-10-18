@@ -1,0 +1,87 @@
+{
+  "schema_version": "m5-native-walkthrough-1",
+  "checked_at": "2026-10-18T16:17:45.692Z",
+  "passed": true,
+  "observer_kind": "scripted_production_ui",
+  "counts_as_user_session": false,
+  "user_completion_rate": null,
+  "user_elapsed_seconds": null,
+  "source_commit": "9a2493b96052f94afc19aeb435e9bdbf288fd4c5",
+  "browser": "154.0.8037.57",
+  "actual_cli_and_production_bundle": true,
+  "provider_configuration_removed": true,
+  "pairs": [
+    {
+      "scenario": "native_timeout",
+      "a_run_id": "run_8c2eab5d49f84ddcb7502ed01f73b349",
+      "b_run_id": "run_be520019758e488f839c2d6bab8a871b",
+      "source_mode": "synthetic",
+      "a_status": "failed",
+      "b_status": "succeeded",
+      "a_model_steps": 1,
+      "b_new_model_steps": 1,
+      "source_view_sha256": "8ecf641d14d8bbed822b1a7029c7580f1959803f41d64810999743f98554c145",
+      "source_view_unchanged": true,
+      "task_fixture_and_agent_match_reference": true,
+      "imported": {
+        "file": "native_timeout.json",
+        "local_run_id": "imported_1a3549313ac44aa3aa2fe4142c3ce6d4",
+        "source_package_sha256": "02ca8fa5eb2c0b3db8cc482a606ea643ad59b42f82323e3ddd3c93b2dd9e271e",
+        "source_mode": "synthetic",
+        "view_unchanged": true,
+        "reexport_identical": true
+      }
+    },
+    {
+      "scenario": "native_document_v2",
+      "a_run_id": "run_0d84e48163694b2ca014bf5c1f7252c5",
+      "b_run_id": "run_5d879f2fe600491bb0bd00a5692d8a52",
+      "source_mode": "synthetic",
+      "a_status": "succeeded",
+      "b_status": "succeeded",
+      "a_model_steps": 3,
+      "b_new_model_steps": 2,
+      "source_view_sha256": "3359b9396080f3e04b59859c8e603ff9be6d2f57d3cc263c77273013a7a4338e",
+      "source_view_unchanged": true,
+      "task_fixture_and_agent_match_reference": true,
+      "imported": {
+        "file": "native_document_v2.json",
+        "local_run_id": "imported_384b1e5ff76f4f7bb1576ef1d0a5da3a",
+        "source_package_sha256": "f5be42fc7d02ecd2fdbb16898867b426fc7af2fc341a7b011827e459fb490096",
+        "source_mode": "synthetic",
+        "view_unchanged": true,
+        "reexport_identical": true
+      }
+    }
+  ],
+  "historical_reference_readings": [
+    {
+      "file": "tool-timeout.json",
+      "local_run_id": "imported_5bb8a8db2ee84a66972520f74dd62442",
+      "source_package_sha256": "56bf96c2532e228fb92ed22bdd5fead415f0c0c576ac158b8abba3f6127c6121",
+      "source_mode": "live",
+      "view_unchanged": true,
+      "reexport_identical": true
+    },
+    {
+      "file": "document-missing-v2.json",
+      "local_run_id": "imported_7dd86a00e4b744ef8e96860fb757c3b7",
+      "source_package_sha256": "d0122c09d264afb56ed89a7ef9ebaddafd968819948b1a690f62f2fd0a3b3f4b",
+      "source_mode": "live",
+      "view_unchanged": true,
+      "reexport_identical": true
+    }
+  ],
+  "final_run_count": 12,
+  "playback_api_requests": 0,
+  "human_reviews_created": 0,
+  "unconfigured_live_status": 503,
+  "new_provider_requests": 0,
+  "desktop_mobile_axe_checked": true,
+  "limitations": [
+    "Scripted assistant walkthrough, not a real-user session or task timing.",
+    "Native executions used the explicitly selected deterministic synthetic driver; historical live records were read only.",
+    "Original real citation failure, unknown costs and unreviewed answers remain unchanged.",
+    "Studio, real-user sessions and feedback decisions remain pending."
+  ]
+}

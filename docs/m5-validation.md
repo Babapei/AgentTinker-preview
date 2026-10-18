@@ -1,6 +1,6 @@
 # M5：内置首版使用验证
 
-2026-10-18。**进行中，尚未完成。** M0–M4 的功能回归和真实模型参考已保存；它们不是用户使用成绩。按用户最新顺序，先完成内置首版 M5、处理反馈，再将现成 Agent 做成可选接入。
+2026-10-19。**进行中，尚未完成。** M0–M4 的功能回归和真实模型参考已保存；它们不是用户使用成绩。按用户最新顺序，先完成内置首版 M5、处理反馈，再将现成 Agent 做成可选接入。
 
 ## 原计划与完成证据
 
@@ -43,6 +43,21 @@ env -u DEEPSEEK_API_KEY -u DEEPSEEK_MODEL -u OPENAI_API_KEY -u OPENAI_MODEL \
 
 源包/真实回答不修改，任务不要求模型每次答对。包摘要为规范 JSON SHA-256，具体来源和失败说明见[参考包说明](../examples/m4/README.md)。
 
+## 内置首版的完整助手演练
+
+[机器核对证据](../examples/m5/native-walkthrough.json)使用 9a2493b 的真实 agenttinker-server CLI 和生产构建，没有挂测试端点或替换运行服务。原生练习显式选择模拟模式，任务/材料摘要/Agent 版本与共同参考对应；已有真实参考只读查看。
+
+T1/T2 已通过界面创建 A、在允许点仅改一个参数创建 B、核对过程和原 A 不变，再导出→导入→历史播放→再导出。文档 A/B 各有一份规则评价，没有填写人工意见。另读取两份真实参考，保留真实 B 的 hrelease-v2 引用 fail；模拟 B 的规则通过不替换这项失败。
+
+共 4 条原生模拟记录、8 条只读导入记录；回放 API 请求 0、真人意见新增 0，实时未配置 503/历史不变，390px 和 axe 通过。每次启动用新数据目录/浏览器会话，原包不变，没有新增提供商调用。这个结果标记 scripted_production_ui、counts_as_user_session=false，用户完成率/耗时仍为 null。
+
+```bash
+npm --prefix web run build
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium node web/scripts/check-m5-native.mjs
+```
+
+脚本会临时启动单进程 CLI，移除提供商配置并保留代理/TLS，结束后关闭自己启动的服务。成功写 artifacts/m5-native-walkthrough.json，数据库/日志/截图留在忽略的 artifacts/m5-native-*，Git 不备份这些私有运行状态；保存到 examples 的是无私有 locator 的摘要证据。该演练不能计入原定 5 位真实试用者，也没有验证 Studio/Phoenix 的全部对应操作。
+
 ## 工具实操记录口径
 
 [实际工具操作记录](m5-tool-comparison.md)已开始：Phoenix 的相同历史案例转换、REST/界面核对完成；Studio 和完整任务/真实用户结果仍待取得。
@@ -53,6 +68,6 @@ env -u DEEPSEEK_API_KEY -u DEEPSEEK_MODEL -u OPENAI_API_KEY -u OPENAI_MODEL \
 
 ## 当前状态
 
-- 任务/观察/空白记录材料已准备；尚无真实用户会话。
+- 任务/观察/空白记录材料已准备，内置首版两个场景的完整生产页面助手演练已通过；尚无真实用户会话。
 - [Phoenix 初步历史观察](m5-tool-comparison.md)已有独立证据；Studio/完整任务操作未完成，不从 M4 回归或官方介绍填为通过。
 - 反馈修正、最终结论和 M5 验收待真实证据；外部 Agent 可选接入尚未开始。
