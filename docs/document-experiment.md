@@ -107,4 +107,6 @@ uv run python scripts/package_reference.py \
 
 纯转换器默认拒绝未满足预期；显式 `--include-observed-failure` 可保留闭合文档失败，但仍要求全部结构/证据完整性检查通过，并在上下文注明未满足项，不能绕过摘要或改写运行状态。按 P07 保留失败，避免只展示成功样本。248 Python、ruff/格式通过；生产浏览器和 M4 最终核对仍在进行。
 
-生产构建已用两个实际参考文件无密钥导入四条记录，回放无 API 请求/模型构造、哈希不变，明确显示文档 B 的 failed 和 pass/fail/unknown。见 [M4 退出条件核对](m4-acceptance.md)；M4 仍进行中，下一步核对提供商的单工具调用约束，不能以放宽记录校验或反复抽样替代真实闭环。
+生产构建已用两个实际参考文件无密钥导入四条记录，回放无 API 请求/模型构造、哈希不变，明确显示文档 B 的 failed 和 pass/fail/unknown。见 [M4 退出条件核对](m4-acceptance.md)；M4 仍进行中；提供商约束与后续方案见下文，不能以放宽记录校验或反复抽样替代真实闭环。
+
+2026-10-18 已完成[官方核对与独立 v2 方案](document-tool-protocol-decision.md)：没有已确认的 DeepSeek Chat Completions 单调用强制开关，不进行参数猜测后的付费重试。既有 SDK 路径已补完整请求模板冻结与旧首次请求核对，配置漂移在 fork/执行器启动前拒绝；原 v1 语义、真实失败及 checkpoint 保留。按序执行多意图的 v2 方案待确认，尚未实现。

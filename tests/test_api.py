@@ -2,6 +2,7 @@ import asyncio
 import json
 import socket
 from contextlib import contextmanager
+from copy import deepcopy
 from pathlib import Path
 from threading import Event, Thread
 from time import monotonic, sleep
@@ -20,6 +21,7 @@ from agenttinker.core.events import parse_event
 from agenttinker.core.projection import RunView, project_events
 from agenttinker.core.schema import protocol_schemas
 from agenttinker.m0.accounting import PriceBook
+from agenttinker.m0.openai_model import SEARCH_TOOL
 from agenttinker.m0.synthetic import SyntheticModel
 from agenttinker.runtime.checkpoints import checkpoint_path
 from agenttinker.runtime.service import RunService
@@ -360,9 +362,13 @@ def test_default_sdk_path_keeps_wire_observations_and_cost_in_http_history(
         assert final.run.status == ("failed" if reject_choices else "succeeded")
         assert len(requests) == (1 if reject_choices else 2)
         assert final.run.config.requested_model == "deepseek-flash"
+        expected_tool = deepcopy(SEARCH_TOOL)
+        expected_tool["function"].pop("strict")
         assert final.run.config.model_parameters == {
             "max_tokens": 1024,
             "extra_body": {"thinking": {"type": "disabled"}},
+            "tools": [expected_tool],
+            "tool_choice": {"type": "function", "function": {"name": "search_documents"}},
         }
         assert all(body["thinking"] == {"type": "disabled"} for body in requests)
         models = [s for s in final.spans if s.kind == "model"]

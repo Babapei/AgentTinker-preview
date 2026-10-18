@@ -47,7 +47,13 @@ from agenttinker.runtime.checkpoints import (
 )
 from agenttinker.runtime.document import DocumentExecutor
 from agenttinker.runtime.journal import ExecutionFailed, RunCancelled, RunJournal
+from agenttinker.runtime.model_config import (
+    LEGACY_PARAMETER_KEYS,
+    request_parameters,
+    same_parameters,
+)
 from agenttinker.runtime.serial import SerialExecutor
+from agenttinker.storage.evaluations import AssessmentRejected, SQLiteEvaluationStore
 from agenttinker.storage.sqlite import SQLiteEventStore
 
 
@@ -165,6 +171,36 @@ class RunService:
         if self.model_factory is default_model and agent == corpus.AGENT:
             return document_model(request)
         return self.model_factory(request)
+
+    def _check_model_config(self, model, request, view):
+        prepared = model._request([{"role": "user", "content": request.task}])
+        expected = request_parameters(prepared)
+        config = view.run.config
+        recorded = config.model_parameters
+        if prepared.get("model") != config.requested_model:
+            raise ForkRejected("runtime_incompatible")
+        if same_parameters(recorded, expected):
+            return
+        # Old configurations lack the tools/choice fields. Compare the complete
+        # observed first request instead, including an inherited model prefix.
+        if set(recorded) <= LEGACY_PARAMETER_KEYS and same_parameters(
+            recorded,
+            {key: value for key, value in expected.items() if key in LEGACY_PARAMETER_KEYS},
+        ):
+            try:
+                with SQLiteEvaluationStore(self.database) as store:
+                    spans = (*view.spans, *store.inherited_spans(view))
+            except AssessmentRejected:
+                raise ForkRejected("runtime_incompatible") from None
+            initial = [span for span in spans if span.kind == "model" and span.call_index == 1]
+            if (
+                len(initial) == 1
+                and initial[0].provider == config.provider
+                and initial[0].input.get("model") == config.requested_model
+                and same_parameters(request_parameters(initial[0].input), expected)
+            ):
+                return
+        raise ForkRejected("runtime_incompatible")
 
     @staticmethod
     def _executor(agent):
@@ -309,11 +345,7 @@ class RunService:
                     configured = self._model(resolved, agent)  # Configuration only; no HTTP call.
                     try:
                         prepared = configured._request([{"role": "user", "content": resolved.task}])
-                        model_parameters = {
-                            key: value
-                            for key, value in prepared.items()
-                            if key in {"max_tokens", "max_completion_tokens", "extra_body"}
-                        }
+                        model_parameters = request_parameters(prepared)
                     finally:
                         configured.close()
             now = datetime.now(UTC)
@@ -404,14 +436,7 @@ class RunService:
                     resolved, config.agent
                 )  # Configuration only; no HTTP call.
                 try:
-                    prepared = configured._request([{"role": "user", "content": resolved.task}])
-                    parameters = {
-                        key: value
-                        for key, value in prepared.items()
-                        if key in {"max_tokens", "max_completion_tokens", "extra_body"}
-                    }
-                    if parameters != config.model_parameters:
-                        raise ForkRejected("runtime_incompatible")
+                    self._check_model_config(configured, resolved, source)
                 finally:
                     configured.close()
             now = datetime.now(UTC)
@@ -481,10 +506,13 @@ class RunService:
                 if self.get(run_id).run.status != RunStatus.QUEUED:
                     return
                 self._status(run_id, RunStatus.RUNNING)
-            agent = self.get(run_id).run.config.agent
+            view = self.get(run_id)
+            agent = view.run.config.agent
             model = self._model(request, agent)
             if model.mode != request.mode or model.provider != (request.provider or "synthetic"):
                 raise ExecutionFailed("adapter_provenance_mismatch")
+            if request.mode == "live" and self.model_factory is default_model:
+                self._check_model_config(model, request, view)
             with open_checkpoints(self.database) as saver:
                 executor = self._executor(agent)(self.journal(run_id), request, model, self.tool)
                 if source is None:

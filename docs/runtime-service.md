@@ -23,6 +23,16 @@ with RunService("artifacts/runs.sqlite") as service:
 - task、工具策略、故障参数、模型参数、版本与 fixture 哈希保存在 RunConfig。共享的模型协议检查用于 M0 和 M1，旧 M0 报告不自动迁移。
 - 默认两个线程执行不同 Run；同一 Run 串行。每次数据库操作打开独立连接，SSE 后续只读已提交事实。
 
+### 模型请求模板与旧记录兼容
+
+默认 SDK 路径的新 RunConfig.model_parameters 冻结首次请求中除 model/messages 外的公开静态参数，包括 tools、tool_choice、Token 上限、extra_body，以及适配器实际发送的 parallel_tool_calls（未发送则不补造）。模型 ID 另存 requested_model。模板按 JSON 类型比较，false 与 0 不等价；会话消息仍逐步保存在模型 span 中，不放入静态参数。
+
+创建 live 分支之前和执行器启动之前分别重新构造纯请求模板；模型 ID 或静态参数变化时，以 runtime_incompatible 拒绝，不发送模型请求。分支前拒绝不创建 Run、不消费幂等 key；已排队运行检测到漂移会保留 failed 和稳定原因，没有模型/工具 span。取消与既有幂等重读仍按原规则处理；历史相同 key 的读取不会因此要求凭据或构造 SDK。
+
+旧 RunConfig 只记录 max_tokens/max_completion_tokens/extra_body，不能因此把新完整模板当成兼容，也不能补写原配置。服务先核对旧参数，再从原运行或继承前缀的首次模型 span.input 核对完整模板、提供商和请求模型 ID；缺少可核对事实或发生漂移则拒绝。连续分支也引用原始首次请求，旧 Run、事件、评价摘要和 saver 状态均不修改。检查点的只读可用性检查仍不构造模型，提交分支时才额外检查凭据和模板。
+
+这项检查不添加提供商参数，也不改变工具执行语义；document-react:1 仍拒绝一次响应中的多个工具意图。后续独立版本方案见[官方核对与协议方案](document-tool-protocol-decision.md)。
+
 ## 幂等、取消与恢复
 
 `request_key` 为 1–128 个可打印字符。SQLite v2 原子提交 key、完整请求指纹与 run.created。相同 key 和请求始终返回同一 Run，包括失败、取消和重启后；不同内容冲突，不再执行。排队后调度失败也保留身份和失败原因。
