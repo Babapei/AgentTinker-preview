@@ -30,7 +30,7 @@
 
 ## 接续工作
 
-已核对[官方依据与独立 v2 方案](document-tool-protocol-decision.md)：Chat Completions 未提供已确认的单调用强制保证，Responses API 明确忽略 parallel_tool_calls，不能加未经证实的参数就付费重试。RunConfig 请求参数冻结和旧记录兼容检查已完成；独立 v2 按顺序执行多意图的语义变更待用户确认后实现，再离线验证和一次必要的真实验证。保留现有失败和原用量，不改写源 Run，不靠更换样本获得绿色结果。涉及新 Agent/工具执行语义时，应按原有版本边界处理，不能直接改变旧 checkpoint 的含义。
+已核对[官方依据与独立 v2 方案](document-tool-protocol-decision.md)：Chat Completions 未提供已确认的单调用强制保证，Responses API 明确忽略 parallel_tool_calls，不能加未经证实的参数就付费重试。RunConfig 请求参数冻结和旧记录兼容检查已完成；用户已确认先完善自带 Agent，再接现成 Agent；独立 v2 按顺序执行多意图的语义变更可继续实现，再离线验证和一次必要的真实验证。保留现有失败和原用量，不改写源 Run，不靠更换样本获得绿色结果。涉及新 Agent/工具执行语义时，应按原有版本边界处理，不能直接改变旧 checkpoint 的含义。
 
 真实候选闭环得到可检查证据后，再对照本文和架构路线完成 M4 最终验收。日常验证继续逐块记录、提交和推送；实际账单独立未知。
 
