@@ -2,7 +2,7 @@
 
 更新时间：2026-10-18（Asia/Shanghai）。面向新对话、新环境及中断后的接续开发。
 
-**M0–M4 已完成，M5 准备中。** 最新 M4：292 Python、81 Vitest、43 项 Chromium 全量用例通过。文档 v2、规则评价/人工复核、实验包导入导出和无密钥阅读已接；三份参考包覆盖两类实验，生产页面六条来源记录只读核对通过。旧 v1 文档 B 的协议失败保留；新 v2 A/B 均完成执行，B 读到必需正文后生成 hrelease-v2 错误引用，规则判 fail，18/19 采集检查满足、real_reference_verified=false。M4 按原 P06–P10 完成功能验收，引用失败未改为通过。文档累计 11 次请求、8611 Token，另有 M3 超时案例 2 次、624 Token；费用/实际账单未知。实际账单按用户确认独立待办，不重复询问。
+**M0–M4 已完成，M5 进行中。** 当前回归：295 Python、81 Vitest、43 项 Chromium 全量用例通过（前端沿用 M4 基线）；M5 的 Phoenix 初步操作单独记证据，不计为真实用户试用。文档 v2、规则评价/人工复核、实验包导入导出和无密钥阅读已接；三份参考包覆盖两类实验，生产页面六条来源记录只读核对通过。旧 v1 文档 B 的协议失败保留；新 v2 A/B 均完成执行，B 读到必需正文后生成 hrelease-v2 错误引用，规则判 fail，18/19 采集检查满足、real_reference_verified=false。M4 按原 P06–P10 完成功能验收，引用失败未改为通过。文档累计 11 次请求、8611 Token，另有 M3 超时案例 2 次、624 Token；费用/实际账单未知。实际账单按用户确认独立待办，不重复询问。
 
 ## 1. 接手先确认这几件事
 
@@ -74,7 +74,7 @@ Git 保存了源码、锁文件、设计、日志和 examples 中的示例。本
 | [runtime](src/agenttinker/runtime) | 单 owner/幂等/取消；官方 SQLite saver、版本/可用性检查、单变量 fork、前缀继承和重启中断恢复 |
 | [web](web) | React/Vite 实验表单、运行/取消/单变量分支、父子配置/过程/输出/新增量对比、讲解；事件检查/回放和图/详情 |
 | [api](src/agenttinker/api) | 创建/读取/取消/fork、checkpoint 当前可用性、分页、SSE 心跳/补发、协议 schema |
-| [tests](tests) | 292 项 Python、81 项 Vitest、43 项 Chromium全量；模型侧为模拟/离线 SDK |
+| [tests](tests) | 295 项 Python、81 项 Vitest、43 项 Chromium全量；模型侧为模拟/离线 SDK |
 
 本次实际安装版本：LangGraph 1.2.14、langgraph-checkpoint 4.3.0、langgraph-checkpoint-sqlite 3.1.2、OpenAI SDK 2.54.0、Pydantic 2.13.5、FastAPI 0.143.2、Uvicorn 0.54.0。SQLite saver 要求 checkpoint >=4.3.0，依赖以锁文件为准；原 M0 真实证据的版本不改写。
 
@@ -106,13 +106,15 @@ M0 实验语义：
 | M2 | 已完成：实际事件驱动的列表/图、节点详情、时间线、只读播放；未知值与缺失事件降级已验证 |
 | M3 | 已完成：超时实验、单变量分支、A/B 对比/讲解、P01–P05/P09 和当前协议真实参考 |
 | M4 | 已完成：原 P06–P10、文档 v2 真实执行/分支、规则与人工复核能力、两类实验的三份包及六条记录生产无密钥阅读；B 引用规则仍 fail、语义未复核，见 [M4 验收](docs/m4-acceptance.md) |
-| M5 | 准备中：[同案例任务/观察指南/空白记录](docs/m5-validation.md)已备；实际工具对照、5 位真实试用者与反馈核对待完成 |
+| M5 | 进行中：[同案例任务/观察指南/空白记录](docs/m5-validation.md)已备；[Phoenix 历史观察初步对照](docs/m5-tool-comparison.md)完成；Studio/完整操作、5 位真实试用者及反馈核对待完成 |
 
 本地 FastAPI 与 React/Vite 已接任务/模式/策略配置、运行取消、历史检查及事件回放，尚未公开部署。服务的 LangGraph checkpoint 已由独立 SQLite saver 持久化；M0 CLI 的内存状态仍不能跨进程恢复。运行服务已验证在途模型/工具取消与队列取消；HTTP/SSE 已通过真实本机 TCP 断线续传与取消集成验证。
 
 首版技术路线仍为 React/TypeScript/Vite + React Flow、Python/FastAPI/Pydantic、LangGraph、SQLite + 文件存储、HTTP + SSE。公开托管、域名、额外模型和外部工具服务尚未确定；当前不需要额外托管数据库或搜索服务账号。
 
 ## 6. 环境验证与快照
+
+2026-10-18 M5 接续：修订 209、观测当前、running/connected、网络 unrestricted/enforced、DeepSeek 配置 ready；没有 LangSmith 凭据绑定，两个常见 key 变量也不存在。Phoenix 20.23.0 独立本机/无提供商配置/assistant 与 telemetry 关闭，相同两包 4 runs/18 源 spans + 4 展示容器、5063 历史 Token 完成 REST/Chromium 核对；费用原值未知，当前 collector 界面显示 $0，不当作账单。295 Python/ruff/格式及新增工具浏览器检查通过，81 Vitest/43 Chromium 应用基线沿用 M4；无新付费、无真人试用成绩。临时服务/数据只用于本地实操，未部署。
 
 2026-10-18 M4 真实 v2 与最终功能核对：真实调用前修订 202、observations_current=true、running/connected、网络 unrestricted/enforced、DeepSeek 配置 ready。新增 5 次请求/4439 Token，两条执行成功但 B 引用规则 fail，18/19 checks、real_reference_verified=false。292 Python、81 Vitest、43 Chromium 全量及静态/构建检查通过；生产页面三包六记录无密钥阅读通过。M4 按原标准完成功能验收，M5/外部 Agent 未开始；以下保留之前快照。
 
@@ -158,7 +160,7 @@ uv 命令在本环境使用 `UV_CACHE_DIR=/tmp/agenttinker-uv-cache`。继续保
 ## 7. 下一步：先完成内置首版 M5，再做可选接入
 
 1. **M0–M4 功能阶段已完成。** 对照 [M4 验收](docs/m4-acceptance.md)和原 P06–P10，当前内置实验已有真实模型执行/分支与只读阅读证据。v2 B 的 hrelease-v2 引用 fail、18/19 checks 和 real_reference_verified=false 保持；没有人工语义复核或普遍策略结论。
-2. **下一项完成内置首版的 M5 准备与实际验证。** [同案例任务、参与者任务卡、观察指南和空白记录](docs/m5-validation.md)已准备；下一步实际开展 Studio/Phoenix 对照和小规模真实用户试用，再按反馈修正。首轮目标仍为 5 位试用者中至少 4 位无需作者代操作完成一个场景，并检查回放/执行及未知费用的理解；目前没有真实研究成绩，不能用自动化或助手自测代替。
+2. **下一项完成内置首版的 M5 实际验证。** [同案例任务、参与者任务卡、观察指南和空白记录](docs/m5-validation.md)已准备，[Phoenix 初步操作](docs/m5-tool-comparison.md)已记录。继续补齐 Studio 的实际操作条件与完整任务对照、小规模真实用户试用，再按反馈修正；当前没有 LangSmith 配置或真实试用数据。首轮目标仍为 5 位试用者中至少 4 位无需作者代操作完成一个场景，并检查回放/执行及未知费用的理解；目前没有真实研究成绩，不能用自动化或助手自测代替。
 3. **外部 Agent 后移，作为可选扩展。** 内置首版及 M5 反馈处理完成后，再选择首个现成 Agent，验证事件映射、启动/取消、会话续接与旧点分支边界。后续可复用通用记录/检查/回放/文件基础，执行控制与任务评价按对象适配；当前没有实现外部原始日志解析器、可执行适配或新的 Agent 选择界面，也不将其设为内置使用的前置条件。
 4. **保留原生版本与数据规则。** serial-checkpoint:2 仍是 bounded model→tool→model；文档 v1 每响应单意图，v2 整批预检后逐工具串行，最多 8 模型/7 工具。仅首检索点允许 top_k 分支；原工具前超时点允许 retry 分支。每次只改一个允许非原值字段、源 Run 终态、动态检查版本/能力/配置。Intervention 原子保存、前缀只引用，原事件和全部旧 saver 行不变。旧未确认请求保留版本/内容/key，不自动升级。
 5. **真实参考与费用。** [三份参考包](examples/m4/README.md)覆盖两类实验；[六条记录生产检查](examples/m4/reference-browser-v2.json)确认模型构造 0、播放 API 0、视图/再导出一致，未配置 live 503。新文档 5 次/4439 Token，加此前 6 次/4172，共 11 次/8611；旧 M3 超时 2 次/624 另列，原 M0 的 634 Token/价格估算不套用。金额/实际账单未知，不为绿色样本或账单等待重复付费。
@@ -167,4 +169,4 @@ uv 命令在本环境使用 `UV_CACHE_DIR=/tmp/agenttinker-uv-cache`。继续保
 
 ## 8. 给新对话的最短接续提示
 
-> 请在 Babapei/AgentTinker-preview 的 work 分支接续，先读 HANDOFF.md、AGENTS.md、M4 验收和日志，再核对 Git/环境。M0–M4 功能验收已完成，292 Python、81 Vitest、43 Chromium 全量及静态/构建通过。v2 真实 A/B 均完成、B 读到必需正文，但 hrelease-v2 引用规则 fail，18/19 checks、real_reference_verified=false，语义未复核。三份包覆盖两类实验、生产页面六条来源记录无密钥回放/再导出通过；旧 v1 失败/请求身份/全部旧历史保留。文档累计 11 次/8611 Token（本次 5/4439），费用和实际账单未知。用户进一步确认先完成内置首版 M0–M5 和试用反馈，再把现成 Agent 做成可选接入；M5 同案例任务/观察指南/空白会话记录已准备，下一项是实际工具对照与真实试用，不提前做外部适配。M5 实操结果/真实用户成绩待取得，不生成虚构成绩；完整六模块的后续扩展也不能称全部做完。逐块验证、记录、提交推送，不重复询问既有账单口径。
+> 请在 Babapei/AgentTinker-preview 的 work 分支接续，先读 HANDOFF.md、AGENTS.md、M4 验收和日志，再核对 Git/环境。M0–M4 功能验收已完成，295 Python、81 Vitest、43 Chromium 全量及静态/构建通过。v2 真实 A/B 均完成、B 读到必需正文，但 hrelease-v2 引用规则 fail，18/19 checks、real_reference_verified=false，语义未复核。三份包覆盖两类实验、生产页面六条来源记录无密钥回放/再导出通过；旧 v1 失败/请求身份/全部旧历史保留。文档累计 11 次/8611 Token（本次 5/4439），费用和实际账单未知。用户进一步确认先完成内置首版 M0–M5 和试用反馈，再把现成 Agent 做成可选接入；M5 同案例任务/观察指南/空白记录已准备，Phoenix 20.23.0 用相同两包完成 4 runs/22 派生 spans 的初步历史观察，旧 Token/未知费用/错误引用保留；其 $0 汇总不当账单。下一项补齐 Studio 条件/完整操作与真实试用，不提前做外部适配。真实用户成绩待取得，不生成虚构成绩；完整六模块的后续扩展也不能称全部做完。逐块验证、记录、提交推送，不重复询问既有账单口径。

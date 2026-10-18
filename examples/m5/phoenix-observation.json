@@ -1,0 +1,40 @@
+{
+  "schema_version": "m5-tool-observation-1",
+  "checked_at": "2026-10-18T06:24:17.292Z",
+  "passed": true,
+  "observer_kind": "assistant_tool_check",
+  "counts_as_user_session": false,
+  "user_completion_rate": null,
+  "user_elapsed_seconds": null,
+  "tool": "Phoenix",
+  "tool_version": "20.23.0",
+  "agent_assistant_disabled": true,
+  "browser": "154.0.8037.57",
+  "source_package_sha256": [
+    "56bf96c2532e228fb92ed22bdd5fead415f0c0c576ac158b8abba3f6127c6121",
+    "d0122c09d264afb56ed89a7ef9ebaddafd968819948b1a690f62f2fd0a3b3f4b"
+  ],
+  "source_run_count": 4,
+  "derived_container_spans": 4,
+  "source_spans": 18,
+  "source_model_spans": 7,
+  "source_tokens": 5063,
+  "inherited_prefix_not_duplicated": true,
+  "source_attributes_and_parent_mapping_verified": true,
+  "original_unknown_costs_preserved_in_attributes": true,
+  "original_citation_failure_preserved": true,
+  "timeout_error_and_document_answer_inspected_in_ui": true,
+  "collector_displayed_cost": "$0",
+  "collector_displayed_cost_is_actual_bill": false,
+  "graphql_mutations_during_navigation": 0,
+  "before_sha256": "ea9468d0fde2f1fd8278a6ae28e0562c890173b78b2f9e3ae02241d6f95c94c5",
+  "after_sha256": "ea9468d0fde2f1fd8278a6ae28e0562c890173b78b2f9e3ae02241d6f95c94c5",
+  "limitations": [
+    "Local historical observation only; no execution/fork or human task timing was tested.",
+    "The four container spans and mapped IDs are derived. Source IDs, lineage, usage and opinions remain attributes.",
+    "OTLP links were sent; the list API does not expose them. Source prefix IDs are preserved explicitly.",
+    "Source evaluations are attributes, not new Phoenix evaluations or human reviews.",
+    "The UI displayed $0 while the source amount remained unknown; no bill was verified.",
+    "Studio and real-user sessions remain pending; this is not a product ranking."
+  ]
+}
