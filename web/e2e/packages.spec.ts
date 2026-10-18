@@ -18,12 +18,12 @@ const key = () => `package-${Date.now()}-${Math.random()}`;
 async function readRun(page: Page, id: string): Promise<RunView> {
   return (await page.request.get(`/api/v1/runs/${id}`)).json();
 }
-async function pair(page: Page, document = true) {
+async function pair(page: Page, document = true, version: '1' | '2' = '1') {
   const response = await page.request.post(
     document ? '/api/v1/scenarios/document-missing/runs' : '/api/v1/runs',
     {
       headers: { 'Idempotency-Key': key() },
-      data: { mode: 'synthetic' },
+      data: { mode: 'synthetic', ...(document && version === '2' ? { agent_version: '2' } : {}) },
     },
   );
   expect(response.status()).toBe(201);
@@ -85,11 +85,15 @@ async function upload(page: Page, buffer: Buffer) {
   return new URL(page.url()).searchParams.get('run')!;
 }
 
-for (const isDoc of [true, false]) {
-  test(`downloads and imports the native ${isDoc ? 'document' : 'timeout'} A/B without execution, keeps source opinions and replays`, async ({
+for (const { isDoc, version } of [
+  { isDoc: true, version: '1' },
+  { isDoc: true, version: '2' },
+  { isDoc: false, version: '1' },
+] as const) {
+  test(`downloads and imports the native ${isDoc ? `document v${version}` : 'timeout'} A/B without execution, keeps source opinions and replays`, async ({
     page,
   }) => {
-    const { a, b } = await pair(page, isDoc);
+    const { a, b } = await pair(page, isDoc, version);
     await page.goto(`/?run=${b.run.run_id}`);
     await expect(page.locator('.record-connection')).toContainText('事件已核对');
     const bytes = await download(page);
@@ -128,14 +132,21 @@ for (const isDoc of [true, false]) {
     expect(await readRun(page, a.run.run_id)).toEqual(a);
     expect(await readRun(page, b.run.run_id)).toEqual(b);
     if (isDoc) {
+      expect(imported.run.config.agent.version).toBe(version);
       expect((await new AxeBuilder({ page }).include('main').analyze()).violations).toEqual([]);
-      await page.screenshot({ path: '../artifacts/m4-package-desktop.png', fullPage: true });
+      await page.screenshot({
+        path: `../artifacts/m4-package-v${version}-desktop.png`,
+        fullPage: true,
+      });
       await page.setViewportSize({ width: 390, height: 844 });
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
         true,
       );
       expect((await new AxeBuilder({ page }).include('main').analyze()).violations).toEqual([]);
-      await page.screenshot({ path: '../artifacts/m4-package-mobile.png', fullPage: true });
+      await page.screenshot({
+        path: `../artifacts/m4-package-v${version}-mobile.png`,
+        fullPage: true,
+      });
     }
   });
 }

@@ -20,9 +20,12 @@ import {
   type RunView,
   type Scenario,
 } from './protocol';
+import { documentRequestIdentity, documentScenario, isDocumentRun } from './document-experiment';
 
 let fixture: {
   scenario: Scenario;
+  scenarios: Scenario[];
+  v2_view: RunView;
   view: RunView;
   evaluation: Evaluation;
   review: HumanReview;
@@ -85,6 +88,59 @@ it('rejects a request and scenario version mismatch before sending a write', asy
     createDocumentRun({ mode: 'synthetic', agent_version: '2' }, fixture.scenario, 'wrong-version'),
   ).rejects.toThrow('protocol_invalid');
   expect(fetcher).not.toHaveBeenCalled();
+});
+
+it('selects the newest known scenario while restoring the requested legacy version', () => {
+  expect(documentScenario(fixture.scenarios).agent.ref.version).toBe('2');
+  expect(documentScenario(fixture.scenarios, '1')).toEqual(fixture.scenario);
+  expect(documentScenario([fixture.scenario]).agent.ref.version).toBe('1');
+  expect(() => documentScenario([fixture.scenarios[0]], '1')).toThrow('protocol_invalid');
+});
+
+it('rejects mismatched scenario, prompt and agent versions', () => {
+  const mixed = structuredClone(fixture.scenarios[0]);
+  mixed.agent.ref.version = '1';
+  expect(() => documentScenario([mixed])).toThrow('protocol_invalid');
+  const prompt = structuredClone(fixture.scenarios[0]);
+  prompt.agent.prompt_version = 'document-react-v1';
+  expect(() => documentScenario([prompt])).toThrow('protocol_invalid');
+});
+
+it('recognizes both document versions while refusing mixed or unknown identities', () => {
+  expect(isDocumentRun(fixture.view.run)).toBe(true);
+  expect(isDocumentRun(fixture.v2_view.run)).toBe(true);
+  const mixed = structuredClone(fixture.v2_view.run);
+  mixed.config.experiment!.version = '1';
+  expect(isDocumentRun(mixed)).toBe(false);
+  mixed.config.agent.version = '3';
+  expect(isDocumentRun(mixed)).toBe(false);
+});
+
+it('compares defaulted request meaning without changing the original stored body', () => {
+  const legacy = { mode: 'synthetic' } as const;
+  expect(documentRequestIdentity(legacy)).toBe(
+    documentRequestIdentity({
+      ...legacy,
+      provider: null,
+      model: null,
+      variant: 'baseline',
+      agent_version: '1',
+    }),
+  );
+  expect(documentRequestIdentity(legacy)).not.toBe(
+    documentRequestIdentity({ ...legacy, agent_version: '2' }),
+  );
+  expect(legacy).toEqual({ mode: 'synthetic' });
+});
+
+it('checks a v2 creation response against its own definition', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(fixture.v2_view)));
+  const body = { mode: 'synthetic', agent_version: '2' } as const;
+  expect(await createDocumentRun(body, fixture.scenarios[0], 'v2')).toEqual(fixture.v2_view);
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(fixture.view)));
+  await expect(createDocumentRun(body, fixture.scenarios[0], 'mixed-response')).rejects.toThrow(
+    'protocol_invalid',
+  );
 });
 
 it('preserves assessment pages and rejects another run in either list', async () => {

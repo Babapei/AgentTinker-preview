@@ -306,8 +306,11 @@ def test_document_http_sdk_auto_tools_versions_sse_and_no_key_history(
     database = tmp_path / "runs.sqlite"
     app = create_app(database)
     with TestClient(app) as client:
-        scenario = client.get("/api/v1/scenarios").json()[0]
-        assert scenario["definition"]["ref"] == corpus.EXPERIMENT.model_dump()
+        scenarios = client.get("/api/v1/scenarios").json()
+        assert [item["definition"]["ref"] for item in scenarios] == [
+            corpus.EXPERIMENT_V2.model_dump(),
+            corpus.EXPERIMENT.model_dump(),
+        ]
         assert not requests
         body = {"mode": "live", "provider": "deepseek"}
         headers = {"Idempotency-Key": "A"}

@@ -57,6 +57,7 @@ export function compareRuns(source: RunView, branch: RunView) {
     );
   const derivedVariant =
     documentCase &&
+    source.run.config.agent.version === branch.run.config.agent.version &&
     [source, branch].every(({ run }) => {
       const k = run.config.tool_policy.top_k;
       return (

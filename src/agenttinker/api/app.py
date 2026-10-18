@@ -197,7 +197,7 @@ def create_app(
 
     @app.get("/api/v1/scenarios", response_model=tuple[Scenario, ...])
     def list_scenarios():
-        return (corpus.scenario(),)
+        return (corpus.scenario("2"), corpus.scenario("1"))
 
     @app.post("/api/v1/scenarios/{scenario_id}/runs", response_model=RunView, status_code=201)
     def create_document_run(

@@ -9,7 +9,10 @@ import uvicorn
 
 from agenttinker.api.app import create_app
 from agenttinker.experiments import documents as corpus
-from agenttinker.experiments.document_model import DocumentSyntheticModel
+from agenttinker.experiments.document_model import (
+    DocumentBatchSyntheticModel,
+    DocumentSyntheticModel,
+)
 from agenttinker.m0.synthetic import SyntheticModel
 from agenttinker.runtime.service import RunRequest, RunService
 from agenttinker.storage.sqlite import SQLiteEventStore
@@ -48,8 +51,14 @@ def test_app(database):
             return Rejected()
         return Gated(*gates[request.task]) if request.task in gates else SyntheticModel()
 
+    class BrowserRunService(RunService):
+        def _model(self, request, agent):
+            if request.mode == "synthetic" and agent == corpus.AGENT_V2:
+                return DocumentBatchSyntheticModel()
+            return super()._model(request, agent)
+
     def service_factory(path, **kwargs):
-        return RunService(path, model_factory=factory, **kwargs)
+        return BrowserRunService(path, model_factory=factory, **kwargs)
 
     app = create_app(database, service_factory=service_factory, poll_interval=0.02)
 

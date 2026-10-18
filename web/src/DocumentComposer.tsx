@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { createDocumentRun, getScenarios } from './api';
-import { documentScenario } from './document-experiment';
+import { documentRequestIdentity, documentScenario } from './document-experiment';
 import { actionError, forgetIntent, pendingIntent, rememberIntent } from './mutations';
 import { parseProtocol, type DocumentRunRequest, type RunView, type Scenario } from './protocol';
 
@@ -40,7 +40,9 @@ export default function DocumentComposer({
     getScenarios(controller.signal)
       .then((items) => {
         if (!controller.signal.aborted) {
-          setScenario(documentScenario(items));
+          setScenario(
+            documentScenario(items, initial ? (initial.agent_version ?? '1') : undefined),
+          );
           setError(null);
         }
       })
@@ -48,7 +50,7 @@ export default function DocumentComposer({
         if (!controller.signal.aborted) setError(actionError(reason));
       });
     return () => controller.abort();
-  }, [revision]);
+  }, [revision, initial]);
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (sending.current || !mode || !scenario) return;
@@ -60,10 +62,27 @@ export default function DocumentComposer({
       variant,
       provider: mode === 'live' ? provider : null,
       model: mode === 'live' && model.trim() ? model.trim() : null,
+      ...(scenario.agent.ref.version === '2' ? { agent_version: '2' as const } : {}),
     };
     try {
-      const intent = rememberIntent('create-document', body);
-      const view = await createDocumentRun(body, scenario, intent.key);
+      const previous = pendingIntent('create-document');
+      let previousBody: DocumentRunRequest | null = null;
+      try {
+        if (previous) previousBody = parseProtocol('document_run_request', previous.body);
+      } catch {
+        // An invalid remembered body cannot supply a key for a new valid request.
+      }
+      const intent =
+        previous &&
+        previousBody &&
+        documentRequestIdentity(previousBody) === documentRequestIdentity(body)
+          ? previous
+          : rememberIntent('create-document', body);
+      const view = await createDocumentRun(
+        parseProtocol('document_run_request', intent.body),
+        scenario,
+        intent.key,
+      );
       forgetIntent(intent.key);
       created(view);
     } catch (reason) {

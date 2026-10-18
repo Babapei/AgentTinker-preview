@@ -68,6 +68,24 @@ def main():
                     canonical(export_run(service.database, expanded.run.run_id)), "imported"
                 )
             result["imported"] = capture(service, imported.root_run_id)
+            v2, _ = service.submit_document(
+                DocumentRunRequest(mode="synthetic", agent_version="2"), "document_v2"
+            )
+            result["document_v2"] = capture(service, v2.run.run_id)
+            v2 = service.get(v2.run.run_id)
+            v2_branch, _ = service.fork(
+                v2.run.run_id,
+                ForkRequest(
+                    source_checkpoint_id=v2.checkpoints[0].checkpoint_id, patch={"top_k": 3}
+                ),
+                "document_v2_forked",
+            )
+            result["document_v2_forked"] = capture(service, v2_branch.run.run_id)
+            with SQLitePackageStore(service.database) as store:
+                imported_v2, _ = store.import_data(
+                    canonical(export_run(service.database, v2_branch.run.run_id)), "imported_v2"
+                )
+            result["imported_v2"] = capture(service, imported_v2.root_run_id)
         entered, release = Event(), Event()
 
         class Gated(SyntheticModel):

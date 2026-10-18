@@ -47,6 +47,10 @@ test('creates the selected document scenario, evaluates A, reviews honestly and 
     .poll(async () => (await (await page.request.get(`/api/v1/runs/${a}`)).json()).run.status)
     .toBe('succeeded');
   const original = await (await page.request.get(`/api/v1/runs/${a}`)).json();
+  expect(original.run.config.agent).toEqual({ id: 'document-react', version: '2' });
+  const aModels = original.spans.filter((span: { kind: string }) => span.kind === 'model');
+  expect(aModels).toHaveLength(3);
+  expect(aModels[1].output.message.tool_calls).toHaveLength(2);
   await evaluate(page);
   const panel = page.getByLabel('文档证据与答案评价');
   await expect(panel).toContainText('必需文档是否返回：未满足');
@@ -67,6 +71,10 @@ test('creates the selected document scenario, evaluates A, reviews honestly and 
   await expect(comparison).not.toContainText('未触发故障时不纳入超时结论');
   await evaluate(page);
   await expect(page.getByLabel('文档证据与答案评价')).toContainText('必需正文是否读取：通过');
+  const branch = await (await page.request.get(`/api/v1/runs/${b}`)).json();
+  const bModels = branch.spans.filter((span: { kind: string }) => span.kind === 'model');
+  expect(bModels).toHaveLength(2);
+  expect(bModels[0].output.message.tool_calls).toHaveLength(3);
   expect(await (await page.request.get(`/api/v1/runs/${a}`)).json()).toEqual(original);
   expect((await (await page.request.get(`/api/v1/runs/${a}/reviews`)).json()).total).toBe(1);
 });
@@ -167,7 +175,15 @@ test('keeps the document form and assessment controls accessible on narrow scree
 
 test('restores a lost document creation request in its scenario after reload', async ({ page }) => {
   let createdId = '';
+  const keys: string[] = [];
+  const bodies: unknown[] = [];
   const routePattern = '**/api/v1/scenarios/document-missing/runs';
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && request.url().endsWith('/scenarios/document-missing/runs')) {
+      keys.push(request.headers()['idempotency-key']);
+      bodies.push(request.postDataJSON());
+    }
+  });
   await page.route(routePattern, async (route) => {
     const response = await route.fetch();
     createdId = (await response.json()).run.run_id;
@@ -192,6 +208,52 @@ test('restores a lost document creation request in its scenario after reload', a
   expect(history.items.filter((run: { run_id: string }) => run.run_id === createdId)).toHaveLength(
     1,
   );
+  expect(keys).toHaveLength(2);
+  expect(keys[0]).toBe(keys[1]);
+  expect(bodies[0]).toEqual(bodies[1]);
+  expect(bodies[0]).toHaveProperty('agent_version', '2');
+});
+
+test('restores an old unconfirmed v1 request without upgrading its version, body or key', async ({
+  page,
+}) => {
+  const key = `legacy-document-${Date.now()}`;
+  const body = { mode: 'synthetic' };
+  const response = await page.request.post('/api/v1/scenarios/document-missing/runs', {
+    headers: { 'Idempotency-Key': key },
+    data: body,
+  });
+  expect(response.status()).toBe(201);
+  const id = (await response.json()).run.run_id;
+  await expect
+    .poll(async () => (await (await page.request.get(`/api/v1/runs/${id}`)).json()).run.status)
+    .toBe('succeeded');
+  const before = await (await page.request.get('/api/v1/runs')).json();
+  await page.addInitScript(
+    ({ key, body }) => {
+      sessionStorage.setItem(
+        'agenttinker.pending-requests.v1',
+        JSON.stringify([{ scope: 'create-document', body, key }]),
+      );
+    },
+    { key, body },
+  );
+  const writes: { key: string; body: unknown }[] = [];
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && request.url().endsWith('/scenarios/document-missing/runs'))
+      writes.push({ key: request.headers()['idempotency-key'], body: request.postDataJSON() });
+  });
+  await page.goto(`/?run=${id}`);
+  await page.getByRole('button', { name: '新建实验', exact: true }).click();
+  await expect(page.getByLabel('新建文档实验配置')).toContainText('已恢复未确认的文档请求');
+  expect(writes).toEqual([]);
+  await page.getByRole('button', { name: '开始运行实验', exact: true }).click();
+  await expect(page.getByLabel('新建文档实验配置')).toHaveCount(0);
+  expect(new URL(page.url()).searchParams.get('run')).toBe(id);
+  expect(writes).toEqual([{ key, body }]);
+  const restored = await (await page.request.get(`/api/v1/runs/${id}`)).json();
+  expect(restored.run.config.agent.version).toBe('1');
+  expect((await (await page.request.get('/api/v1/runs')).json()).total).toBe(before.total);
 });
 
 test('does not claim a selected answer is unreviewed before all opinion pages are read', async ({

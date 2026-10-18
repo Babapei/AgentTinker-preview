@@ -18,6 +18,10 @@ def main():
         with RunService(database) as service:
             view, _ = service.submit_document(DocumentRunRequest(mode="synthetic"), "A")
             view = service.wait(view.run.run_id)
+            v2, _ = service.submit_document(
+                DocumentRunRequest(mode="synthetic", agent_version="2"), "v2"
+            )
+            v2 = service.wait(v2.run.run_id)
         with SQLitePackageStore(database) as store:
             result, _ = store.create_evaluation(view.run.run_id, EvaluationRequest(), "evaluation")
             review, _ = store.create_review(
@@ -34,6 +38,8 @@ def main():
             )
             fixtures = {
                 "scenario": corpus.scenario(),
+                "scenarios": (corpus.scenario("2"), corpus.scenario("1")),
+                "v2_view": v2,
                 "view": view,
                 "evaluation": result,
                 "review": review,
@@ -47,9 +53,7 @@ def main():
                 import_result=imported,
                 import_provenance=store.provenance(imported.root_run_id),
             )
-            print(
-                json.dumps({key: value.model_dump(mode="json") for key, value in fixtures.items()})
-            )
+            print(json.dumps(fixtures, default=lambda value: value.model_dump(mode="json")))
 
 
 if __name__ == "__main__":

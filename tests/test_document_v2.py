@@ -7,10 +7,12 @@ from threading import Barrier, Event
 
 import httpx
 import pytest
+from fastapi.testclient import TestClient
 from openai import OpenAI
 from test_forks import saver_rows
 
 import agenttinker.m0.openai_model as sdk_module
+from agenttinker.api.app import create_app
 from agenttinker.core.projection import project_events
 from agenttinker.core.requests import request_identity
 from agenttinker.experiments import documents as corpus
@@ -370,6 +372,39 @@ def test_v2_reference_evaluation_and_package_round_trip_are_read_only(tmp_path):
     for path, record in package.files.items():
         if path.startswith("runs/"):
             assert exported.files[path] == record
+
+
+def test_http_advertises_both_versions_and_defaults_old_requests_to_v1(tmp_path):
+    app = create_app(tmp_path / "runs.sqlite")
+    with TestClient(app) as client:
+        scenarios = client.get("/api/v1/scenarios").json()
+        assert [item["agent"]["ref"]["version"] for item in scenarios] == ["2", "1"]
+        for version in ("1", "2"):
+            body = {"mode": "synthetic", **({"agent_version": version} if version == "2" else {})}
+            response = client.post(
+                "/api/v1/scenarios/document-missing/runs",
+                json=body,
+                headers={"Idempotency-Key": version},
+            )
+            assert response.status_code == 201
+            view = app.state.service.wait(response.json()["run"]["run_id"])
+            assert view.run.status == "succeeded" and view.run.config.agent.version == version
+            assert (
+                client.post(
+                    "/api/v1/scenarios/document-missing/runs",
+                    json=body,
+                    headers={"Idempotency-Key": version},
+                ).status_code
+                == 200
+            )
+        assert (
+            client.post(
+                "/api/v1/scenarios/document-missing/runs",
+                json={"mode": "synthetic", "agent_version": "3"},
+                headers={"Idempotency-Key": "invalid"},
+            ).status_code
+            == 422
+        )
 
 
 @pytest.mark.parametrize("provider", ["deepseek", "openai"])

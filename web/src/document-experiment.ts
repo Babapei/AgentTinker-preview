@@ -1,23 +1,29 @@
-import type { Run, Scenario } from './protocol';
+import type { DocumentRunRequest, Run, Scenario } from './protocol';
 
 export function isDocumentRun(run: Run) {
   return (
     run.config.agent.id === 'document-react' &&
-    run.config.agent.version === '1' &&
+    ['1', '2'].includes(run.config.agent.version) &&
     run.config.experiment?.id === 'document-missing' &&
-    run.config.experiment.version === '1'
+    run.config.experiment.version === run.config.agent.version &&
+    run.config.prompt_version === `document-react-v${run.config.agent.version}`
   );
 }
 
-export function documentScenario(scenarios: Scenario[]) {
-  const found = scenarios.find(
-    (scenario) =>
-      scenario.definition.ref.id === 'document-missing' && scenario.definition.ref.version === '1',
-  );
+export function documentScenario(scenarios: Scenario[], version?: '1' | '2') {
+  const find = (requested: string) =>
+    scenarios.find(
+      (scenario) =>
+        scenario.definition.ref.id === 'document-missing' &&
+        scenario.definition.ref.version === requested,
+    );
+  const found = version ? find(version) : (find('2') ?? find('1'));
   if (
     !found ||
     found.agent.ref.id !== 'document-react' ||
-    found.agent.ref.version !== '1' ||
+    !['1', '2'].includes(found.agent.ref.version) ||
+    found.definition.ref.version !== found.agent.ref.version ||
+    found.agent.prompt_version !== `document-react-v${found.agent.ref.version}` ||
     found.definition.agent.id !== found.agent.ref.id ||
     found.definition.agent.version !== found.agent.ref.version ||
     found.definition.case.id !== found.case.ref.id ||
@@ -25,6 +31,16 @@ export function documentScenario(scenarios: Scenario[]) {
   )
     throw new Error('protocol_invalid');
   return found;
+}
+
+export function documentRequestIdentity(request: DocumentRunRequest) {
+  return JSON.stringify([
+    request.mode,
+    request.provider ?? null,
+    request.model ?? null,
+    request.variant ?? 'baseline',
+    request.agent_version ?? '1',
+  ]);
 }
 
 export const coverageLabels = {

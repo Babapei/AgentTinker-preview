@@ -78,6 +78,22 @@ it('recognizes the derived document Variant while comparing only the actual top_
   expect(result.branch.readDocuments).toEqual(['release-v1', 'release-v2', 'release-v2-fix']);
 });
 
+it('compares v2 batches without attributing a cross-version change to top_k alone', () => {
+  expect(compareRuns(examples.document_v2.view, examples.document_v2_forked.view)).toMatchObject({
+    singleFactor: true,
+    documentCase: true,
+    derivedVariant: true,
+    sameCall: true,
+  });
+  const mixed = structuredClone(examples.document_v2_forked.view);
+  mixed.run.config.agent.version = '1';
+  mixed.run.config.experiment!.version = '1';
+  mixed.run.config.prompt_version = 'document-react-v1';
+  const result = compareRuns(examples.document_v2.view, mixed);
+  expect(result.singleFactor).toBe(false);
+  expect(result.derivedVariant).toBe(false);
+});
+
 it.each(['variant', 'case', 'task'] as const)(
   'refuses document attribution with a mismatched %s',
   (field) => {
