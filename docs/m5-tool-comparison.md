@@ -22,7 +22,7 @@
 | --- | --- | --- |
 | AgentTinker 内置首版 | [本轮生产 CLI/UI 演练](../examples/m5/native-walkthrough.json)实际创建两类原生模拟 A/B、单参数分支/过程对比、规则评价、导出→导入→回放→再导出；任务/夹具/Agent 与参考一致，另读相同两份真实包，共 12 条记录，原事实不变。 | 原生练习为明确的模拟模式，原模型真实结果另保留；这是助手脚本检查，不是真实用户成绩/耗时。 |
 | Phoenix 20.23.0，本机单实例 | 相同 2 包进入 4 traces/22 spans；[初步追踪核对](../examples/m5/phoenix-observation.json)保留。新增[原生数据集/实验对照](../examples/m5/phoenix-comparison.json)：2 个案例、A/B 两个实验、4 条历史结果、6 项来源规则；实际选择两实验进入 Grid，并从单例打开超时和末轮引用错误。原记录、评价来源和用量不变。 | 这是历史结果和来源 CODE 规则的映射，未重新执行 Agent/评价器，未接可执行图或 checkpoint 恢复/分支。不能据此声称 Phoenix 没有相关能力，也没有人工耗时、产品排名或接入优势结论。 |
-| LangSmith Studio / Agent Server | [本机对照](m5-studio.md)更正旧前提推断：关闭 tracing 后无需 key 启动开发 API，托管 Studio 可无登录连接。研究桥接复用两个现有执行器节点/图边，API 实际完成相同任务/材料下的模拟 A/B、旧点状态分支、前缀复用，3/8 个旧完整状态不变。 | 两场景页面内完整操作接续检查；没有配置 LangSmith tracing/原生评价。通用状态编辑不是平台 ForkRequest/Intervention；取消、重启等没有声明等价。没有新增账户或提供商调用，也不计为真人研究。 |
+| LangSmith Studio / Agent Server | [本机对照](m5-studio.md)更正旧前提推断：关闭 tracing 后无需 key 启动开发 API，托管 Studio 可无登录连接。研究桥接复用两个现有执行器节点/图边，API 与页面均实际完成相同任务/材料下的模拟 A/B、旧点状态分支和前缀复用，3/8 个旧完整状态不变；页面使用 Submit、Edit node state 和 Fork，读取 API 另核对持久化结果。 | 没有配置 LangSmith tracing/原生评价；访客 Trace 实际到登录页，远程 onboarding 403 保留。通用状态编辑不是平台 ForkRequest/Intervention；取消、重启等没有声明等价。没有新增账户或提供商调用，也不计为真人研究。 |
 
 两次机器核对分别保存在 [phoenix-observation.json](../examples/m5/phoenix-observation.json)和 [phoenix-comparison.json](../examples/m5/phoenix-comparison.json)，都标为 assistant_tool_check、counts_as_user_session=false，用户成绩/耗时为 null；截图在忽略的 artifacts/m5-phoenix-*.png，不属于已部署网站。
 
@@ -92,7 +92,7 @@ collector 后台接收有延迟，需等 agenttinker-m5 项目出现再执行检
 
 ## 接续
 
-内置首版完整助手演练、Phoenix 历史观察/原生实验比较和 Studio 开发 API 状态分支已有证据。继续完成 Studio 两场景的页面操作，执行控制差异仍按实际范围记录，不把历史导入、通用状态修改或 API 成功推导为完整等价。组织原定真实试用并处理反馈；不从助手演练生成用户完成率或产品排名，M5/原计划仍未完成，外部 Agent 可选接入后移。
+内置首版完整助手演练、Phoenix 历史观察/原生实验比较和 Studio API/页面状态分支已有独立证据。[Studio 控制差异](m5-studio.md#当前能说明的控制差异)说明通用旧点分支已能由现有工具完成，当前桥接仍需维护 JSON 配置与执行归属；取消/重启等没有推导为完整等价。Phoenix 的对象是相同历史结果，Studio/内置练习是相同任务、Agent 与材料下的新模拟执行，不能混为同一批输出，也没有计时排名。组织原定真实试用并处理反馈；不从助手演练生成用户完成率或产品排名，M5/原计划仍未完成，外部 Agent 可选接入后移。
 
 注：本轮查阅旧 Phoenix “Run experiments” 文档地址时被重定向到 Arize AX 文档；没有用 AX 的接口说明或界面替代 Phoenix 实测。本节接口来自本机固定版本 OpenAPI 和实际响应。
 

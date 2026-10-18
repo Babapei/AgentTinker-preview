@@ -1,0 +1,182 @@
+{
+  "schema_version": "m5-studio-browser-1",
+  "checked_at": "2026-10-18T19:20:38.721Z",
+  "source_commit": "6687452faeb61fa8a04627064959195251d7a8d3",
+  "passed": true,
+  "observer_kind": "scripted_hosted_studio_ui",
+  "counts_as_user_session": false,
+  "user_completion_rate": null,
+  "user_elapsed_seconds": null,
+  "mode": "synthetic",
+  "tool": "LangSmith Studio with local Agent Server",
+  "browser": "154.0.8037.57",
+  "api_version": "0.16.1",
+  "langgraph_version": "1.2.14",
+  "langsmith_tracing": false,
+  "cases": [
+    {
+      "case": "timeout",
+      "source_package_sha256": "56bf96c2532e228fb92ed22bdd5fead415f0c0c576ac158b8abba3f6127c6121",
+      "agent": {
+        "id": "serial-checkpoint",
+        "version": "2"
+      },
+      "fixture_hash": "0d5aa8226c2992b72e8dc1b8414da6809f9587b31f620c8f3db7b9851ec480fc",
+      "thread_id": "01a15074-befd-7763-8afd-91ee5a371a31",
+      "baseline_checkpoint": {
+        "checkpoint_id": "1f1cb28e-46a4-6f64-8001-284c19a2d499",
+        "thread_id": "01a15074-befd-7763-8afd-91ee5a371a31",
+        "checkpoint_ns": ""
+      },
+      "branch_point": {
+        "checkpoint_id": "1f1cb28e-46a4-6f64-8001-284c19a2d499",
+        "thread_id": "01a15074-befd-7763-8afd-91ee5a371a31"
+      },
+      "ui_state_edit": {
+        "as_node": "__copy__",
+        "applied_node": "model",
+        "source_checkpoint": {
+          "checkpoint_id": "1f1cb28e-460a-6768-8000-5b1769505128",
+          "thread_id": "01a15074-befd-7763-8afd-91ee5a371a31",
+          "checkpoint_ns": ""
+        }
+      },
+      "candidate_checkpoint": {
+        "checkpoint_id": "1f1cb28e-b1f9-6107-8004-01cbba444571",
+        "thread_id": "01a15074-befd-7763-8afd-91ee5a371a31",
+        "checkpoint_ns": ""
+      },
+      "execution_policy_patch": {
+        "tool_retry_limit": 1
+      },
+      "a_model_steps": 1,
+      "b_new_model_steps": 1,
+      "b_new_successful_tool_graph_steps": 1,
+      "old_checkpoints_checked": 3,
+      "before_sha256": "5dd3b71147fbad12b4e18fb6b1385536e1b8b72a8d98084aac714ca38d54d10b",
+      "after_sha256": "5dd3b71147fbad12b4e18fb6b1385536e1b8b72a8d98084aac714ca38d54d10b",
+      "ui_actions": [
+        "Select graph",
+        "View Raw",
+        "Submit",
+        "Reload saved thread",
+        "Expand model",
+        "Edit node state",
+        "Raw state editor already selected",
+        "Fork"
+      ],
+      "ui_local_writes": [
+        "/threads",
+        "/threads/{thread}/runs/stream",
+        "/threads/{thread}/state",
+        "/threads/{thread}/runs/stream"
+      ],
+      "execution_stream_modes": [
+        [
+          "debug",
+          "messages"
+        ],
+        [
+          "debug",
+          "messages"
+        ]
+      ],
+      "remote_http_failures": [
+        {
+          "path": "/me/onboarding_state/lgstudio_completed_at",
+          "status": 403
+        }
+      ],
+      "page_error_names": [
+        "e"
+      ]
+    },
+    {
+      "case": "document",
+      "source_package_sha256": "d0122c09d264afb56ed89a7ef9ebaddafd968819948b1a690f62f2fd0a3b3f4b",
+      "agent": {
+        "id": "document-react",
+        "version": "2"
+      },
+      "fixture_hash": "18133778351c8164748ebcde9ca66e8d894bdb0300ca0c9a8a350f8d14b4ff39",
+      "thread_id": "01a15075-2505-7332-87f7-95fa2f672160",
+      "baseline_checkpoint": {
+        "checkpoint_id": "1f1cb28f-5f34-6c79-8006-780217d08639",
+        "thread_id": "01a15075-2505-7332-87f7-95fa2f672160",
+        "checkpoint_ns": ""
+      },
+      "branch_point": {
+        "checkpoint_id": "1f1cb28f-4b9d-633a-8001-c284faf11d3a",
+        "thread_id": "01a15075-2505-7332-87f7-95fa2f672160"
+      },
+      "ui_state_edit": {
+        "as_node": "__copy__",
+        "applied_node": "model",
+        "source_checkpoint": {
+          "checkpoint_id": "1f1cb28f-4a74-6729-8000-b50a639ea44b",
+          "thread_id": "01a15075-2505-7332-87f7-95fa2f672160",
+          "checkpoint_ns": ""
+        }
+      },
+      "candidate_checkpoint": {
+        "checkpoint_id": "1f1cb28f-f5e8-6a78-8008-9a821862afca",
+        "thread_id": "01a15075-2505-7332-87f7-95fa2f672160",
+        "checkpoint_ns": ""
+      },
+      "execution_policy_patch": {
+        "top_k": 3
+      },
+      "a_model_steps": 3,
+      "b_new_model_steps": 2,
+      "b_new_successful_tool_graph_steps": 4,
+      "old_checkpoints_checked": 8,
+      "before_sha256": "8a157fc11f19a08655fe88efda28b072eb65f69adfa30117ab38cc606e462a44",
+      "after_sha256": "8a157fc11f19a08655fe88efda28b072eb65f69adfa30117ab38cc606e462a44",
+      "ui_actions": [
+        "Select graph",
+        "View Raw",
+        "Submit",
+        "Reload saved thread",
+        "Expand model",
+        "Edit node state",
+        "Raw state editor already selected",
+        "Fork"
+      ],
+      "ui_local_writes": [
+        "/threads",
+        "/threads/{thread}/runs/stream",
+        "/threads/{thread}/state",
+        "/threads/{thread}/runs/stream"
+      ],
+      "execution_stream_modes": [
+        [
+          "debug",
+          "messages"
+        ],
+        [
+          "debug",
+          "messages"
+        ]
+      ],
+      "remote_http_failures": [
+        {
+          "path": "/me/onboarding_state/lgstudio_completed_at",
+          "status": 403
+        }
+      ],
+      "page_error_names": [
+        "e"
+      ]
+    }
+  ],
+  "new_provider_requests": 0,
+  "human_reviews_created": 0,
+  "limitations": [
+    "Fresh guest browser, no account login or LangSmith tracing/evaluator configuration.",
+    "Execution and state writes used visible Studio controls; local API reads verify persisted checkpoints.",
+    "Generic JSON state edits require the bridge run_id/config convention; they are not platform ForkRequest validation or Intervention records.",
+    "Internal tool retries are not separate Studio graph nodes; completed Span observations are checked separately by the API control.",
+    "No user timing, product ranking, cancellation or restart equivalence is claimed.",
+    "Synthetic success does not replace the original live citation failure or unknown bills."
+  ]
+}

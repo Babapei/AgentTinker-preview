@@ -60,7 +60,7 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium node web/scripts/check-m5-
 
 ## 工具实操记录口径
 
-[实际工具操作记录](m5-tool-comparison.md)已开始：Phoenix 的相同历史案例转换、REST/界面核对及[原生数据集/实验比较](../examples/m5/phoenix-comparison.json)完成；后者实际检查 2 案例/2 实验/4 历史结果/6 来源 CODE 规则及链接追踪，没有重新执行 Agent 或评价器。[Studio 本机开发 API](m5-studio.md)已实测无 key/tracing 运行原生模拟节点、旧点状态分支与前缀复用；页面内完整操作与执行控制差异接续核对，真实用户结果仍待取得。
+[实际工具操作记录](m5-tool-comparison.md)已开始：Phoenix 的相同历史案例转换、REST/界面核对及[原生数据集/实验比较](../examples/m5/phoenix-comparison.json)完成；后者实际检查 2 案例/2 实验/4 历史结果/6 来源 CODE 规则及链接追踪，没有重新执行 Agent 或评价器。[Studio 本机开发 API](m5-studio.md)已实测无 key/tracing 运行原生模拟节点、旧点状态分支与前缀复用；两个场景的页面 Submit/编辑/Fork 与旧状态核对也已独立通过；通用状态编辑和平台实验约束的差异已记录，取消/重启等未验证等价。真实用户结果仍待取得。
 
 按工具逐一保存版本、环境、输入摘要、实际操作/接口、观察结果与证据位置。状态区分：已观察、尚未操作、当前环境缺少条件、经过操作仍未完成。某工具需要额外适配或账户时，记录该条件与实际投入，不能据此宣布它没有能力。
 
@@ -69,5 +69,5 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium node web/scripts/check-m5-
 ## 当前状态
 
 - 任务/观察/空白记录材料已准备，内置首版两个场景的完整生产页面助手演练已通过；尚无真实用户会话。
-- [Phoenix 历史观察/原生实验比较](m5-tool-comparison.md)、[Studio 开发 API 控制](m5-studio.md)已有证据；Studio 页面内完整操作和执行控制差异仍待核对，不从 API、历史导入或官方介绍填为通过。
+- [Phoenix 历史观察/原生实验比较](m5-tool-comparison.md)、[Studio API/页面控制](m5-studio.md)已有独立证据，接入/执行控制差异按实际范围记录；不从通用分支或历史导入推导全部语义等价。
 - 反馈修正、最终结论和 M5 验收待真实证据；外部 Agent 可选接入尚未开始。
