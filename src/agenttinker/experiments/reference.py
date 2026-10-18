@@ -90,7 +90,9 @@ def document_checks(report):
     live = report["mode"] == "live"
     return {
         "case_and_modes_match": actual_modes == {report["mode"]}
-        and all(view.run.config.agent == corpus.AGENT for view in (a, b)),
+        and corpus.document_version(a.run.config) is not None
+        and a.run.config.agent == b.run.config.agent
+        and corpus.document_version(a.run.config) == corpus.document_version(b.run.config),
         "both_executions_succeeded": a.run.status == b.run.status == "succeeded",
         "baseline_missing_material": verdicts["A"]["required_documents_returned"] == "fail"
         and "release-v2-fix" not in evaluations["A"].returned_document_ids,
@@ -120,6 +122,10 @@ def document_checks(report):
         "bounded_serial_auto_tools": bool(models)
         and len(models_a) <= corpus.MAX_MODEL_CALLS
         and len(models_b) + 1 <= corpus.MAX_MODEL_CALLS
+        and all(
+            sum(span.kind == "tool" for span in view.spans) <= corpus.MAX_TOOL_CALLS
+            for view in (a, b)
+        )
         and (not live or all(s.input.get("tool_choice") == "auto" for s in models)),
         "event_projections_match": project_events(events["A"]) == a
         and project_events(events["B"]) == b,

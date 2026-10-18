@@ -36,8 +36,12 @@ class DocumentState(TypedDict):
 
 
 class DocumentExecutor(SerialExecutor):
-    # Reuse only journal/config helpers; the v2 graph and its persisted state stay intact.
-    def model_node(self, state):
+    # Reuse journal/config helpers; the legacy serial-checkpoint:2 graph stays intact.
+    AGENT = corpus.AGENT
+    PROMPT_VERSION = corpus.PROMPT_VERSION
+    SYSTEM = corpus.SYSTEM
+
+    def observe_model(self, state):
         self.journal.require_running()
         if state["model_calls"] >= corpus.MAX_MODEL_CALLS:
             raise ExecutionFailed("model_call_limit")
@@ -73,6 +77,10 @@ class DocumentExecutor(SerialExecutor):
             output=reply.model_dump(),
             reply=reply,
         )
+        return messages, reply, span
+
+    def model_node(self, state):
+        messages, reply, span = self.observe_model(state)
         try:
             used = {call["id"] for message in messages for call in message.get("tool_calls", [])}
             call = validate_reply(reply, used)
@@ -174,8 +182,8 @@ class DocumentExecutor(SerialExecutor):
         config = checkpoint_config(
             view,
             reference,
-            agent=corpus.AGENT,
-            prompt_version=corpus.PROMPT_VERSION,
+            agent=cls.AGENT,
+            prompt_version=cls.PROMPT_VERSION,
             tool_versions=corpus.TOOL_VERSIONS,
             expected_fixture_hash=corpus.fixture_hash(),
             recursion_limit=20,
@@ -219,7 +227,7 @@ class DocumentExecutor(SerialExecutor):
                 run_id=self.journal.run_id,
                 adapter="langgraph",
                 runtime_version=version("langgraph"),
-                agent_version=corpus.AGENT.version,
+                agent_version=self.AGENT.version,
                 tool_versions=corpus.TOOL_VERSIONS,
                 locator={"store": SAVER_ID, **snapshot.config["configurable"]},
                 allowed_patch_fields=("top_k",) if forkable else (),
@@ -255,7 +263,7 @@ class DocumentExecutor(SerialExecutor):
                 "run_id": self.journal.run_id,
                 "run_config": self._run_config(),
                 "messages": [
-                    {"role": "system", "content": corpus.SYSTEM},
+                    {"role": "system", "content": self.SYSTEM},
                     {"role": "user", "content": self.request.task},
                 ],
                 "tool_call": None,
@@ -265,13 +273,17 @@ class DocumentExecutor(SerialExecutor):
                 "tool_counts": {},
                 "available_ids": [],
                 "span_ids": [],
+                **self.initial_extra_state(),
             },
             config,
         )
         self._continue(compiled, snapshot)
 
+    def initial_extra_state(self):
+        return {}
+
     def fork(self, saver, source, reference):
-        snapshot = self.load_checkpoint(saver, source, reference)
+        snapshot = self.source_snapshot(saver, source, reference)
         compiled = self.graph(saver, executor=self)
         config = compiled.update_state(
             snapshot.config,
@@ -280,3 +292,6 @@ class DocumentExecutor(SerialExecutor):
         )
         config["recursion_limit"] = 20
         self._continue(compiled, compiled.get_state(config))
+
+    def source_snapshot(self, saver, source, reference):
+        return self.load_checkpoint(saver, source, reference)

@@ -81,6 +81,23 @@ def validate_reply(reply: ModelOutput, used_call_ids: set[str]) -> dict | None:
     return None
 
 
+def validate_batch_reply(reply: ModelOutput, used_call_ids: set[str]) -> list[dict]:
+    """Preflight every intent using the same strict schema; execute none here."""
+    calls = reply.message.get("tool_calls")
+    if not calls or not isinstance(calls, list):
+        validate_reply(reply, used_call_ids)
+        return []
+    if len(calls) > corpus.MAX_TOOL_CALLS:
+        raise ValueError("tool_call_limit")
+    seen, validated = set(used_call_ids), []
+    for raw in calls:
+        single = reply.model_copy(update={"message": {**reply.message, "tool_calls": [raw]}})
+        call = validate_reply(single, seen)
+        seen.add(call["id"])
+        validated.append(call)
+    return validated
+
+
 class DocumentSyntheticModel:
     """Deterministic offline driver, never evidence of model autonomy or real usage."""
 
@@ -125,8 +142,37 @@ class DocumentSyntheticModel:
         )
 
 
-def document_model(request):
+class DocumentBatchSyntheticModel(DocumentSyntheticModel):
+    """Offline v2 driver requests all unread documents in one observed batch."""
+
+    def complete(self, messages):
+        reply = super().complete(messages)
+        reply.model = "document-synthetic-v2"
+        tools = [json.loads(item["content"]) for item in messages if item["role"] == "tool"]
+        read = {item["document"]["id"] for item in tools if "document" in item}
+        unread = {
+            doc["id"]: doc
+            for item in tools
+            for doc in item.get("documents", [])
+            if doc["id"] not in read
+        }
+        if unread:
+            reply.message["tool_calls"] = [
+                {
+                    "id": f"document-tool-{len(tools) + index + 1}",
+                    "type": "function",
+                    "function": {
+                        "name": "read_document",
+                        "arguments": json.dumps({"document_id": document_id}),
+                    },
+                }
+                for index, document_id in enumerate(unread)
+            ]
+        return reply
+
+
+def document_model(request, version="1"):
     if request.mode == "synthetic":
-        return DocumentSyntheticModel()
+        return DocumentSyntheticModel() if version == "1" else DocumentBatchSyntheticModel()
     profile = DocumentDeepSeekModel if request.provider == "deepseek" else DocumentOpenAIModel
     return profile.from_environment(request.model)

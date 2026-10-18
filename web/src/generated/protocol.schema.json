@@ -563,6 +563,15 @@
     "DocumentRunRequest": {
       "additionalProperties": false,
       "properties": {
+        "agent_version": {
+          "default": "1",
+          "enum": [
+            "1",
+            "2"
+          ],
+          "title": "Agent Version",
+          "type": "string"
+        },
         "mode": {
           "enum": [
             "live",
@@ -612,10 +621,7 @@
         }
       },
       "required": [
-        "mode",
-        "provider",
-        "model",
-        "variant"
+        "mode"
       ],
       "title": "DocumentRunRequest",
       "type": "object"

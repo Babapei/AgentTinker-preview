@@ -68,6 +68,25 @@ it('writes the selected document case and rejects a different provenance', async
   ).rejects.toThrow('protocol_invalid');
 });
 
+it('keeps omitted legacy request fields valid and applies their server defaults', async () => {
+  const body = { mode: 'synthetic' } as const;
+  expect(parseProtocol('document_run_request', body)).toEqual(body);
+  expect(() => parseProtocol('document_run_request', { ...body, agent_version: '3' })).toThrow(
+    'protocol_invalid',
+  );
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(fixture.view)));
+  expect(await createDocumentRun(body, fixture.scenario, 'legacy-defaults')).toEqual(fixture.view);
+});
+
+it('rejects a request and scenario version mismatch before sending a write', async () => {
+  const fetcher = vi.fn();
+  vi.stubGlobal('fetch', fetcher);
+  await expect(
+    createDocumentRun({ mode: 'synthetic', agent_version: '2' }, fixture.scenario, 'wrong-version'),
+  ).rejects.toThrow('protocol_invalid');
+  expect(fetcher).not.toHaveBeenCalled();
+});
+
 it('preserves assessment pages and rejects another run in either list', async () => {
   const run = fixture.view.run.run_id;
   vi.stubGlobal(

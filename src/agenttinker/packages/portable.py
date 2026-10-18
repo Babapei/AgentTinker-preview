@@ -200,7 +200,7 @@ def inspect_package(package: ExperimentPackage):
         if record.evaluations:
             if (
                 context is None
-                or context.agent.ref != corpus.AGENT
+                or not corpus.is_document_agent(context.agent.ref)
                 or context.case != corpus.dataset_case()
                 or record.evaluation_bindings != bind_evaluations(record, records)
                 or any(

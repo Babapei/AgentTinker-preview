@@ -144,18 +144,22 @@ export async function getScenarios(signal?: AbortSignal) {
 }
 
 export async function createDocumentRun(body: DocumentRunRequest, scenario: Scenario, key: string) {
+  if ((body.agent_version ?? '1') !== scenario.agent.ref.version)
+    throw new Error('protocol_invalid');
   const view = await write(
     `/scenarios/${encodeURIComponent(scenario.definition.ref.id)}/runs`,
     body,
     key,
   );
   const variant =
-    body.variant === 'baseline' ? scenario.definition.baseline : scenario.definition.candidate;
+    (body.variant ?? 'baseline') === 'baseline'
+      ? scenario.definition.baseline
+      : scenario.definition.candidate;
   if (
     view.run.mode !== body.mode ||
     view.run.parent_run_id !== null ||
     view.run.config.provider !== (body.provider ?? 'synthetic') ||
-    (body.model !== null && view.run.config.requested_model !== body.model) ||
+    (body.model != null && view.run.config.requested_model !== body.model) ||
     !equal(view.run.config.experiment, scenario.definition.ref) ||
     !equal(view.run.config.case, scenario.case.ref) ||
     !equal(view.run.config.agent, scenario.agent.ref) ||

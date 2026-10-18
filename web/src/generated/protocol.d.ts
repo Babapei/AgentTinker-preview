@@ -22,6 +22,7 @@ export type Reason =
     )
   | null;
 export type CheckpointAvailability = CheckpointAvailability1[];
+export type AgentVersion1 = '1' | '2';
 export type Mode = 'live' | 'synthetic';
 export type Model = string | null;
 export type Provider = ('openai' | 'deepseek') | null;
@@ -388,10 +389,11 @@ export interface ToolVersions {
   [k: string]: string;
 }
 export interface DocumentRunRequest {
+  agent_version?: AgentVersion1;
   mode: Mode;
-  model: Model;
-  provider: Provider;
-  variant: Variant;
+  model?: Model;
+  provider?: Provider;
+  variant?: Variant;
 }
 export interface EvaluationResult {
   answer_review: AnswerReview;

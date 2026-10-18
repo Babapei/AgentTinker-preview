@@ -27,8 +27,10 @@ def context_for(views) -> ExperimentContext:
         for view in views
     ):
         raise PackageRejected("package_context_mismatch")
-    if config.agent == corpus.AGENT:
-        scenario = corpus.scenario()
+    if corpus.is_document_agent(config.agent):
+        if corpus.document_version(config) is None:
+            raise PackageRejected("package_context_mismatch")
+        scenario = corpus.scenario(config.agent.version)
         if any(
             view.run.config.case != scenario.case.ref
             or view.run.config.task != scenario.case.task

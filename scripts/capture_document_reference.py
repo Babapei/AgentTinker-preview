@@ -15,11 +15,17 @@ def main():
     parser.add_argument("--mode", required=True, choices=("synthetic", "live"))
     parser.add_argument("--provider", choices=("deepseek", "openai"))
     parser.add_argument("--model")
+    parser.add_argument("--agent-version", choices=("1", "2"), default="1")
     parser.add_argument("--database", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     try:
-        request = DocumentRunRequest(mode=args.mode, provider=args.provider, model=args.model)
+        request = DocumentRunRequest(
+            mode=args.mode,
+            provider=args.provider,
+            model=args.model,
+            agent_version=args.agent_version,
+        )
         report = capture_document(args.database, request)
     except Exception as error:
         report = {

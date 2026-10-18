@@ -10,7 +10,7 @@ from typing import Literal
 from uuid import uuid4
 
 from filelock import FileLock, Timeout
-from pydantic import Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 
 from agenttinker.core.records import (
     Capabilities,
@@ -46,6 +46,7 @@ from agenttinker.runtime.checkpoints import (
     runtime_versions,
 )
 from agenttinker.runtime.document import DocumentExecutor
+from agenttinker.runtime.document_v2 import DocumentV2Executor
 from agenttinker.runtime.journal import ExecutionFailed, RunCancelled, RunJournal
 from agenttinker.runtime.model_config import (
     LEGACY_PARAMETER_KEYS,
@@ -80,10 +81,14 @@ class ForkRequest(ValueModel):
 
 
 class DocumentRunRequest(ValueModel):
+    # This is an input contract: old clients may omit newly defaulted fields.
+    model_config = ConfigDict(json_schema_mode_override="validation")
+
     mode: Literal["live", "synthetic"]
     provider: Literal["openai", "deepseek"] | None = None
     model: Text | None = None
     variant: Literal["baseline", "candidate"] = "baseline"
+    agent_version: Literal["1", "2"] = "1"
 
     @model_validator(mode="after")
     def explicit_provider(self):
@@ -168,8 +173,8 @@ class RunService:
             return store.get_view(run_id)
 
     def _model(self, request, agent):
-        if self.model_factory is default_model and agent == corpus.AGENT:
-            return document_model(request)
+        if self.model_factory is default_model and corpus.is_document_agent(agent):
+            return document_model(request, agent.version)
         return self.model_factory(request)
 
     def _check_model_config(self, model, request, view):
@@ -206,6 +211,8 @@ class RunService:
     def _executor(agent):
         if agent == corpus.AGENT:
             return DocumentExecutor
+        if agent == corpus.AGENT_V2:
+            return DocumentV2Executor
         if agent == VersionRef(id=AGENT_ID, version=AGENT_VERSION):
             return SerialExecutor
         raise CheckpointUnavailable("runtime_incompatible")
@@ -219,7 +226,14 @@ class RunService:
             raise CheckpointUnavailable("checkpoint_missing")
         try:
             with open_checkpoints(self.database) as saver:
-                return self._executor(view.run.config.agent).load_checkpoint(saver, view, reference)
+                executor = self._executor(view.run.config.agent)
+                if executor is DocumentV2Executor:
+                    with SQLiteEvaluationStore(self.database) as store:
+                        inherited = store.inherited_spans(view)
+                    return executor.load_checkpoint(saver, view, reference, inherited=inherited)
+                return executor.load_checkpoint(saver, view, reference)
+        except AssessmentRejected:
+            raise CheckpointUnavailable("checkpoint_state_invalid") from None
         except (sqlite3.Error, ValueError, TypeError, KeyError):
             raise CheckpointUnavailable("checkpoint_unreadable") from None
 
@@ -236,7 +250,9 @@ class RunService:
         )
         if reference is None:
             raise CheckpointUnavailable("checkpoint_missing")
-        expected_fields = ("top_k",) if view.run.config.agent == corpus.AGENT else PATCH_FIELDS
+        expected_fields = (
+            ("top_k",) if corpus.is_document_agent(view.run.config.agent) else PATCH_FIELDS
+        )
         if set(reference.allowed_patch_fields) != set(expected_fields):
             raise ForkRejected("unsupported_capability")
         snapshot = self.resolve_checkpoint(view.run.run_id, checkpoint_id)
@@ -254,9 +270,9 @@ class RunService:
             )
         ):
             raise ForkRejected("runtime_incompatible")
-        if config.agent == corpus.AGENT and (
+        if corpus.is_document_agent(config.agent) and (
             config.fault_parameters != {"inject_timeout": False}
-            or config.experiment != corpus.EXPERIMENT
+            or corpus.document_version(config) is None
             or config.case != corpus.dataset_case().ref
             or config.task != corpus.TASK
             or config.tool_policy.get("tool_retry_limit") != 0
@@ -304,7 +320,7 @@ class RunService:
         return self._submit(request, request_key, fingerprint)
 
     def submit_document(self, request: DocumentRunRequest, request_key: str):
-        definition = corpus.experiment_definition()
+        definition = corpus.experiment_definition(request.agent_version)
         variant = definition.baseline if request.variant == "baseline" else definition.candidate
         resolved = RunRequest(
             mode=request.mode,
@@ -319,13 +335,19 @@ class RunService:
             {
                 "operation": "document-experiment",
                 "experiment": definition.ref.model_dump(),
-                "request": request.model_dump(mode="json"),
+                # Default v1 retains the exact pre-v2 request fingerprint.
+                "request": request.model_dump(
+                    mode="json",
+                    exclude={"agent_version"} if request.agent_version == "1" else set(),
+                ),
             },
         )
-        return self._submit(resolved, request_key, fingerprint, variant=variant.ref)
+        return self._submit(
+            resolved, request_key, fingerprint, variant=variant.ref, agent=definition.agent
+        )
 
-    def _submit(self, request, request_key, fingerprint, *, variant=None):
-        agent = corpus.AGENT if variant else VersionRef(id=AGENT_ID, version=AGENT_VERSION)
+    def _submit(self, request, request_key, fingerprint, *, variant=None, agent=None):
+        agent = agent or VersionRef(id=AGENT_ID, version=AGENT_VERSION)
         with self._lock, SQLiteEventStore(self.database) as store:
             if self._closing:
                 raise RuntimeError("runtime_closed")
@@ -365,10 +387,12 @@ class RunService:
                     provider=resolved.provider or "synthetic",
                     requested_model=resolved.model,
                     model_parameters=model_parameters,
-                    prompt_version=corpus.PROMPT_VERSION if variant else "single-tool-v1",
+                    prompt_version=corpus.agent_definition(agent.version).prompt_version
+                    if variant
+                    else "single-tool-v1",
                     tool_versions=corpus.TOOL_VERSIONS if variant else TOOL_VERSIONS,
                     fixture_hash=corpus.fixture_hash() if variant else fixture_hash(),
-                    experiment=corpus.EXPERIMENT if variant else None,
+                    experiment=corpus.experiment_definition(agent.version).ref if variant else None,
                     case=corpus.dataset_case().ref if variant else None,
                     variant=variant,
                     evaluator_versions={corpus.EVALUATOR.id: corpus.EVALUATOR.version}
@@ -456,7 +480,7 @@ class RunService:
                         "tool_policy": policy.model_dump(),
                         **(
                             {"variant": VersionRef(id=f"document-top{policy.top_k}", version="1")}
-                            if config.agent == corpus.AGENT
+                            if corpus.is_document_agent(config.agent)
                             else {}
                         ),
                     }

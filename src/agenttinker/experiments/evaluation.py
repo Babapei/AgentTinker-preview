@@ -120,13 +120,11 @@ def validate_document_context(view: RunView, inherited: tuple[Span, ...] = ()):
     case, config = corpus.dataset_case(), view.run.config
     if (
         view.run.status not in TERMINAL_STATUSES
-        or config.agent != corpus.AGENT
+        or corpus.document_version(config) is None
         or config.case != case.ref
-        or config.experiment != corpus.EXPERIMENT
         or config.task != case.task
         or config.fixture_hash != case.fixture_hash
         or config.tool_versions != corpus.TOOL_VERSIONS
-        or config.prompt_version != corpus.PROMPT_VERSION
         or config.evaluator_versions.get(corpus.EVALUATOR.id) != corpus.EVALUATOR.version
         or tuple(span.span_id for span in inherited) != view.run.inherited_span_ids
         or any(span.run_id == view.run.run_id for span in inherited)

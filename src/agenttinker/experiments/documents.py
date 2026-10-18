@@ -27,6 +27,7 @@ EVALUATOR = VersionRef(id="document-evidence", version="1")
 PROMPT_VERSION = "document-react-v1"
 TOOL_VERSIONS = {"search_documents": "2", "read_document": "1"}
 MAX_MODEL_CALLS = 8
+MAX_TOOL_CALLS = 7
 SYSTEM = (
     "You investigate a fixed fictional release-note corpus. Use the read-only tools as needed. "
     "Search results are metadata, not document bodies. Read a document before using its facts. "
@@ -36,6 +37,14 @@ SYSTEM = (
     "Answer using only bodies actually read, citing each source as [document-id]. "
     "If the returned material is insufficient, say which information is missing honestly. "
     "Make at most one tool call per response. Finish within seven tool calls."
+)
+AGENT_V2 = VersionRef(id="document-react", version="2")
+EXPERIMENT_V2 = VersionRef(id="document-missing", version="2")
+PROMPT_VERSION_V2 = "document-react-v2"
+SYSTEM_V2 = SYSTEM.replace(
+    "Make at most one tool call per response. Finish within seven tool calls.",
+    "You may request multiple tools in one response; they execute serially in the given order. "
+    "Finish within seven tool calls in total.",
 )
 TASK = (
     "根据虚构发布说明，说明 Version 2 新增的可配置能力，以及修复的引用问题。"
@@ -118,11 +127,27 @@ def tool_schemas() -> dict[str, dict]:
     }
 
 
-def agent_definition() -> AgentDefinition:
+def is_document_agent(agent: VersionRef) -> bool:
+    return agent in (AGENT, AGENT_V2)
+
+
+def document_version(config) -> str | None:
+    for agent, experiment, prompt in (
+        (AGENT, EXPERIMENT, PROMPT_VERSION),
+        (AGENT_V2, EXPERIMENT_V2, PROMPT_VERSION_V2),
+    ):
+        if (config.agent, config.experiment, config.prompt_version) == (agent, experiment, prompt):
+            return agent.version
+    return None
+
+
+def agent_definition(version="1") -> AgentDefinition:
+    if version not in {"1", "2"}:
+        raise ValueError("unsupported_document_version")
     return AgentDefinition(
-        ref=deepcopy(AGENT),
-        prompt_version=PROMPT_VERSION,
-        system_prompt=SYSTEM,
+        ref=deepcopy(AGENT if version == "1" else AGENT_V2),
+        prompt_version=PROMPT_VERSION if version == "1" else PROMPT_VERSION_V2,
+        system_prompt=SYSTEM if version == "1" else SYSTEM_V2,
         tool_versions=deepcopy(TOOL_VERSIONS),
         tool_schemas=tool_schemas(),
         max_model_calls=MAX_MODEL_CALLS,
@@ -151,16 +176,16 @@ def dataset_case() -> DatasetCase:
     )
 
 
-def experiment_definition() -> ExperimentDefinition:
+def experiment_definition(version="1") -> ExperimentDefinition:
     return ExperimentDefinition(
-        ref=deepcopy(EXPERIMENT),
+        ref=deepcopy(EXPERIMENT if version == "1" else EXPERIMENT_V2),
         title="没有检索到，还是没有正确使用",
         description="固定材料排序；top_k=2 缺少第三份材料，分支只改为 3。单次结果仅为个例。",
         success_criteria=(
             "区分必需文档返回、正文读取、引用来源与答案语义评价。",
             "缺少材料时诚实说明；事实覆盖和编造与否由人工复核，不能仅凭字符串判定。",
         ),
-        agent=deepcopy(AGENT),
+        agent=agent_definition(version).ref,
         case=dataset_case().ref,
         allowed_variables=("top_k",),
         baseline=Variant(
@@ -177,10 +202,10 @@ def experiment_definition() -> ExperimentDefinition:
     )
 
 
-def scenario() -> Scenario:
+def scenario(version="1") -> Scenario:
     return Scenario(
-        definition=experiment_definition(),
-        agent=agent_definition(),
+        definition=experiment_definition(version),
+        agent=agent_definition(version),
         case=dataset_case(),
         documents=documents(),
     )
