@@ -99,3 +99,93 @@ def test_cli_rejects_tampered_input_and_source_alias_without_overwriting_either(
     )
     assert SCRIPT["main"]() == 1 and output.read_text() == "keep existing observation"
     assert len(capsys.readouterr().out.splitlines()) == 2
+
+
+def test_native_experiments_keep_same_cases_failures_and_original_rule_provenance():
+    paths = [
+        Path("examples/m4") / name for name in ("tool-timeout.json", "document-missing-v2.json")
+    ]
+    originals = [path.read_bytes() for path in paths]
+    packages = [parse_package(data) for data in originals]
+    payload = SCRIPT["make_experiments"](packages)
+    assert payload == SCRIPT["make_experiments"](packages)
+    assert len(payload["dataset"]["inputs"]) == 2
+    assert payload["dataset"]["outputs"] == [{}, {}]  # No invented gold answers.
+    a, b = payload["variants"]
+    assert [a["name"], b["name"]] == ["history-A", "history-B"]
+    assert [run["case_index"] for run in a["runs"]] == [0, 1]
+    traces = {
+        span["traceId"]
+        for span in SCRIPT["make_otlp"](packages)["resourceSpans"][0]["scopeSpans"][0]["spans"]
+    }
+    models = []
+    for variant in (a, b):
+        assert variant["metadata"]["new_provider_requests"] == 0
+        assert not variant["metadata"]["counts_as_user_session"]
+        assert variant["runs"][0]["evaluations"] == []  # Absence isn't a passing score.
+        for row in variant["runs"]:
+            request = row["request"]
+            assert request["trace_id"] in traces
+            output = request["output"]
+            assert output["source_reviews"] == []
+            assert output["source_mode"] == "live"
+            for span in output["source_view"]["spans"]:
+                assert span["cost"]["amount"] is None and span["cost"]["kind"] == "unknown"
+                if span["kind"] == "model":
+                    models.append(span)
+            source = output["source_evaluations"]
+            for copied, check in zip(
+                row["evaluations"], source[0]["checks"] if source else [], strict=True
+            ):
+                assert copied["annotator_kind"] == "CODE"
+                assert copied["result"]["label"] == check["verdict"]
+                assert copied["result"]["explanation"] == check["explanation"]
+                assert copied["metadata"]["source_evaluation_id"] == source[0]["evaluation_id"]
+                assert copied["metadata"]["source_input_hash"] == source[0]["input_hash"]
+                assert copied["metadata"]["source_span_ids"] == check["span_ids"]
+                assert copied["metadata"]["answer_review"] == "unreviewed"
+                assert copied["metadata"]["source_duration_seconds"] is None
+    assert len(models) == 7
+    assert sum(span["usage"]["total_tokens"] for span in models) == 5063
+    assert a["runs"][0]["request"]["error"] == "failed"
+    assert a["runs"][0]["request"]["output"]["final_answer"] is None
+    assert b["runs"][0]["request"]["error"] is None
+    assert [item["result"]["score"] for item in a["runs"][1]["evaluations"]] == [0, 0, 1]
+    assert [item["result"]["score"] for item in b["runs"][1]["evaluations"]] == [1, 1, 0]
+    assert "hrelease-v2" in b["runs"][1]["request"]["output"]["final_answer"]
+    assert [path.read_bytes() for path in paths] == originals
+
+
+def test_unknown_source_rule_stays_unscored_and_ambiguous_snapshots_reject():
+    from test_packages import resign
+
+    data = json.loads(Path("examples/m4/document-missing-v2.json").read_bytes())
+    record = data["files"][f"runs/{data['manifest']['root_run_id']}.json"]
+    record["evaluations"][0]["checks"][0]["verdict"] = "unknown"
+    payload = SCRIPT["make_experiments"]([parse_package(resign(data))])
+    result = payload["variants"][1]["runs"][0]["evaluations"][0]["result"]
+    assert result["label"] == "unknown" and result["score"] is None
+    extra = {**record["evaluations"][0], "evaluation_id": "eval_second_snapshot"}
+    record["evaluations"].append(extra)
+    binding = {**record["evaluation_bindings"][0], "evaluation_id": extra["evaluation_id"]}
+    record["evaluation_bindings"].append(binding)
+    with pytest.raises(ValueError, match="m5_ambiguous_evaluation_snapshots"):
+        SCRIPT["make_experiments"]([parse_package(resign(data))])
+
+
+def test_native_experiments_reject_duplicate_input_and_single_unpaired_run():
+    from test_packages import resign
+
+    package = parse_package(Path("examples/m4/tool-timeout.json").read_bytes())
+    with pytest.raises(ValueError, match="duplicate_package"):
+        SCRIPT["make_experiments"]([package, package])
+    data = json.loads(canonical(package))
+    child = data["manifest"]["root_run_id"]
+    parent = data["files"][f"runs/{child}.json"]["view"]["run"]["parent_run_id"]
+    del data["files"][f"runs/{child}.json"]
+    data["manifest"]["root_run_id"] = parent
+    data["manifest"]["entries"] = [
+        entry for entry in data["manifest"]["entries"] if entry["path"] != f"runs/{child}.json"
+    ]
+    with pytest.raises(ValueError, match="m5_experiments_require_one_parent_child_pair"):
+        SCRIPT["make_experiments"]([parse_package(resign(data))])

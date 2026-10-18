@@ -21,16 +21,35 @@
 | 对象 | 已观察 | 未完成/限制 |
 | --- | --- | --- |
 | AgentTinker 内置首版 | [本轮生产 CLI/UI 演练](../examples/m5/native-walkthrough.json)实际创建两类原生模拟 A/B、单参数分支/过程对比、规则评价、导出→导入→回放→再导出；任务/夹具/Agent 与参考一致，另读相同两份真实包，共 12 条记录，原事实不变。 | 原生练习为明确的模拟模式，原模型真实结果另保留；这是助手脚本检查，不是真实用户成绩/耗时。 |
-| Phoenix 20.23.0，本机单实例 | 独立临时环境无提供商配置，assistant/telemetry 关闭；2 包通过 OTLP protobuf 进入 4 traces/22 spans。REST 逐属性核对原身份、父项映射、状态、输入输出、用量/未知费用；UI 打开超时错误和文档 B 最后模型输出，保留 TOOL_TIMEOUT/hrelease-v2。浏览前后数据摘要不变。 | 本桥接只提供历史观察；没有配置可执行图、checkpoint 恢复、平台内分支或新的 Phoenix 原生评价。不能据此声称 Phoenix 没有这些相关能力。没有人工任务耗时或接入优势结论。 |
+| Phoenix 20.23.0，本机单实例 | 相同 2 包进入 4 traces/22 spans；[初步追踪核对](../examples/m5/phoenix-observation.json)保留。新增[原生数据集/实验对照](../examples/m5/phoenix-comparison.json)：2 个案例、A/B 两个实验、4 条历史结果、6 项来源规则；实际选择两实验进入 Grid，并从单例打开超时和末轮引用错误。原记录、评价来源和用量不变。 | 这是历史结果和来源 CODE 规则的映射，未重新执行 Agent/评价器，未接可执行图或 checkpoint 恢复/分支。不能据此声称 Phoenix 没有相关能力，也没有人工耗时、产品排名或接入优势结论。 |
 | LangSmith Studio | 官方本地开发文档已读取，明确列出 LangSmith API key 前提；当前环境未绑定该配置，两个常见 key 变量也不存在。 | 未登录、未启动可用 Studio 对照，尚无界面实操结果。没有另建账户或请求提供商调用，也不据缺少配置推断工具能力。 |
 
-最新机器核对在 [phoenix-observation.json](../examples/m5/phoenix-observation.json)。它标为 assistant_tool_check、counts_as_user_session=false，用户成绩/耗时为 null；截图在忽略的 artifacts/m5-phoenix-*.png，不属于已部署网站。
+两次机器核对分别保存在 [phoenix-observation.json](../examples/m5/phoenix-observation.json)和 [phoenix-comparison.json](../examples/m5/phoenix-comparison.json)，都标为 assistant_tool_check、counts_as_user_session=false，用户成绩/耗时为 null；截图在忽略的 artifacts/m5-phoenix-*.png，不属于已部署网站。
+
+## Phoenix 原生数据集与实验对照
+
+本轮沿用 20.23.0 的本机 OpenAPI，实际使用 `/v1/datasets/upload`、`/v1/datasets/{id}/experiments`、`/v1/experiments/{id}/runs` 和 `/v1/experiment_evaluations`。新增 `phoenix-experiments` 离线格式与[操作检查器](../web/scripts/check-m5-phoenix-experiments.mjs)，应用运行时、依赖和 Agent 对象不变。安装/映射/检查脚本的工作不计为用户诊断耗时。
+
+每个源包是一个案例，使用相同任务、Agent 版本和材料摘要。A/B 分别进入 history-A/history-B，同一数据集版本各一次；`observation_kind=imported_historical_record` 明确说明输出已在过去产生。保留完整来源视图、评价与绑定、原父项/检查点/补丁和未知费用；trace ID 沿用 OTLP 派生映射，B 不补写继承的模型调用。没有人工语义复核或 gold answer，因此 reference output 留空。
+
+文档两条记录各 3 项规则复制为 `source/document-evidence:1/...` 的 CODE 评价，label、解释、证据 Span、原评价身份/input hash 和 sample_size=1 均保留。pass/fail 映射 1/0，unknown 保持 null；不把来源规则改称 Phoenix 新运行的判分器。没有评价的超时案例保持无评价；多个同名评价快照拒绝转换，避免静默覆盖。原失败评价仍保留在来源输出中，不补造分数。
+
+实际选择两个实验的复选框后进入原生 Grid，逐案例核对：
+
+| 案例 | A | B | 保留的判断边界 |
+| --- | --- | --- | --- |
+| 工具超时 | 执行 failed，374 Token | 执行成功，新增 250 Token | 从 A 的单例打开工具输入/输出，可见 TOOL_TIMEOUT；没有补造文档规则分数 |
+| 文档 v2 | 执行成功，必需材料返回/读取 fail，引用来源规则 pass；2491 Token | 执行成功，必需材料返回/读取 pass，引用来源规则 fail；新增 1948 Token | B 的末轮模型仍含 hrelease-v2；读到正文不等于答案正确，双方都没有人工语义复核 |
+
+列表汇总显示原规则的差异，Grid 可逐项查看，View run trace 可打开原追踪。REST 再导出逐字段核对完整视图/来源规则及 metadata；浏览前后追踪与实验导出摘要相同，导航 GraphQL mutation 为 0。设置阶段共 13 次本机 POST：1 次创建数据集、2 次实验、4 次历史结果、6 次来源规则；没有调用模型、工具、远程评价或创建 HUMAN 意见。
+
+运行起止时间沿用历史记录；规则只保存原创建时刻，原本没有评价耗时。接口要求的 start/end 均取该时刻，并以 `source_duration_seconds=null`、`adapter_interval_is_instant=true` 标识为点观察，不能当作测得 0 秒。原生界面会显示耗时/Token 变化及聚合百分比；两类任务不同、每类仅一例、A 含失败且 B 继承前缀，因此不作策略、速度或产品优势结论。
 
 ## 本次费用显示观察
 
 所有原始 source_cost.amount 均为 null、kind=unknown，转换后仍相同。当前 Phoenix 版本/这份转换/未配置价格的条件下，表格和追踪详情显示累计费用 `$0`；它不是原始实际账单。原数据没有被补成零，观察指南仍要求参与者区分未知和实际零值。
 
-这只记录当前配置的显示行为，没有验证 Phoenix 其他计价配置/适配器，也不推导产品排名或普遍缺陷。原 v2 B 引用规则 fail、real_reference_verified=false 与无人工作答复核保持，不从执行 OK 推导答案正确。
+本轮原生实验汇总显示 `No cost data`，费用列为 `--`；链接追踪详情仍显示 `$0`。原始 source_cost.amount=null 没有变化，不能把任何汇总显示当作账单。这只记录当前版本/映射/未配置价格的行为，没有验证其他计价配置，也不推导产品排名或普遍缺陷。原 v2 B 引用规则 fail、real_reference_verified=false 与无人工作答复核保持，不从执行 OK 推导答案正确。
 
 ## 重现这部分本地操作
 
@@ -41,7 +60,7 @@ env -u DEEPSEEK_API_KEY -u DEEPSEEK_MODEL -u OPENAI_API_KEY -u OPENAI_MODEL \
   PHOENIX_HOST=127.0.0.1 PHOENIX_PORT=16007 PHOENIX_GRPC_PORT=14317 \
   PHOENIX_WORKING_DIR="$PWD/artifacts/m5-phoenix-final" \
   PHOENIX_DISABLE_AGENT_ASSISTANT=true PHOENIX_TELEMETRY_ENABLED=false \
-  uv tool run --from arize-phoenix==20.23.0 phoenix serve
+  uv tool run --from arize-phoenix==20.23.0 phoenix serve > artifacts/m5-phoenix-server.log 2>&1
 ```
 
 等服务 healthz 可达后，在另一个终端执行一次离线转换与本机导入：
@@ -58,10 +77,23 @@ curl --fail -H 'Content-Type: application/x-protobuf' \
 node web/scripts/check-m5-phoenix.mjs
 ```
 
-collector 后台接收有延迟，需等 agenttinker-m5 项目出现再执行检查。使用独立空目录，别把旧观察和本次数据混算；检查默认针对这两份固定输入与 20.23.0。页面时间筛选要覆盖来源日期（2026-10-16/18）；较晚重现时应调整时间范围。检查器只读核对，不自行推送数据、启动服务或调用模型。
+在上述已收到 22 个 spans 的本机实例上，再完成原生实验对照：
+
+```bash
+uv run python scripts/m5_export_otlp.py \
+  --package examples/m4/tool-timeout.json --package examples/m4/document-missing-v2.json \
+  --format phoenix-experiments --output artifacts/m5-phoenix-experiments.json
+node web/scripts/check-m5-phoenix-experiments.mjs http://127.0.0.1:16007
+```
+
+本轮实际使用独立目录 artifacts/m5-phoenix-comparison-20261019、HTTP 16009/gRPC 14319；端口可按启动参数调整。新检查器只允许 127.0.0.1，每次新建随机后缀的数据集，显式执行上述 13 次本机写入，再只读浏览/核对，不修改源追踪内容/文件；结束后关闭自己启动的 Chromium，Phoenix 由启动终端停止。成功摘要写 artifacts/m5-phoenix-comparison.json，原始映射/数据库/日志/截图只在忽略的 artifacts 中，不入 Git。
+
+collector 后台接收有延迟，需等 agenttinker-m5 项目出现再执行检查。使用独立空目录，别把旧观察和本次数据混算；检查针对这两份固定输入与 20.23.0。页面时间筛选要覆盖来源日期（2026-10-16/18）；较晚重现时应调整时间范围。原 check-m5-phoenix.mjs 仍只读核对，不自行推送数据、启动服务或调用模型。
 
 ## 接续
 
-内置首版的完整生产页面助手演练已有证据。继续补齐 Studio/Phoenix 对照的其余实际操作与当前缺少的配置，组织原定真实试用并处理反馈；不从助手演练生成用户完成率或产品排名，M5/原计划仍未完成，外部 Agent 可选接入后移。
+内置首版完整助手演练、Phoenix 历史观察与原生数据集/实验比较已有证据。继续补齐 Studio 的配置/实际操作，执行控制对照仍按实际适配范围验证，不能把导入历史等同于执行恢复。组织原定真实试用并处理反馈；不从助手演练生成用户完成率或产品排名，M5/原计划仍未完成，外部 Agent 可选接入后移。
+
+注：本轮查阅旧 Phoenix “Run experiments” 文档地址时被重定向到 Arize AX 文档；没有用 AX 的接口说明或界面替代 Phoenix 实测。本节接口来自本机固定版本 OpenAPI 和实际响应。
 
 官方依据：[Phoenix 启动](https://arize.com/docs/phoenix/get-started)、[项目路由](https://arize.com/docs/phoenix/tracing/how-to-tracing/setup-tracing/setup-projects)、[Studio 本地开发前提](https://docs.langchain.com/langsmith/local-dev-testing)。官方说明与本机实测在本文分别标记。

@@ -1,4 +1,4 @@
-"""Convert validated packages to OTLP JSON for local M5 observation, without execution."""
+"""Convert validated packages for local M5 observation, without model/tool execution."""
 
 import argparse
 import base64
@@ -196,6 +196,139 @@ def make_otlp(packages):
     }
 
 
+def make_experiments(packages):
+    """Map paired historical records to native Phoenix experiments, never rerun them."""
+    if len({digest(package) for package in packages}) != len(packages):
+        raise ValueError("duplicate_package")
+    dataset = {
+        "name": "agenttinker-m5-historical",
+        "description": "Historical A/B pairs; imported records, no new Agent executions.",
+        "inputs": [],
+        "outputs": [],
+        "metadata": [],
+    }
+    variants = [
+        {
+            "name": f"history-{name}",
+            "description": "Imported source records. No new model/tool execution or human review.",
+            "metadata": {
+                "observation_kind": "imported_historical_record",
+                "counts_as_user_session": False,
+                "new_provider_requests": 0,
+                "cross_case_average_is_quality_claim": False,
+            },
+            "runs": [],
+        }
+        for name in ("A", "B")
+    ]
+    for index, package in enumerate(packages):
+        _, records, _ = inspect_package(package)
+        namespace = digest(package)
+        child = records[package.manifest.root_run_id]
+        parent = records.get(child.view.run.parent_run_id)
+        if len(records) != 2 or parent is None or parent.view.run.parent_run_id is not None:
+            raise ValueError("m5_experiments_require_one_parent_child_pair")
+        a, b = parent.view.run, child.view.run
+        if (a.config.task, a.config.agent, a.config.fixture_hash) != (
+            b.config.task,
+            b.config.agent,
+            b.config.fixture_hash,
+        ):
+            raise ValueError("m5_experiments_case_mismatch")
+        dataset["inputs"].append(
+            {
+                "task": a.config.task,
+                "agent": a.config.agent.model_dump(mode="json"),
+                "fixture_hash": a.config.fixture_hash,
+            }
+        )
+        # There is no human-reviewed gold answer in these packages.
+        dataset["outputs"].append({})
+        dataset["metadata"].append(
+            {
+                "source_package_sha256": namespace,
+                "source_run_ids": [a.run_id, b.run_id],
+                "observation_kind": "imported_historical_record",
+                "gold_answer_available": False,
+            }
+        )
+        roots = {
+            item["spanId"]: {
+                attribute["key"]: next(iter(attribute["value"].values()))
+                for attribute in item["attributes"]
+            }
+            for item in export_package(package)
+            if "parentSpanId" not in item
+        }
+        for variant, record in zip(variants, (parent, child), strict=True):
+            run = record.view.run
+            root = roots[identifier(namespace, "root", run.run_id, 16)]
+            evaluations, names = [], set()
+            for evaluation in record.evaluations:
+                for check in evaluation.checks:
+                    evaluator = evaluation.evaluator
+                    name = f"source/{evaluator.id}:{evaluator.version}/{check.check_id}"
+                    if name in names:
+                        raise ValueError("m5_ambiguous_evaluation_snapshots")
+                    names.add(name)
+                    evaluations.append(
+                        {
+                            "name": name,
+                            "annotator_kind": "CODE",
+                            "start_time": evaluation.created_at.isoformat(),
+                            "end_time": evaluation.created_at.isoformat(),
+                            "result": {
+                                "label": check.verdict,
+                                "score": {"pass": 1, "fail": 0, "unknown": None}[check.verdict],
+                                "explanation": check.explanation,
+                            },
+                            "metadata": {
+                                "observation_kind": "copied_source_rule",
+                                "source_package_sha256": namespace,
+                                "source_evaluation_id": evaluation.evaluation_id,
+                                "source_input_hash": evaluation.input_hash,
+                                "source_span_ids": list(check.span_ids),
+                                "answer_review": evaluation.answer_review,
+                                "sample_size": evaluation.sample_size,
+                                "statistical_conclusion": evaluation.statistical_conclusion,
+                                "source_duration_seconds": None,
+                                "adapter_interval_is_instant": True,
+                            },
+                        }
+                    )
+            variant["runs"].append(
+                {
+                    "case_index": index,
+                    "request": {
+                        "output": {
+                            "observation_kind": "imported_historical_record",
+                            "source_package_sha256": namespace,
+                            "source_mode": record.source.mode,
+                            "source_provenance": record.source.model_dump(mode="json"),
+                            "source_view": record.view.model_dump(mode="json"),
+                            "source_evaluation_bindings": [
+                                item.model_dump(mode="json") for item in record.evaluation_bindings
+                            ],
+                            "source_evaluations": [
+                                item.model_dump(mode="json") for item in record.evaluations
+                            ],
+                            "source_reviews": [
+                                item.model_dump(mode="json") for item in record.reviews
+                            ],
+                            "final_answer": root.get("output.value"),
+                        },
+                        "repetition_number": 1,
+                        "start_time": run.created_at.isoformat(),
+                        "end_time": run.updated_at.isoformat(),
+                        "trace_id": identifier(namespace, "trace", run.run_id, 32),
+                        "error": None if run.status == "succeeded" else run.status,
+                    },
+                    "evaluations": evaluations,
+                }
+            )
+    return {"schema_version": "m5-phoenix-experiments-1", "dataset": dataset, "variants": variants}
+
+
 def encode_otlp(payload, wire_format):
     if wire_format == "json":
         return json_text(payload).encode()
@@ -224,14 +357,24 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--package", type=Path, action="append", required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--format", choices=("json", "protobuf"), default="json")
+    parser.add_argument(
+        "--format", choices=("json", "protobuf", "phoenix-experiments"), default="json"
+    )
     args = parser.parse_args()
     try:
         if args.output.resolve() in {path.resolve() for path in args.package}:
             raise ValueError("output_must_differ_from_source")
         packages = [parse_package(path.read_bytes()) for path in args.package]
-        payload = make_otlp(packages)
-        data = encode_otlp(payload, args.format)
+        payload = (
+            make_experiments(packages)
+            if args.format == "phoenix-experiments"
+            else make_otlp(packages)
+        )
+        data = (
+            json_text(payload).encode()
+            if args.format == "phoenix-experiments"
+            else encode_otlp(payload, args.format)
+        )
         args.output.parent.mkdir(parents=True, exist_ok=True)
         with NamedTemporaryFile(dir=args.output.parent, delete=False) as handle:
             handle.write(data)
@@ -240,6 +383,17 @@ def main():
     except Exception as error:
         print(json.dumps({"converted": False, "error_code": type(error).__name__}))
         return 1
+    if args.format == "phoenix-experiments":
+        print(
+            json.dumps(
+                {
+                    "converted": True,
+                    "historical_runs": sum(len(item["runs"]) for item in payload["variants"]),
+                    "source_packages": len(packages),
+                }
+            )
+        )
+        return 0
     spans = payload["resourceSpans"][0]["scopeSpans"][0]["spans"]
     print(
         json.dumps(
