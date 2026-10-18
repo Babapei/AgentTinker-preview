@@ -1,5 +1,3 @@
-import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import {
   createDocumentRun,
@@ -21,6 +19,7 @@ import {
   type Scenario,
 } from './protocol';
 import { documentRequestIdentity, documentScenario, isDocumentRun } from './document-experiment';
+import { offlineFixture } from './test/offline-fixtures';
 
 let fixture: {
   scenario: Scenario;
@@ -33,12 +32,7 @@ let fixture: {
   review_page: ReviewPage;
 };
 beforeAll(() => {
-  fixture = JSON.parse(
-    execFileSync('uv', ['run', 'python', 'scripts/export_assessment_fixtures.py'], {
-      cwd: fileURLToPath(new URL('../../', import.meta.url)),
-      encoding: 'utf8',
-    }),
-  );
+  fixture = offlineFixture('assessments');
 });
 afterEach(() => vi.unstubAllGlobals());
 

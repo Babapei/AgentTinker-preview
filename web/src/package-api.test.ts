@@ -1,19 +1,12 @@
-import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { exportPackage, getProvenance, importPackage } from './api';
 import { parseProtocol, type ImportProvenance, type ImportResult } from './protocol';
 import { actionError } from './mutations';
+import { offlineFixture } from './test/offline-fixtures';
 
 let fixture: { package: unknown; import_result: ImportResult; import_provenance: ImportProvenance };
 beforeAll(() => {
-  fixture = JSON.parse(
-    execFileSync('uv', ['run', 'python', 'scripts/export_assessment_fixtures.py'], {
-      cwd: fileURLToPath(new URL('../../', import.meta.url)),
-      encoding: 'utf8',
-      maxBuffer: 4 * 1024 * 1024,
-    }),
-  );
+  fixture = offlineFixture('assessments');
 });
 afterEach(() => vi.unstubAllGlobals());
 
