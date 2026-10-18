@@ -2,6 +2,8 @@
 
 此目录包含[空白会话模板](session-template.json)、[内置首版完整助手演练](native-walkthrough.json)、[Phoenix 历史观察](phoenix-observation.json)和[Phoenix 原生实验比较](phoenix-comparison.json)，没有真实用户成绩。status=not_started、null 和空列表表示尚未记录，不表示成功、零耗时或零错误。
 
+[Studio 开发 API 控制](studio-control.json)记录两个当前原生执行器的模拟 A/B、Agent Server 旧检查点分支与前缀复用；3/8 个旧完整状态不变。它是 assistant_api_check，不代表页面内操作、平台 ForkRequest 等价或真人成绩；本机规则只是适配观察后的纯函数检查，原真实引用失败保留。无 key 的开发服务/Studio 连接已实测，缺少 key 不再直接列为连接阻塞；见[接入说明](../../docs/m5-studio.md)。
+
 流程与共同输入见[M5 验证说明](../../docs/m5-validation.md)，分别使用[参与者任务卡](../../docs/m5/participant-tasks.md)和[观察指南](../../docs/m5/observer-guide.md)。实际记录先放 artifacts/m5-study；保留原观察、证据与未完成项。
 
 作者/助手工具操作和自动化证据与真实用户会话分别保存。M4 的真实模型参考不会自动变成 M5 用户使用证据；原定 5 人/至少 4 人目标尚未实测。

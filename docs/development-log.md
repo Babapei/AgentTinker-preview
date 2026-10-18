@@ -2,6 +2,14 @@
 
 按日期倒序记录可检查的工作节点；记录格式和提交流程见 [开发约定](../CONTRIBUTING.md)。同一天的新条目放在前面。
 
+## 2026-10-19 · M5-07：更正 Studio 无密钥条件，核对原生开发 API 检查点分支
+
+- **阶段/任务与状态：**M5 进行中；无账号本机 Studio 连接成立，两个当前场景的开发 API 执行/旧点分支检查完成；页面内完整操作接续检查，真实试用/反馈未开始。
+- **改动与原因：**官方 FAQ/快速开始/模板与实际启动表明，关闭 tracing 后可无 LangSmith key 运行本机开发服务并连接 Studio；更正旧的配置阻塞推断，保留旧日志。研究桥接复用现有串行/v2 model/tool 节点、固定模拟驱动；Agent Server 拥有状态/检查点，journal 改为原生 Span/accounting 的 custom stream 输出，不写平台数据库、saver 或 Intervention。实际图检查发现工具节点孤立：原图缺少条件目标声明，已为串行/文档 v1/v2 补齐 path_map，原节点/判断/协议不变。准备命令将绝对图引用/输入/私有开发数据放在 artifacts；应用依赖和原参考不变。
+- **验证：**新增 3 项回归与 308 Python 全量通过；桥接逐步输出对应当前原生模拟 A/B，冻结配置拒绝更换 provider/task/fixture，旧检查点值不变。期间一次崩溃恢复子进程超过既有 10 秒，单项及停止浏览器后的全量复核通过，未改超时/断言，偶发原因未确认。CLI 0.4.36/API 0.16.1/inmem 0.36.1/SDK 0.4.6/LangGraph 1.2.14 实操：超时 A 1 模型/1 尝试失败，B 新增 1 模型/2 尝试先失败后成功；文档 A 3 模型/3 工具、B 新增 2 模型/4 工具，复用首模型。3/8 个旧完整状态 metadata/tasks/values 前后摘要相同；本机纯规则 A fail/fail/pass、B pass/pass/pass。SSE 遮蔽异常消息，另核对工具输出与 task.error 的 TOOL_TIMEOUT。证据 examples/m5/studio-control.json，界面操作不从 API 结果补为通过。
+- **环境/限制与用量：**修订 242/观测当前/running/connected/网络 unrestricted/enforced/DeepSeek ready；本实例显式移除提供商和 LangSmith 变量、关闭 tracing，未登录或创建账户，没有新提供商请求/人工意见。Agent Server 通用状态修改不等于平台的边界/单参数/幂等/取消/恢复保证；本机规则是适配 Span 快照后的纯函数检查，不是 LangSmith 判分。旧真实 B 引用 fail、费用/账单未知保持。临时服务供下一节点页面校核，结束后停止，不公开部署；81 Vitest/43 Chromium 应用基线沿用。
+- **下一步：**实际核对 Studio 两场景的步骤、状态编辑与分支控制，记录与平台/Phoenix 的实际能力和接入成本，再完成真人试用与反馈修正；外部 Agent 继续后移。
+
 ## 2026-10-19 · M5-06：相同历史 A/B 的 Phoenix 原生数据集与实验比较
 
 - **阶段/任务与状态：**M5 进行中；在已完成追踪观察之外，补齐固定两案例的 Phoenix 原生实验比较。Studio、执行控制对照其余部分、真实用户试用与反馈仍待完成。

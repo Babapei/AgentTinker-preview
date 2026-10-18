@@ -62,9 +62,13 @@ class DocumentV2Executor(DocumentExecutor):
         graph.add_node("model", executor.model_node if executor else read_only)
         graph.add_node("tool", executor.tool_node if executor else read_only)
         graph.add_edge(START, "model")
-        graph.add_conditional_edges("model", lambda state: "tool" if state["tool_call"] else END)
         graph.add_conditional_edges(
-            "tool", lambda state: "tool" if state["pending_calls"] else "model"
+            "model", lambda state: "tool" if state["tool_call"] else END, {"tool": "tool", END: END}
+        )
+        graph.add_conditional_edges(
+            "tool",
+            lambda state: "tool" if state["pending_calls"] else "model",
+            {"tool": "tool", "model": "model"},
         )
         return graph.compile(checkpointer=saver, interrupt_before=["tool"])
 

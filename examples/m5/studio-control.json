@@ -1,0 +1,152 @@
+{
+  "schema_version": "m5-studio-control-1",
+  "checked_at": "2026-10-18T18:54:27.053678+00:00",
+  "passed": true,
+  "observer_kind": "assistant_api_check",
+  "counts_as_user_session": false,
+  "user_completion_rate": null,
+  "user_elapsed_seconds": null,
+  "mode": "synthetic",
+  "tool": "LangGraph Agent Server development API",
+  "cases": [
+    {
+      "case": "timeout",
+      "inspected_graph_edges": [
+        {
+          "source": "__start__",
+          "target": "model"
+        },
+        {
+          "source": "model",
+          "target": "__end__",
+          "conditional": true
+        },
+        {
+          "source": "model",
+          "target": "tool",
+          "conditional": true
+        },
+        {
+          "source": "tool",
+          "target": "model"
+        }
+      ],
+      "thread_id": "01a1505d-6817-7f23-892c-38de81e1dde2",
+      "baseline_checkpoint": {
+        "checkpoint_id": "1f1cb255-51c0-65ae-8001-aeb86a2d9c81",
+        "thread_id": "01a1505d-6817-7f23-892c-38de81e1dde2",
+        "checkpoint_ns": ""
+      },
+      "branch_point": {
+        "checkpoint_id": "1f1cb255-51c0-65ae-8001-aeb86a2d9c81",
+        "thread_id": "01a1505d-6817-7f23-892c-38de81e1dde2",
+        "checkpoint_ns": ""
+      },
+      "candidate_checkpoint": {
+        "checkpoint_id": "1f1cb255-5c76-654d-8004-ba6a19e27dbf",
+        "thread_id": "01a1505d-6817-7f23-892c-38de81e1dde2",
+        "checkpoint_ns": ""
+      },
+      "source_package_sha256": "56bf96c2532e228fb92ed22bdd5fead415f0c0c576ac158b8abba3f6127c6121",
+      "agent": {
+        "id": "serial-checkpoint",
+        "version": "2"
+      },
+      "fixture_hash": "0d5aa8226c2992b72e8dc1b8414da6809f9587b31f620c8f3db7b9851ec480fc",
+      "execution_policy_patch": {
+        "tool_retry_limit": 1
+      },
+      "a_new_model_steps": 1,
+      "b_new_model_steps": 1,
+      "a_tool_attempts": 1,
+      "b_tool_attempts": 2,
+      "old_checkpoints_checked": 3,
+      "before_sha256": "d0565f97ad655ce5b8b4a54aedcfda5839087768c968434a020e16eb12bd4227",
+      "after_sha256": "d0565f97ad655ce5b8b4a54aedcfda5839087768c968434a020e16eb12bd4227",
+      "local_document_rule_verdicts": null
+    },
+    {
+      "case": "document",
+      "inspected_graph_edges": [
+        {
+          "source": "__start__",
+          "target": "model"
+        },
+        {
+          "source": "model",
+          "target": "__end__",
+          "conditional": true
+        },
+        {
+          "source": "model",
+          "target": "tool",
+          "conditional": true
+        },
+        {
+          "source": "tool",
+          "target": "model",
+          "conditional": true
+        },
+        {
+          "source": "tool",
+          "target": "tool",
+          "conditional": true
+        }
+      ],
+      "thread_id": "01a1505d-7298-7891-9328-144c5aa1a67e",
+      "baseline_checkpoint": {
+        "checkpoint_id": "1f1cb255-6c49-67bc-8006-490b795071fc",
+        "thread_id": "01a1505d-7298-7891-9328-144c5aa1a67e",
+        "checkpoint_ns": ""
+      },
+      "branch_point": {
+        "checkpoint_id": "1f1cb255-66b0-64b0-8001-d9d918f0920b",
+        "thread_id": "01a1505d-7298-7891-9328-144c5aa1a67e",
+        "checkpoint_ns": ""
+      },
+      "candidate_checkpoint": {
+        "checkpoint_id": "1f1cb255-7a1b-6a1c-8008-c0b5e92f1644",
+        "thread_id": "01a1505d-7298-7891-9328-144c5aa1a67e",
+        "checkpoint_ns": ""
+      },
+      "source_package_sha256": "d0122c09d264afb56ed89a7ef9ebaddafd968819948b1a690f62f2fd0a3b3f4b",
+      "agent": {
+        "id": "document-react",
+        "version": "2"
+      },
+      "fixture_hash": "18133778351c8164748ebcde9ca66e8d894bdb0300ca0c9a8a350f8d14b4ff39",
+      "execution_policy_patch": {
+        "top_k": 3
+      },
+      "a_new_model_steps": 3,
+      "b_new_model_steps": 2,
+      "a_tool_attempts": 3,
+      "b_tool_attempts": 4,
+      "old_checkpoints_checked": 8,
+      "before_sha256": "232a646ce2a7593d111ec62ff587bb543366926e9afb631534c834d9b4beec1c",
+      "after_sha256": "232a646ce2a7593d111ec62ff587bb543366926e9afb631534c834d9b4beec1c",
+      "local_document_rule_verdicts": [
+        [
+          "fail",
+          "fail",
+          "pass"
+        ],
+        [
+          "pass",
+          "pass",
+          "pass"
+        ]
+      ]
+    }
+  ],
+  "new_provider_requests": 0,
+  "local_document_rule_evaluations": 2,
+  "human_reviews_created": 0,
+  "limitations": [
+    "Reuses production model/tool nodes and graph edges, with fixed synthetic drivers and a custom-stream journal bridge.",
+    "Agent Server owns checkpoints and state edits; this is not RunService fork validation, an Intervention or a new platform adapter.",
+    "Document rules were executed locally by the check script, not by a LangSmith evaluator or a human.",
+    "Studio browser interaction is recorded separately; no user completion rate, cancellation or restart equivalence is claimed.",
+    "Original live citation failure and unknown bills remain unchanged; synthetic success is not a replacement."
+  ]
+}
