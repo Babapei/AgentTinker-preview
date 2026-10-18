@@ -17,7 +17,16 @@ uv run agenttinker-server --database artifacts/runs.sqlite
 npm --prefix web run dev
 ```
 
-默认 `http://127.0.0.1:5173`，`/api` 经 Vite 转发到本机 8000 后端，无需把密钥送入浏览器或配置 CORS。当前仅开发入口，未公开部署；后端接口见 [HTTP/SSE](runtime-api.md)。启动和读取记录不调用模型。
+默认 `http://127.0.0.1:5173`，`/api` 经 Vite 转发到本机 8000 后端，无需把密钥送入浏览器或配置 CORS。另有下述构建后单进程入口，未公开部署；后端接口见 [HTTP/SSE](runtime-api.md)。启动和读取记录不调用模型。
+
+## 本机单进程试用
+
+```bash
+npm --prefix web run build
+uv run agenttinker-server --database artifacts/runs.sqlite --web-dist web/dist
+```
+
+页面和 `/api` 从 `http://127.0.0.1:8000` 提供，不需要再开 Vite。构建缺失会在启动前明确报错；省略 --web-dist 仍为原 API 模式。启动/历史查看不执行模型；实验仍显式选择模拟/实时。M5 无付费试用命令和独立数据说明见[M5 使用验证](m5-validation.md)。未公开部署。
 
 ## 共享协议
 
@@ -61,7 +70,7 @@ UV_CACHE_DIR=/tmp/agenttinker-uv-cache npm --prefix web run test:e2e
 uv run python scripts/serve_web_test.py
 ```
 
-该服务在临时 SQLite 生成两条 native synthetic 记录；仅此测试脚本提供 /__test__ 驱动端点，可显式创建/放行 gated synthetic 验证订阅，普通 create_app 不含这些端点。关闭即删除，不使用 live 密钥、不修改 artifacts/runs.sqlite。空数据库的普通界面仍显示空态，不自动生成或冒充已有实验。生产静态托管、公开部署和完整实验工作台尚未实现。
+该服务在临时 SQLite 生成两条 native synthetic 记录；仅此测试脚本提供 /__test__ 驱动端点，可显式创建/放行 gated synthetic 验证订阅，普通 create_app 不含这些端点。关闭即删除，不使用 live 密钥、不修改 artifacts/runs.sqlite。空数据库的普通界面仍显示空态，不自动生成或冒充已有实验。构建后的本机页面入口已支持，见上文；公开部署和完整实验工作台尚未实现。
 
 事件读取复用 eventsource-parser，UTF-8 分片交由 TextDecoderStream；重连使用新的 after_seq，不将旧 query 与新 Last-Event-ID 混用。浏览器 EventLog 检查顺序、身份、状态、父引用和重试来源，只有投影成功才推进游标。跨语言测试通过实际模拟运行，把失败/重试/取消/分支每个前缀与 Python project_events 输出逐一比较；没有从最终状态补造中间事实。
 

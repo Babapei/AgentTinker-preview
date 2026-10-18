@@ -13,6 +13,17 @@ uv run agenttinker-server --database artifacts/runs.sqlite
 
 可通过 `--pricing <版本价格表.json>` 指定服务端估算版本；未选时费用为 unknown。live 模式配置沿用服务端 `DEEPSEEK_*` 或 `OPENAI_*`，请求体不接收密钥。网络和 TLS 沿用环境设置，不自动选择价格时段。当前没有认证或公开托管，不以多 worker 启动同一数据库。
 
+## 同一地址提供构建后的页面
+
+```bash
+npm --prefix web run build
+uv run agenttinker-server --database artifacts/runs.sqlite --web-dist web/dist
+```
+
+打开 `http://127.0.0.1:8000` 使用页面，API 与 SSE 使用同一地址，运行/分支/导入仍由显式操作触发。未提供 --web-dist 时保持原 API 模式；不会自动启动前端开发服务或构造模型。
+
+--web-dist 需指向包含 index.html 的现成构建目录；缺少/无效构建在打开数据库或监听前以 web_build_missing 拒绝，并提示构建命令。只服务所选目录，外部路径或指向目录外的符号链接不可读取；API/文档路由优先于静态页面，不将未知 API 回退成 HTML。这是原本机单用户服务的可选页面入口，没有增加认证、公共托管或多进程支持。
+
 ## 已实现接口
 
 | 方法与路径 | 行为 |

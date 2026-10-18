@@ -8,6 +8,7 @@ from typing import Annotated
 
 from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 
 from agenttinker.core.projection import RunView
 from agenttinker.core.records import CheckpointRef, Count, Identifier, Run, Span, ValueModel
@@ -119,9 +120,23 @@ def create_app(
     pricing=None,
     poll_interval: float = 0.1,
     heartbeat_interval: float = 15.0,
+    web_dist: Path | str | None = None,
 ) -> FastAPI:
     if poll_interval <= 0 or heartbeat_interval <= 0:
         raise ValueError("positive_stream_intervals_required")
+    web_directory = None
+    if web_dist is not None:
+        try:
+            web_directory = Path(web_dist).resolve(strict=True)
+            index = (web_directory / "index.html").resolve(strict=True)
+            if (
+                not web_directory.is_dir()
+                or not index.is_file()
+                or not index.is_relative_to(web_directory)
+            ):
+                raise ValueError("web_build_missing")
+        except (OSError, RuntimeError):
+            raise ValueError("web_build_missing") from None
 
     @asynccontextmanager
     async def lifespan(app):
@@ -446,4 +461,8 @@ def create_app(
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
 
+    if web_directory is not None:
+        app.mount(
+            "/", StaticFiles(directory=web_directory, html=True, follow_symlink=False), name="web"
+        )
     return app

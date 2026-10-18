@@ -28,11 +28,12 @@
 
 ```bash
 bash scripts/setup.sh
-npm --prefix web ci
-uv run agenttinker-server --database artifacts/m5-study/runs.sqlite
+npm --prefix web run build
+env -u DEEPSEEK_API_KEY -u DEEPSEEK_MODEL -u OPENAI_API_KEY -u OPENAI_MODEL \
+  uv run agenttinker-server --database artifacts/m5-study/runs.sqlite --web-dist web/dist
 ```
 
-另一终端运行 `npm --prefix web run dev`，打开终端给出的本机地址。开始时选择模拟模式；本轮试用不需要新的付费模型调用。每位参与者使用独立数据库和浏览器会话，记录所用 Git 提交、工具版本、任务顺序和开始/结束时间。
+打开 `http://127.0.0.1:8000`，同一进程提供页面与 API，不必再启动开发服务。开始时显式选择模拟模式；试用进程移除提供商配置，保留继承代理/TLS，实时入口会明确返回未配置，本轮不需要新的付费模型调用。每位参与者使用独立数据库和浏览器会话，记录所用 Git 提交、工具版本、任务顺序和开始/结束时间；此处地址只对应运行服务的那台机器，不是公开试用网址。
 
 参考文件：
 
