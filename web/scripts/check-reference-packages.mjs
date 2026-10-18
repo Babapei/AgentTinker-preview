@@ -10,8 +10,8 @@ import { chromium, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
-const output = process.argv[2] ?? `${root}artifacts/m4-reference-browser.json`;
-const files = ['tool-timeout.json', 'document-missing.json'];
+const output = process.argv[2] ?? `${root}artifacts/m4-reference-browser-v2.json`;
+const files = ['tool-timeout.json', 'document-missing.json', 'document-missing-v2.json'];
 const packages = await Promise.all(
   files.map(async (file) => ({
     file,
@@ -138,6 +138,13 @@ try {
         await expect(source).toContainText('required_documents_read：未满足');
         await expect(source).toContainText('citation_sources_read：未知');
       }
+      if (file === 'document-missing-v2.json' && view.run.parent_run_id) {
+        await expect(page.locator('.run-header')).toContainText('执行成功');
+        await expect(source).toContainText('required_documents_returned：通过');
+        await expect(source).toContainText('required_documents_read：通过');
+        await expect(source).toContainText('citation_sources_read：未满足');
+        await expect(source).toContainText('hrelease-v2');
+      }
       if (view.run.parent_run_id)
         await expect(page.getByLabel('A/B 运行对比')).toContainText('先看配置改动');
       await expect(source.locator('.source-opinions')).toHaveCount(1);
@@ -165,28 +172,36 @@ try {
       record_playback_verified: true,
       unknown_costs_preserved: true,
     });
-    if (file === 'document-missing.json') {
+    if (file.startsWith('document-missing')) {
       stage = 'accessibility';
+      await page.setViewportSize({ width: 1440, height: 1000 });
       await page.goto(`${base}/?run=${result.root_run_id}`);
       const source = page.getByLabel('导入来源与原意见');
       await expect(source).toContainText('原规则评价 · 1 份');
       await expect(source).toContainText('原人工意见 · 0 份');
       assert.deepEqual((await new AxeBuilder({ page }).include('main').analyze()).violations, []);
       await page.screenshot({
-        path: `${root}artifacts/m4-real-reference-desktop.png`,
+        path: `${root}artifacts/m4-real-reference-${file.slice(0, -5)}-desktop.png`,
         fullPage: true,
       });
       await page.setViewportSize({ width: 390, height: 844 });
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
       assert.deepEqual((await new AxeBuilder({ page }).include('main').analyze()).violations, []);
       await page.screenshot({
-        path: `${root}artifacts/m4-real-reference-mobile.png`,
+        path: `${root}artifacts/m4-real-reference-${file.slice(0, -5)}-mobile.png`,
         fullPage: true,
       });
     }
   }
   assert.deepEqual(playbackRequests, []);
-  assert.deepEqual(writes, ['/api/v1/imports', '/api/v1/imports']);
+  assert.deepEqual(
+    writes,
+    files.map(() => '/api/v1/imports'),
+  );
+  const runCount = imported.reduce(
+    (count, reference) => count + Object.keys(reference.measurements).length,
+    0,
+  );
   stage = 'unconfigured_live';
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.getByRole('button', { name: '新建实验', exact: true }).click();
@@ -202,7 +217,7 @@ try {
   assert.equal((await rejected).status(), 503);
   await expect(composer.getByRole('alert')).toContainText('真实模型尚未配置');
   assert.equal((await json('/__reference__/stats')).model_constructions, 0);
-  assert.equal((await json('/api/v1/runs')).total, 4);
+  assert.equal((await json('/api/v1/runs')).total, runCount);
   const proof = {
     schema_version: 'm4-reference-browser-1',
     checked_at: new Date().toISOString(),
@@ -211,10 +226,10 @@ try {
     production_build: true,
     provider_credentials_removed: true,
     model_constructions: 0,
-    import_posts: 2,
+    import_posts: packages.length,
     playback_api_requests: 0,
     unconfigured_live_status: 503,
-    preserved_run_count: 4,
+    preserved_run_count: runCount,
     references: imported,
     limitations: [
       'Imported source claims remain unverified; this check proves reading and playback only.',

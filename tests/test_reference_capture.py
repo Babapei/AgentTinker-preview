@@ -236,7 +236,7 @@ def test_explicit_failure_packaging_keeps_unmet_outcomes_but_never_bypasses_inte
         package_reference(report, include_observed_failure=True)
 
 
-@pytest.mark.parametrize("filename", ["tool-timeout", "document-missing"])
+@pytest.mark.parametrize("filename", ["tool-timeout", "document-missing", "document-missing-v2"])
 def test_distributed_reference_packages_validate_import_and_preserve_observed_failures(
     filename, tmp_path
 ):
@@ -256,4 +256,25 @@ def test_distributed_reference_packages_validate_import_and_preserve_observed_fa
             assert child.view.spans[-1].usage.total_tokens == 695
             assert not child.reviews
             assert store.provenance(result.root_run_id).evaluations[0].answer_review == "unreviewed"
+        elif filename == "document-missing-v2":
+            child = records[package.manifest.root_run_id]
+            assert (
+                child.view.run.status == "succeeded" and child.view.run.config.agent.version == "2"
+            )
+            assert [c.verdict for c in child.evaluations[0].checks] == ["pass", "pass", "fail"]
+            assert "hrelease-v2" in child.evaluations[0].cited_document_ids
+            assert not child.reviews
     assert not checkpoint_path(target).exists()
+
+
+def test_reference_checks_every_executed_intent_in_the_inherited_first_batch():
+    report = json.loads(Path("examples/m4/deepseek-document-v2-live-observed.json").read_text())
+    assert document_checks(report)["same_search_call_and_query"]
+    b = report["runs"]["B"]
+    prefix = b["run"]["inherited_span_ids"][0]
+    tools = [
+        span for span in b["spans"] if span["kind"] == "tool" and span["parent_span_id"] == prefix
+    ]
+    assert len(tools) == 2
+    tools[1]["input"]["tool_call"]["function"]["arguments"] = '{"query":"changed-second-query"}'
+    assert not document_checks(report)["same_search_call_and_query"]

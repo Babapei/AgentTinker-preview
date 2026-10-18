@@ -1,0 +1,115 @@
+{
+  "schema_version": "m4-reference-browser-1",
+  "checked_at": "2026-10-18T05:49:59.542Z",
+  "passed": true,
+  "browser": "154.0.8037.57",
+  "production_build": true,
+  "provider_credentials_removed": true,
+  "model_constructions": 0,
+  "import_posts": 3,
+  "playback_api_requests": 0,
+  "unconfigured_live_status": 503,
+  "preserved_run_count": 6,
+  "references": [
+    {
+      "file": "tool-timeout.json",
+      "package_sha256": "56bf96c2532e228fb92ed22bdd5fead415f0c0c576ac158b8abba3f6127c6121",
+      "import_id": "import_2737ed10c2a84180aab74f844b170561",
+      "root_run_id": "imported_db938d758aee4a1c9eb6e1e4d0179098",
+      "measurements": {
+        "run_39fe9ed03b7f419cba42fdcb5a6087e6": {
+          "execution_status": "failed",
+          "new_model_calls": 1,
+          "new_total_tokens": 374,
+          "rule_verdicts": []
+        },
+        "run_876b45c27c2843ecb8ea935c929e8cb3": {
+          "execution_status": "succeeded",
+          "new_model_calls": 1,
+          "new_total_tokens": 250,
+          "rule_verdicts": []
+        }
+      },
+      "before_sha256": "56dec98962f4aeca8b3dfda706d2dec3e332aee1cf390d8b56c5ee2530aab0d8",
+      "after_sha256": "56dec98962f4aeca8b3dfda706d2dec3e332aee1cf390d8b56c5ee2530aab0d8",
+      "record_playback_verified": true,
+      "unknown_costs_preserved": true
+    },
+    {
+      "file": "document-missing.json",
+      "package_sha256": "eb9af2283f0ccf72e06315050b3cce0d6d663bf7eb378aeeacfd322717e60715",
+      "import_id": "import_94ae172be1224cd6a33211a3ae100d3d",
+      "root_run_id": "imported_ea8a208c778a4420aa1ba93f522756ac",
+      "measurements": {
+        "run_9b49d967a96940c4a781ef459fa27152": {
+          "execution_status": "succeeded",
+          "new_model_calls": 4,
+          "new_total_tokens": 2925,
+          "rule_verdicts": [
+            {
+              "required_documents_returned": "fail",
+              "required_documents_read": "fail",
+              "citation_sources_read": "pass"
+            }
+          ]
+        },
+        "run_a7841a7883924406883ee5adfa74322a": {
+          "execution_status": "failed",
+          "new_model_calls": 1,
+          "new_total_tokens": 695,
+          "rule_verdicts": [
+            {
+              "required_documents_returned": "pass",
+              "required_documents_read": "fail",
+              "citation_sources_read": "unknown"
+            }
+          ]
+        }
+      },
+      "before_sha256": "45f9c0d2765ed8becbe888791be2073a684b63714bf23aab6a8f15db00d501e5",
+      "after_sha256": "45f9c0d2765ed8becbe888791be2073a684b63714bf23aab6a8f15db00d501e5",
+      "record_playback_verified": true,
+      "unknown_costs_preserved": true
+    },
+    {
+      "file": "document-missing-v2.json",
+      "package_sha256": "d0122c09d264afb56ed89a7ef9ebaddafd968819948b1a690f62f2fd0a3b3f4b",
+      "import_id": "import_5fd2c1922ea84ef48420633b8e36e093",
+      "root_run_id": "imported_7d9f11a822e946e39087c712bdab9fdd",
+      "measurements": {
+        "run_3be0b5e19c1f4ee780b77daee49ef737": {
+          "execution_status": "succeeded",
+          "new_model_calls": 3,
+          "new_total_tokens": 2491,
+          "rule_verdicts": [
+            {
+              "required_documents_returned": "fail",
+              "required_documents_read": "fail",
+              "citation_sources_read": "pass"
+            }
+          ]
+        },
+        "run_b4955d8c41b54d18a6ad67c6a25cad20": {
+          "execution_status": "succeeded",
+          "new_model_calls": 2,
+          "new_total_tokens": 1948,
+          "rule_verdicts": [
+            {
+              "required_documents_returned": "pass",
+              "required_documents_read": "pass",
+              "citation_sources_read": "fail"
+            }
+          ]
+        }
+      },
+      "before_sha256": "c8e6831a786f720429a985ce562f487499ec50f2417928d6405f8c366bcd18e2",
+      "after_sha256": "c8e6831a786f720429a985ce562f487499ec50f2417928d6405f8c366bcd18e2",
+      "record_playback_verified": true,
+      "unknown_costs_preserved": true
+    }
+  ],
+  "limitations": [
+    "Imported source claims remain unverified; this check proves reading and playback only.",
+    "No new provider calls or human judgements were made."
+  ]
+}

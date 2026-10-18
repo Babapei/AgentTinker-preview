@@ -7,11 +7,13 @@ from datetime import UTC, datetime
 from agenttinker.core.events import parse_event
 from agenttinker.core.projection import RunView, project_events
 from agenttinker.experiments import documents as corpus
+from agenttinker.experiments.document_model import validate_batch_reply
 from agenttinker.experiments.evaluation import (
     EvaluationRequest,
     EvaluationResult,
     evaluate_documents,
 )
+from agenttinker.m0.models import ModelOutput
 from agenttinker.packages.context import context_for
 from agenttinker.packages.exporting import make_package
 from agenttinker.packages.models import EvaluationBinding, PortableRun, RecordSource, digest
@@ -86,6 +88,26 @@ def document_checks(report):
         for name, result in evaluations.items()
     }
     models = [*models_a, *models_b]
+    initial_calls = (
+        validate_batch_reply(ModelOutput.model_validate(models_a[0].output), set())
+        if models_a
+        else []
+    )
+    initial_tools_match = bool(initial_calls) and all(
+        bool(
+            executed := [
+                span
+                for span in view.spans
+                if span.kind == "tool" and span.parent_span_id == models_a[0].span_id
+            ]
+        )
+        and len(executed) <= len(initial_calls)
+        and all(
+            span.input.get("tool_call") == intent and span.logical_call_id == intent["id"]
+            for span, intent in zip(executed, initial_calls, strict=False)
+        )
+        for view in (a, b)
+    )
     actual_modes = {a.run.mode, b.run.mode}
     live = report["mode"] == "live"
     return {
@@ -117,6 +139,7 @@ def document_checks(report):
         and [s.call_index for s in models_b] == list(range(2, len(models_b) + 2))
         and not {s.span_id for s in a.spans} & {s.span_id for s in b.spans},
         "same_search_call_and_query": bool(searches_a and searches_b)
+        and initial_tools_match
         and searches_a[0].input["tool_call"] == searches_b[0].input["tool_call"]
         and searches_a[0].logical_call_id == searches_b[0].logical_call_id,
         "bounded_serial_auto_tools": bool(models)
