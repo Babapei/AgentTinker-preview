@@ -1,0 +1,21 @@
+{
+  "schema_version": "m5-user-session-1",
+  "status": "not_started",
+  "participant_id": null,
+  "observer_id": null,
+  "tool": null,
+  "tool_version": null,
+  "agenttinker_commit": null,
+  "environment": null,
+  "task_order": [],
+  "tasks": [],
+  "understanding": {
+    "replay_versus_execution": null,
+    "inherited_versus_new_usage": null,
+    "unknown_versus_zero_cost": null
+  },
+  "independent_scenario_completed": null,
+  "participant_feedback": null,
+  "evidence_paths": [],
+  "limitations": null
+}
