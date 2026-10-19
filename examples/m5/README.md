@@ -6,6 +6,8 @@
 
 流程与共同输入见[M5 验证说明](../../docs/m5-validation.md)，分别使用[参与者任务卡](../../docs/m5/participant-tasks.md)和[观察指南](../../docs/m5/observer-guide.md)。实际记录先放 artifacts/m5-study；保留原观察、证据与未完成项。
 
+[容器与访问尝试](container-access.json)核对完整镜像、6 条原生模拟记录和保留数据卷重建后的旧点分支；container_check_passed=true，user_browser_access_verified=false，外部 URL=null。用户反馈内置浏览器未出现页面；没有创建托管服务或真人成绩。可重现说明见[容器与云端访问](../../docs/container-deployment.md)。
+
 作者/助手工具操作和自动化证据与真实用户会话分别保存。M4 的真实模型参考不会自动变成 M5 用户使用证据；原定 5 人/至少 4 人目标尚未实测。
 
 Phoenix 实操来自固定两包的离线转换与本地浏览器核对，4 traces/22 派生 spans 中只有 18 个原始步骤；5063 Token 是历史用量，没有新增模型调用。源金额未知，当前界面显示 $0，不能当实际账单；操作步骤和限制见[工具对照记录](../../docs/m5-tool-comparison.md)。M5 整体未完成。

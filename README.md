@@ -27,6 +27,7 @@
 | [运行服务](docs/runtime-service.md) | M1 串行执行、持久化生命周期、取消与重启边界 |
 | [运行记录协议](docs/runtime-records.md) | M1 对象、事件、状态转换与重建规则 |
 | [云端环境配置](docs/cloud-environment.md) | 设置页填写内容、固定安装入口及配置生效检查 |
+| [容器与云端访问](docs/container-deployment.md) | 完整容器已验证；本云环境用户入口未打通，外部托管账户/管理入口待核验 |
 | [新环境接续审视](docs/resumption-audit.md) | 2026-10-15 全仓核对、环境实测、真实 M0 证据及待修问题 |
 
 当前最重要的三个判断：
@@ -50,3 +51,5 @@ uv run agenttinker-server --database artifacts/runs.sqlite --web-dist web/dist
 ```
 
 打开 `http://127.0.0.1:8000` 使用页面，同一地址下 `/api` 与 `/docs` 可用；省略 --web-dist 仍仅提供原 API。创建 Run 时必须显式选择 live/synthetic，详见 [HTTP 与 SSE](docs/runtime-api.md)。开发时也可另启 npm --prefix web run dev（5173），见[前端说明](docs/web-inspector.md)。这是本机单用户入口，完整实验工作台与公开部署尚未完成。
+
+[完整容器](docs/container-deployment.md)已实际验证生产构建、两类模拟 A/B、保留数据卷重建后旧点分支与页面读取。`127.0.0.1` 指运行主机；本云环境向用户的内置浏览器打开仅排队、用户未看到页面，尚未获得可访问网址。确认可用的 Python/Docker 托管连接后再核对发布入口；容器构建成功不等于已上线。

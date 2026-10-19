@@ -1,0 +1,95 @@
+{
+  "schema_version": "m5-container-access-1",
+  "checked_at": "2026-10-19T06:09:30.521021+00:00",
+  "source_commit": "6b00dece135be11a4abd6ba4665d05eb5fd05017",
+  "observer_kind": "assistant_container_check",
+  "counts_as_user_session": false,
+  "user_completion_rate": null,
+  "user_elapsed_seconds": null,
+  "container_check_passed": true,
+  "user_browser_access_verified": false,
+  "external_url": null,
+  "managed_environment_revision": "299",
+  "native_local_http_status": {
+    "page": 200,
+    "runs_api": 200
+  },
+  "user_handoff": {
+    "method": "built-in browser open",
+    "result": "queued",
+    "probe_request_received": false,
+    "user_report": "no new page"
+  },
+  "image_id": "sha256:3103f296bf5425fcc3ca44e411b6396ced45f3d3be52e44654740bf8618fcb2e",
+  "container_port": 8123,
+  "host_binding": "127.0.0.1:8001",
+  "retained_data_volume": true,
+  "container_recreated": true,
+  "healthcheck_passed": true,
+  "runtime": {
+    "uid": 10001,
+    "runtime_versions": {
+      "langgraph": "1.2.14",
+      "langgraph-checkpoint": "4.3.0",
+      "langgraph-checkpoint-sqlite": "3.1.2",
+      "openai": "2.54.0"
+    },
+    "provider_keys_present": false,
+    "node_present": false,
+    "pytest_present": false,
+    "mounted_build_secrets_present": false
+  },
+  "browser": {
+    "passed": true,
+    "browser": "154.0.8037.57",
+    "history_records": 6,
+    "page_error_names": []
+  },
+  "mode": "synthetic",
+  "native_runs_created": 6,
+  "cases": [
+    {
+      "case": "timeout",
+      "a_status": "failed",
+      "b_status": "succeeded",
+      "before_views_sha256": "97316b322ccd2384e554b8a0f762860383425c5596c3217b5595f6aafea74391",
+      "after_views_sha256": "97316b322ccd2384e554b8a0f762860383425c5596c3217b5595f6aafea74391",
+      "idempotent_fork_after_recreate": true,
+      "old_checkpoint_fork_after_recreate": "succeeded",
+      "new_model_steps_after_recreate": 1
+    },
+    {
+      "case": "document",
+      "a_status": "succeeded",
+      "b_status": "succeeded",
+      "before_views_sha256": "1b60bc2b28e9243842f1b962316940e061c253a7187dcb27784b9d73fe63e5c0",
+      "after_views_sha256": "1b60bc2b28e9243842f1b962316940e061c253a7187dcb27784b9d73fe63e5c0",
+      "idempotent_fork_after_recreate": true,
+      "old_checkpoint_fork_after_recreate": "succeeded",
+      "new_model_steps_after_recreate": 2
+    }
+  ],
+  "new_provider_requests": 0,
+  "human_reviews_created": 0,
+  "deployment_status": "not_published",
+  "limitations": [
+    "Only loopback access in the managed cloud environment was verified; no external URL was delivered.",
+    "The user confirmed the queued browser handoff did not show a page.",
+    "Render was confirmed installed and enabled, and the user confirmed account connection. This session still exposed no Render management tools/skills, so account/services could not be read via API; no hosting service, paid resource, TLS ingress or access policy was configured.",
+    "The image retains the existing single-owner runtime; it does not add multi-user authentication, quotas or distributed storage.",
+    "Container recreation retained both native A/B views and usable private checkpoints; this is not a backup/restore drill or a production availability guarantee.",
+    "All new runs used fixed synthetic drivers. Original live citation failures, usage and unknown bills remain unchanged."
+  ],
+  "render": {
+    "plugin_installed": true,
+    "plugin_user_enabled": true,
+    "management_tools_available_in_current_session": false,
+    "account_connection_verified": false,
+    "account_connection_user_confirmed": true
+  },
+  "deployment_files_sha256": {
+    "Dockerfile": "da612c2933bcecf2d99fec926b3840b6c0c3ee303f6b783745433ebda086f4d9",
+    ".dockerignore": "364dea04fc728e932271e9b6b0dc4c19e2c0b83fb90ba243f4f694c4bebf6b4f",
+    "deploy/entrypoint.sh": "f13dc847ca7d1aae0f2abb593f4684a0306a8ceeddddad9c05164efcfa0517a1"
+  }
+}
