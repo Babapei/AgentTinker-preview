@@ -1,0 +1,68 @@
+{
+  "schema_version": "m5-preview-access-1",
+  "checked_at": "2026-10-19T06:50:20.904794+00:00",
+  "passed": true,
+  "observer_kind": "assistant_local_container_and_chromium",
+  "counts_as_user_session": false,
+  "user_completion_rate": null,
+  "user_elapsed_seconds": null,
+  "user_browser_access_verified": false,
+  "external_url": null,
+  "source_base_commit": "d60696d2336c8260e7f405808f7a54d731c2238a",
+  "source_files_sha256": {
+    "src/agenttinker/api/access.py": "ba9a770f3d966436d914916d3a159f947c998063a00a05c74e8bade8feb6aec9",
+    "src/agenttinker/api/app.py": "10836a26d89df8e71b8baacf76ce415449e2b979545e26fc02d0020ca23ccb77",
+    "src/agenttinker/api/cli.py": "15123b36ecc98580761e29c30ed8d0108cf84cc8123637fa8940f6858366865d",
+    "deploy/entrypoint.sh": "fe0fbd9e7f6db121eb237f63e5e32f7124af839d0d0649e9594ed1757c182b88",
+    "Dockerfile": "d4d2c592cdb61ee0795eb1ee9db464fdf52ee8a56c17c958bfb05705d78e403c"
+  },
+  "container": {
+    "image_id": "sha256:fd7e3b4f0669fa53a80bb153fb772464f314cbb85e2cc5ae9b10117f84c502ff",
+    "user_uid": 10001,
+    "port": 8123,
+    "memory_limit_mib": 512,
+    "cpu_limit_at_success": 1.0,
+    "free_render_capacity_verified": false
+  },
+  "protection": {
+    "unauthenticated_status": 401,
+    "cross_origin_write_status": 403,
+    "health_public": true,
+    "password_required_before_start": true,
+    "protected_page_api_docs_and_sse": true
+  },
+  "native_synthetic_pairs": [
+    {
+      "case": "timeout",
+      "a_id": "run_aa205c54163a4b94ac05da47b919a600",
+      "b_id": "run_c0bfd43cafa94ce0a7c2000dbb1ebb45",
+      "a_status": "failed",
+      "b_status": "succeeded",
+      "source_unchanged": true,
+      "sse_verified": true,
+      "export_verified": true
+    },
+    {
+      "case": "document",
+      "a_id": "run_998432b3b3444cffac9cd88a98062393",
+      "b_id": "run_f0125e477a784739acb4d777d46fd13b",
+      "a_status": "succeeded",
+      "b_status": "succeeded",
+      "source_unchanged": true,
+      "sse_verified": true,
+      "export_verified": true
+    }
+  ],
+  "browser": "154.0.8037.57",
+  "browser_authenticated_create_and_sse": true,
+  "browser_page_errors": [],
+  "native_synthetic_runs": 5,
+  "new_provider_requests": 0,
+  "new_human_reviews": 0,
+  "limitations": [
+    "Local container checks do not establish externally reachable hosting or Render free-instance performance.",
+    "The 0.1 CPU hard-limit cold-start check did not become ready in its check window; subsequent successful local checks used 1 CPU and 512 MiB.",
+    "Shared preview password provides no tenant isolation; no provider credentials were configured.",
+    "No real-user outcomes, elapsed times, hosting bill or final M5 acceptance are established."
+  ]
+}

@@ -45,5 +45,5 @@ USER agenttinker
 EXPOSE 8000
 STOPSIGNAL SIGTERM
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-    CMD python -c 'import os,urllib.request; urllib.request.urlopen("http://127.0.0.1:"+os.environ.get("PORT","8000")+"/api/v1/scenarios", timeout=3).close()'
+    CMD python -c 'import os,urllib.request; urllib.request.urlopen("http://127.0.0.1:"+os.environ.get("PORT","8000")+"/healthz", timeout=3).close()'
 ENTRYPOINT ["agenttinker-entrypoint"]

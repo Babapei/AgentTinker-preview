@@ -1,6 +1,7 @@
 """Start the single-owner local runtime; startup does not call a provider."""
 
 import argparse
+import os
 from pathlib import Path
 
 import uvicorn
@@ -16,6 +17,11 @@ def main():
     parser.add_argument("--database", type=Path, default=Path("artifacts/runs.sqlite"))
     parser.add_argument("--pricing", type=Path, help="Explicit versioned price-book JSON")
     parser.add_argument(
+        "--require-access-password",
+        action="store_true",
+        help="Refuse startup without AGENTTINKER_ACCESS_PASSWORD; username is preview",
+    )
+    parser.add_argument(
         "--web-dist",
         type=Path,
         help="Serve a built web directory, e.g. web/dist, on the same address",
@@ -23,6 +29,11 @@ def main():
     args = parser.parse_args()
     if not 1 <= args.port <= 65535:
         parser.error("invalid_port")
+    access_password = os.environ.get("AGENTTINKER_ACCESS_PASSWORD")
+    if args.require_access_password and access_password is None:
+        parser.error("access_password_required")
+    if access_password is not None and len(access_password) < 16:
+        parser.error("access_password_too_short")
     pricing = None
     if args.pricing:
         try:
@@ -30,7 +41,9 @@ def main():
         except (OSError, ValueError):
             parser.error("invalid_pricing_file")
     try:
-        app = create_app(args.database, pricing=pricing, web_dist=args.web_dist)
+        app = create_app(
+            args.database, pricing=pricing, web_dist=args.web_dist, access_password=access_password
+        )
     except ValueError:
         parser.error(
             "web_build_missing: run npm --prefix web run build and pass --web-dist web/dist"

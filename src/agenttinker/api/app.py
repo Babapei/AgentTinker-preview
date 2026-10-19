@@ -10,6 +10,7 @@ from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
+from agenttinker.api.access import PreviewAccess
 from agenttinker.core.projection import RunView
 from agenttinker.core.records import CheckpointRef, Count, Identifier, Run, Span, ValueModel
 from agenttinker.core.schema import protocol_schemas
@@ -121,7 +122,10 @@ def create_app(
     poll_interval: float = 0.1,
     heartbeat_interval: float = 15.0,
     web_dist: Path | str | None = None,
+    access_password: str | None = None,
 ) -> FastAPI:
+    if access_password is not None and len(access_password) < 16:
+        raise ValueError("access_password_too_short")
     if poll_interval <= 0 or heartbeat_interval <= 0:
         raise ValueError("positive_stream_intervals_required")
     web_directory = None
@@ -148,6 +152,12 @@ def create_app(
             await asyncio.to_thread(service.close)
 
     app = FastAPI(title="AgentTinker local runtime", version="0.0.1", lifespan=lifespan)
+    if access_password is not None:
+        app.add_middleware(PreviewAccess, password=access_password)
+
+    @app.get("/healthz", include_in_schema=False)
+    def health():
+        return {"status": "ok"}
 
     @app.exception_handler(ProviderNotConfigured)
     async def missing_provider(_request, _error):

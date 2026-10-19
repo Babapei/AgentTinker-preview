@@ -22,7 +22,17 @@ uv run agenttinker-server --database artifacts/runs.sqlite --web-dist web/dist
 
 打开 `http://127.0.0.1:8000` 使用页面，API 与 SSE 使用同一地址，运行/分支/导入仍由显式操作触发。未提供 --web-dist 时保持原 API 模式；不会自动启动前端开发服务或构造模型。
 
---web-dist 需指向包含 index.html 的现成构建目录；缺少/无效构建在打开数据库或监听前以 web_build_missing 拒绝，并提示构建命令。只服务所选目录，外部路径或指向目录外的符号链接不可读取；API/文档路由优先于静态页面，不将未知 API 回退成 HTML。这是原本机单用户服务的可选页面入口，没有增加认证、公共托管或多进程支持。
+--web-dist 需指向包含 index.html 的现成构建目录；缺少/无效构建在打开数据库或监听前以 web_build_missing 拒绝，并提示构建命令。只服务所选目录，外部路径或指向目录外的符号链接不可读取；API/文档路由优先于静态页面，不将未知 API 回退成 HTML。默认仍为本机单用户服务，外部临时预览可启用下面的共享密码；没有账户/租户隔离或多进程支持。
+
+## 临时预览的可选访问密码
+
+CLI 读取服务器环境变量 `AGENTTINKER_ACCESS_PASSWORD`，设置后启用 HTTP Basic，用户名固定为 `preview`。密码至少 16 个字符，仅通过托管平台的秘密环境配置注入，不放进命令参数、仓库、URL 或运行记录。默认不设置时保留原本机入口；对外使用须由托管入口提供 HTTPS。
+
+部署时额外指定 `--require-access-password`：密码缺失或过短会在数据库创建/监听前拒绝启动。容器设置 `AGENTTINKER_REQUIRE_ACCESS_PASSWORD=1` 即启用该要求。API 工厂测试/嵌入时通过显式 `access_password` 参数设置，不自动读取进程秘密。
+
+密码保护覆盖 HTML/静态文件、API、文档、读写和 SSE；浏览器首次打开会显示原生登录提示，后续同源请求沿用认证。不接受重复或无效认证头。启用保护后，带异站 Origin 或跨站 Fetch 元数据的写入在执行前拒绝，避免浏览器自动携带 Basic 凭据造成跨站写入。唯一公开的 `GET /healthz` 只返回 `{ "status": "ok" }`，不返回记录或配置，不调用模型；容器健康检查使用该路径。
+
+这是一个 owner 共用数据的预览门禁，没有多用户隔离、成员管理或单独登出接口；不能将其当作多人 SaaS 账户系统。临时托管仍可能休眠并清空本机数据库，见[测试入口说明](container-deployment.md)。
 
 ## 已实现接口
 

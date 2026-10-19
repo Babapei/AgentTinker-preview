@@ -38,7 +38,7 @@
 
 **命名约定：**产品、文档和界面统一使用 **AgentTinker**。当前仓库为 [AgentTinker-preview](https://github.com/Babapei/AgentTinker-preview)，`-preview` 标记开发预览阶段；完成后仓库更名为 `AgentTinker`。
 
-**M0–M4 已完成，M5 进行中。** 超时实验已贯通任务/模式/策略、实际运行与取消、持久化检查点的单变量分支、A/B 配置/过程/输出/新增量对比与讲解。当前 308 项后端全量通过；81 项前端单元和 43 项 Chromium 沿用此前通过的应用基线（模型为模拟/离线 SDK），M5 工具操作另记证据。
+**M0–M4 已完成，M5 进行中。** 超时实验已贯通任务/模式/策略、实际运行与取消、持久化检查点的单变量分支、A/B 配置/过程/输出/新增量对比与讲解。当前 317 项后端全量通过；81 项前端单元和 43 项 Chromium 沿用此前通过的应用基线（模型为模拟/离线 SDK），M5 工具操作另记证据。
 
 [当前协议的真实参考](examples/m3/deepseek-timeout-live.json)通过 12 项检查：A/B 各一次真实 DeepSeek 模型请求，374/250 Token，共 624；B 引用前缀，A 不变。另有真实参考浏览器只读核对。未选价格表，费用与实际扣费未知，见 [M3 验收](docs/m3-acceptance.md)。M4 已建立[文档实验](docs/document-experiment.md)的版本化定义、本地工具、独立 ReAct 运行/分支与场景 HTTP 接口、纯规则评价；评价/人工复核已接不可变存储、HTTP 和场景/评价界面；[实验包 v1](docs/experiment-packages.md)已有契约、原生导出、事务导入/来源接口与强制只读能力。新建使用支持多意图逐项执行的文档 v2，旧 v1 失败保留；新版真实 A/B 均完成执行，B 读取必需正文后生成 hrelease-v2 错误引用，规则判 fail，18/19 采集检查满足，real_reference_verified=false。[三份参考包](examples/m4/README.md)覆盖两类实验；生产页面无密钥导入六条记录、回放与再导出通过。M4 按原 P06–P10 完成功能验收，答案引用预期仍失败，见[验收与限制](docs/m4-acceptance.md)。按用户最新确认，先完成当前内置首版的 M5 实操对照、真实用户试用与反馈修正，再将现成 Agent 做成可选接入；当前不开始外部 Agent 适配。记录/检查/回放/文件基础保留复用边界，执行控制与评价以后按对象验证。
 
@@ -50,6 +50,6 @@ npm --prefix web run build
 uv run agenttinker-server --database artifacts/runs.sqlite --web-dist web/dist
 ```
 
-打开 `http://127.0.0.1:8000` 使用页面，同一地址下 `/api` 与 `/docs` 可用；省略 --web-dist 仍仅提供原 API。创建 Run 时必须显式选择 live/synthetic，详见 [HTTP 与 SSE](docs/runtime-api.md)。开发时也可另启 npm --prefix web run dev（5173），见[前端说明](docs/web-inspector.md)。这是本机单用户入口，完整实验工作台与公开部署尚未完成。
+打开 `http://127.0.0.1:8000` 使用页面，同一地址下 `/api` 与 `/docs` 可用；省略 --web-dist 仍仅提供原 API。对外临时预览可设置 AGENTTINKER_ACCESS_PASSWORD，并用 --require-access-password 强制保护，用户名为 preview；本机默认不变，详见[访问密码](docs/runtime-api.md#临时预览的可选访问密码)。创建 Run 时必须显式选择 live/synthetic，详见 [HTTP 与 SSE](docs/runtime-api.md)。开发时也可另启 npm --prefix web run dev（5173），见[前端说明](docs/web-inspector.md)。这是本机单用户入口，完整实验工作台与公开部署尚未完成。
 
 [完整容器](docs/container-deployment.md)已实际验证生产构建、两类模拟 A/B、保留数据卷重建后旧点分支与页面读取。`127.0.0.1` 指运行主机；本云环境向用户的内置浏览器打开仅排队、用户未看到页面，尚未获得可访问网址。Render 连接已通过只读工作区发现核对；当前先解决临时测试入口，优先已有环境预览/端口转发，免费托管作为待核验选项。7.25 USD/月的持久托管候选已暂缓，不是测试前置条件，详见上述部署说明。容器构建成功不等于已上线。
