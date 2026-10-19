@@ -6,7 +6,7 @@
 
 流程与共同输入见[M5 验证说明](../../docs/m5-validation.md)，分别使用[参与者任务卡](../../docs/m5/participant-tasks.md)和[观察指南](../../docs/m5/observer-guide.md)。实际记录先放 artifacts/m5-study；保留原观察、证据与未完成项。
 
-[容器与访问尝试](container-access.json)核对完整镜像、6 条原生模拟记录和保留数据卷重建后的旧点分支；container_check_passed=true，user_browser_access_verified=false，外部 URL=null。用户反馈内置浏览器未出现页面；没有创建托管服务或真人成绩。可重现说明见[容器与云端访问](../../docs/container-deployment.md)。
+[容器与访问尝试](container-access.json)核对完整镜像、6 条原生模拟记录和保留数据卷重建后的旧点分支；container_check_passed=true，user_browser_access_verified=false，外部 URL=null。这份历史检查中，用户反馈内置浏览器未出现页面，尚未创建托管服务；后续免费发布结果见 render-preview.json，仍没有真人成绩。可重现说明见[容器与云端访问](../../docs/container-deployment.md)。
 
 作者/助手工具操作和自动化证据与真实用户会话分别保存。M4 的真实模型参考不会自动变成 M5 用户使用证据；原定 5 人/至少 4 人目标尚未实测。
 
@@ -17,3 +17,5 @@ Phoenix 实操来自固定两包的离线转换与本地浏览器核对，4 trac
 Phoenix 原生比较将同一两组历史 A/B 映射为 2 个案例、2 个实验、4 条历史结果和 6 项来源 CODE 规则。Grid 与原追踪打开核对通过，文档 B 的正文读取 pass/引用 fail 同时保留；实验汇总显示 No cost data，追踪详情仍显示 $0，均不当账单。原生输出/规则再导出及浏览前后摘要不变，没有重新运行 Agent/评价器；耗时来自历史记录，原规则耗时和真实用户耗时仍未知。
 
 [临时预览门禁](preview-access.json)验证本机密码保护、两类模拟 A/B、401/403/503、SSE/导出及 Chromium 登录后新建，共 5 条模拟记录；它没有外部网址或真人成绩，也不等于 Render 免费资源已验证。源文件摘要绑定本次门禁实现，访问密码不入该证据。
+
+[免费临时预览](render-preview.json)保存实际 Render free 服务、live 部署及源码身份；外网 HTTPS、401/403/503、两类模拟 A/B、导出/SSE 和 Chromium 密码登录后新建通过，共 5 条远端模拟记录。用户设备访问仍未知，counts_as_user_session=false；没有模型密钥或新提供商请求，也不承诺休眠后保留 SQLite/checkpoint。访问密码不入 Git。

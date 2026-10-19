@@ -1,0 +1,70 @@
+{
+  "schema_version": "m5-render-preview-1",
+  "checked_at": "2026-10-19T06:57:27.787238+00:00",
+  "passed": true,
+  "observer_kind": "assistant_external_https_and_chromium",
+  "counts_as_user_session": false,
+  "user_browser_access_verified": null,
+  "user_completion_rate": null,
+  "user_elapsed_seconds": null,
+  "url": "https://agenttinker-preview.onrender.com",
+  "workspace_id": "tea-dbar3u4s728c739bot70",
+  "service_id": "srv-dbars2mq1p3s73crvj90",
+  "deploy_id": "dep-dbars3mq1p3s73crvnt0",
+  "deploy_status": "live",
+  "deploy_finished_at": "2026-10-19T06:53:58.986469Z",
+  "source_commit": "1afff1f31ef55a46be335cf876dc64620e6d1129",
+  "hosting": {
+    "plan": "free",
+    "region": "singapore",
+    "runtime": "docker",
+    "num_instances": 1,
+    "auto_deploy": false,
+    "persistent_disk_created": false,
+    "separate_database_created": false,
+    "provider_keys_configured": false,
+    "billing_verified": false
+  },
+  "checks": {
+    "external_https": true,
+    "public_minimal_health_status": 200,
+    "protected_page_api_docs_and_events_status": 401,
+    "cross_origin_write_status": 403,
+    "unconfigured_live_status": 503,
+    "native_synthetic_pairs": [
+      {
+        "case": "timeout",
+        "a_id": "run_605ed01455a9472f87e4e9700f8fe9bc",
+        "b_id": "run_c492a67301524b638e668f6c9490d54c",
+        "a_status": "failed",
+        "b_status": "succeeded",
+        "source_unchanged": true,
+        "sse_verified": true,
+        "export_verified": true
+      },
+      {
+        "case": "document",
+        "a_id": "run_32865579fb164671a6bce99a6cc95732",
+        "b_id": "run_dc61ee7ede1349cd9abbef790587dd84",
+        "a_status": "succeeded",
+        "b_status": "succeeded",
+        "source_unchanged": true,
+        "sse_verified": true,
+        "export_verified": true
+      }
+    ],
+    "authenticated_browser_create_and_sse": true,
+    "browser": "154.0.8037.57",
+    "browser_page_errors": [],
+    "native_synthetic_runs": 5,
+    "new_provider_requests": 0,
+    "new_human_reviews": 0
+  },
+  "limitations": [
+    "This is a temporary free preview with one shared owner password, not a multi-tenant production service.",
+    "Idle spin-down, restart or redeploy can erase SQLite/checkpoints; exported packages preserve readable history, not executable checkpoints.",
+    "Successful assistant HTTPS/browser checks do not establish access from the real user device or complete M5 user research.",
+    "No provider keys were configured; native checks explicitly selected synthetic mode.",
+    "The account billing/usage was not inspected; free compute does not promise zero total account charges or free quota overages."
+  ]
+}
